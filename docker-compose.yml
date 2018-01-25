@@ -21,5 +21,4 @@ services:
       - db
 
 volumes:
-  # named volume must already exist on host
   cwwed-postgresql:
