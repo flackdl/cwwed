@@ -6,10 +6,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - /var/lib/postgresql/data
+      - cwwed-postgresql:/var/lib/postgresql/data
   web:
     build: .
     command: python3 manage.py runserver 0.0.0.0:80
+    restart: "always"
     environment:
       - DJANGO_SETTINGS_MODULE=cwwed.settings-dev
     ports:
@@ -18,3 +19,7 @@ services:
       - .:/app
     depends_on:
       - db
+
+volumes:
+  # named volume must already exist on host
+  cwwed-postgresql:
