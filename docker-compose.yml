@@ -12,7 +12,8 @@ services:
     command: python3 manage.py runserver 0.0.0.0:80
     restart: "always"
     environment:
-      - DJANGO_SETTINGS_MODULE=cwwed.settings-dev
+      - DJANGO_SETTINGS_MODULE=cwwed.settings
+      - DATABASE_URL=postgres://postgres@db:5432/postgres
     ports:
       - "9000:80"
     volumes:
