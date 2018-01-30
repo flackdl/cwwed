@@ -106,3 +106,4 @@ venv.bak/
 # cwwed
 .idea/
 db.sqlite3
+staticfiles/
