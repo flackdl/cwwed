@@ -19,5 +19,4 @@ from covered_data import urls as cd_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('covered-data/', include(cd_urls)),
 ]
