@@ -144,4 +144,6 @@ LOGGING = {
 }
 
 # CWWED
-COVERED_DATA_CACHE_DIR = '/media/bucket/cwwed/covered-data-cache'
+COVERED_DATA_DIR = '/media/bucket/cwwed/covered-data'
+COVERED_DATA_CACHE_DIR = '{}/cache'.format(COVERED_DATA_DIR)
+COVERED_DATA_SNAPSHOTS_DIR = '{}/snapshots'.format(COVERED_DATA_DIR)

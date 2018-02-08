@@ -2,13 +2,15 @@ import logging
 import requests
 from django.conf import settings
 from pydap.client import open_url
+from requests import HTTPError
 from covered_data.models import NamedStormCoveredDataProvider
 
 
 class OpenDapProvider:
     DEFAULT_DIMENSIONS = {'time', 'longitude', 'latitude'}
     provider = None  # type: NamedStormCoveredDataProvider
-    output = None  # type: str
+    output_path = None  # type: str
+    request_url = None  # type: str
     success = None  # type: bool
     protocol = None  # type: str
     response_type = 'nc'
@@ -17,21 +19,34 @@ class OpenDapProvider:
         self.provider = provider
 
     def fetch(self):
+        try:
+            self._fetch()
+        except (HTTPError,) as e:
+            self.success = False
+            logging.warning('HTTPError: %s' % str(e))
+        except Exception as e:
+            self.success = False
+            logging.warning('Exception: %s' % str(e))
+
+    def _fetch(self):
+
+        # fetch data
         url = '{}.{}'.format(self.provider.source, self.response_type)
         response = requests.get(url, params=self._get_constraints())
-        logging.info('URL: %s' % url)
+        self.request_url = response.url
+        logging.info('URL: %s' % self.request_url)
         response.raise_for_status()
-        output_path = '{}/{}_{}.{}'.format(
+
+        # store output
+        self.output_path = '{}/{}_{}.{}'.format(
             settings.COVERED_DATA_CACHE_DIR,
             self.provider.covered_data.named_storm.name.replace(' ', '-'),
             self.provider.covered_data.name.replace(' ', '-'),
             self.response_type,
         )
-
-        # store output
-        logging.info('Output: %s' % output_path)
-        with open(output_path, 'wb') as fd:
+        with open(self.output_path, 'wb') as fd:
             fd.write(response.content)
+
         self.success = response.ok
 
     def _get_constraints(self):

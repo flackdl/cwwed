@@ -1,6 +1,7 @@
 from importlib import import_module
 from covered_data.models import NamedStorm
 from django.core.management.base import BaseCommand
+from covered_data.providers import OpenDapProvider
 
 
 class Command(BaseCommand):
@@ -19,12 +20,18 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: "%s"' % provider))
 
+                    # import provider class to perform the fetching
                     module = import_module('covered_data.providers')
-                    collector = getattr(module, provider.provider_class)(provider)
+                    collector = getattr(module, provider.provider_class)(provider)  # type: OpenDapProvider
                     collector.fetch()
 
+                    self.stdout.write(self.style.WARNING('\t\tURL: "%s"' % collector.request_url))
+
                     if collector.success:
-                        self.stdout.write(self.style.SUCCESS('\t\tSaved to: "%s"' % collector.success))
+                        self.stdout.write(self.style.SUCCESS('\t\tSaved to: "%s"' % collector.output_path))
+                        self.stdout.write(self.style.WARNING('\t\tSuccess, so skipping additional providers'))
+                        break
                     else:
-                        self.stdout.write(self.style.WARNING('\t\tSuccess: "%s"' % collector.success))
+                        self.stdout.write(self.style.ERROR('\t\tFailed'))
+                        self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
 
