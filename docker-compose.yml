@@ -15,10 +15,12 @@ services:
       - "9000:8080"
     container_name: thredds
     volumes:
-      - cwwed-thredds:/usr/local/tomcat/
+      - ${PWD}/configs/thredds/catalog.xml:/usr/local/tomcat/content/thredds/catalog.xml
+      - ${PWD}/configs/thredds/threddsConfig.xml:/usr/local/tomcat/content/thredds/threddsConfig.xml
+      - ${PWD}/configs/thredds/wmsConfig.xml:/usr/local/tomcat/content/thredds/wmsConfig.xml
+      - /media/bucket/cwwed:/usr/local/tomcat/content/thredds/public
     env_file:
       - "compose.thredds.env"
 
 volumes:
   cwwed-postgresql:
-  cwwed-thredds:
