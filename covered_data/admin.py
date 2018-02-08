@@ -1,7 +1,7 @@
 from django.contrib.gis import admin
-from covered_data.models import NamedStorm, CoveredData, CoveredDataProvider
+from covered_data.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
 
 
-@admin.register(NamedStorm, CoveredData, CoveredDataProvider)
+@admin.register(NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider)
 class CoveredDataAdmin(admin.GeoModelAdmin):
     pass

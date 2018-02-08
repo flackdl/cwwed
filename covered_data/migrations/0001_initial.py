@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('source', models.TextField()),
                 ('output', models.CharField(max_length=255)),
-                ('covered_data', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='covered_data.CoveredData')),
+                ('covered_data', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='covered_data.NamedStormCoveredData')),
             ],
         ),
         migrations.CreateModel(
