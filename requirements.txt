@@ -9,4 +9,3 @@ bpython==0.17
 requests==2.18.4
 # Pydap - fixes gzip compression issue currently in pip
 git+git://github.com/pydap/pydap.git@84e85db948012de7368da610a63376c1e2f273ef
-# erddapy==0.1.3

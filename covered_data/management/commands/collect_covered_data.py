@@ -1,7 +1,6 @@
-from importlib import import_module
-from covered_data.models import NamedStorm
+from covered_data.models import NamedStorm, PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID
 from django.core.management.base import BaseCommand
-from covered_data.providers import OpenDapProvider
+from covered_data.processors import GridProcessor, SequenceProcessor
 
 
 class Command(BaseCommand):
@@ -16,22 +15,26 @@ class Command(BaseCommand):
 
                 self.stdout.write(self.style.SUCCESS('\tCovered Data: "%s"' % data.name))
 
-                for provider in data.namedstormcovereddataprovider_set.all():
+                for provider in data.namedstormcovereddataprovider_set.all().filter(active=True):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: "%s"' % provider))
 
-                    # import provider class to perform the fetching
-                    module = import_module('covered_data.providers')
-                    collector = getattr(module, provider.provider_class)(provider)  # type: OpenDapProvider
-                    collector.fetch()
+                    if provider.processor.name == PROCESSOR_DATA_TYPE_GRID:
+                        processor = GridProcessor(provider)
+                    elif provider.processor.name == PROCESSOR_DATA_TYPE_SEQUENCE:
+                        processor = SequenceProcessor(provider)
+                    else:
+                        raise Exception('no processor found for %s' % provider.processor.name)
 
-                    self.stdout.write(self.style.WARNING('\t\tURL: "%s"' % collector.request_url))
+                    self.stdout.write(self.style.WARNING('\t\tURL: "%s"' % processor.request_url()))
 
-                    if collector.success:
-                        self.stdout.write(self.style.SUCCESS('\t\tSaved to: "%s"' % collector.output_path))
-                        self.stdout.write(self.style.WARNING('\t\tSuccess, so skipping additional providers'))
+                    processor.fetch()
+
+                    if processor.success:
+                        self.stdout.write(self.style.SUCCESS('\t\tSUCCESS'))
+                        self.stdout.write(self.style.SUCCESS('\t\tSaved to: "%s"' % processor.output_path))
+                        self.stdout.write(self.style.WARNING('\t\tSkipping additional providers'))
                         break
                     else:
                         self.stdout.write(self.style.ERROR('\t\tFailed'))
                         self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
-
