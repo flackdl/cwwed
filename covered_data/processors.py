@@ -1,3 +1,5 @@
+import os
+import errno
 import logging
 import requests
 import urllib.parse
@@ -46,14 +48,20 @@ class OpenDapProcessor:
         self.response_code = response.status_code
         response.raise_for_status()
 
-        # store output
-        self.output_path = '{}/{}_{}.{}'.format(
+        # create a directory to house the storm's covered data
+        path = self._create_directory('{}/{}'.format(
             settings.COVERED_DATA_CACHE_DIR,
-            self.provider.covered_data.named_storm.name.replace(' ', '-'),
-            self.provider.covered_data.name.replace(' ', '-'),
+            self.provider.covered_data.named_storm,
+        ))
+
+        # store output
+        self.output_path = '{}/{}.{}'.format(
+            path,
+            self.provider.covered_data.name,
             self.response_type,
         )
         with open(self.output_path, 'wb') as fd:
+            # stream the content so it's more efficient
             for block in response.iter_content(chunk_size=1024):
                 fd.write(block)
 
@@ -174,6 +182,15 @@ class OpenDapProcessor:
 
     def _variables(self):
         raise NotImplementedError
+
+    @staticmethod
+    def _create_directory(path):
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            if exception.errno != errno.EEXIST:
+                raise
+        return path
 
 
 class GridProcessor(OpenDapProcessor):
