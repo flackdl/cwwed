@@ -26,6 +26,9 @@ class NamedStorm(models.Model):
 class NamedStormCoveredData(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     name = models.CharField(max_length=500, unique=True)  # i.e "Global Forecast System"
+    date_start = models.DateTimeField()
+    date_end = models.DateTimeField()
+    geo = models.GeometryField(geography=True)
 
     def __str__(self):
         return '{} ({})'.format(self.name, self.named_storm)
@@ -34,7 +37,7 @@ class NamedStormCoveredData(models.Model):
 class NamedStormCoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(NamedStormCoveredData, on_delete=models.CASCADE)
     processor = models.ForeignKey(DataProviderProcessor, on_delete=models.CASCADE)
-    name = models.CharField(max_length=500)  # i.e  NOAA/ERDDAP
+    name = models.CharField(max_length=500)  # i.e  NOAA/NCEP
     url = models.CharField(max_length=500)
     active = models.BooleanField()
 
