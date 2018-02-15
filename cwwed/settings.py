@@ -42,7 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
-    'covered_data',
+    'covered_data.apps.CoveredDataConfig',  # specify AppConfig to include custom signals
     'rest_framework',
     'rest_framework.authtoken',
     'revproxy',  # django-revproxy
