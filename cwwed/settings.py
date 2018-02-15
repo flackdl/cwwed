@@ -42,14 +42,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
+    'covered_data',
+    'rest_framework',
+    'rest_framework.authtoken',
     'revproxy',  # django-revproxy
-    'crispy_forms',
     'storages',  # django-storages
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
-    'covered_data',
+    'crispy_forms',
 ]
 
 MIDDLEWARE = [
@@ -159,6 +161,14 @@ LOGGING = {
 }
 
 SITE_ID = 1
+
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
 
 # CWWED
 COVERED_DATA_DIR = '/media/bucket/cwwed/covered-data'

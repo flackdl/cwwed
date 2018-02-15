@@ -12,3 +12,5 @@ git+git://github.com/pydap/pydap.git@84e85db948012de7368da610a63376c1e2f273ef
 django-allauth==0.35.0
 django-crispy-forms==1.7.0
 django-revproxy==0.9.14
+djangorestframework==3.7.7
+django-filter==1.1.0

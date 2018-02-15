@@ -16,11 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include, re_path
 from covered_data.proxy import ThreddsProxy
-import covered_data.urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('covered-data/', include(covered_data.urls)),
+    path('covered-data/', include('covered_data.urls')),
     path('accounts/', include('allauth.urls')),
+    path('api/', include('covered_data.api.urls')),
     re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream='http://localhost:9000/thredds/')),
 ]
