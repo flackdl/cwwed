@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'covered_data.apps.CoveredDataConfig',  # specify AppConfig to include custom signals
+    'audit',
     'rest_framework',
     'rest_framework.authtoken',
     'revproxy',  # django-revproxy

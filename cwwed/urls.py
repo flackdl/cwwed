@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
-from covered_data.proxy import ThreddsProxy
+from audit.proxy import ThreddsProxy
 
 urlpatterns = [
     path('admin/', admin.site.urls),
