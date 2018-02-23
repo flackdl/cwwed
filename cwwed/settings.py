@@ -25,7 +25,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = '5ls0f5=_bv-a($n@%7wq6oo)tzcj$c&wl&078leywlt)t-irdj'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = False if os.environ.get('DEBUG') != 'True' else True
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -177,3 +176,4 @@ REST_FRAMEWORK = {
 COVERED_DATA_DIR = '/media/bucket/cwwed/covered-data'
 COVERED_DATA_CACHE_DIR = '{}/cache'.format(COVERED_DATA_DIR)
 COVERED_DATA_SNAPSHOTS_DIR = '{}/snapshots'.format(COVERED_DATA_DIR)
+THREDDS_URL = 'http://localhost:9000/thredds/'

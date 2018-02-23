@@ -13,6 +13,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include, re_path
 from audit.proxy import ThreddsProxy
@@ -21,5 +22,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('api/', include('covered_data.api.urls')),
-    re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream='http://localhost:9000/thredds/')),
+    re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
 ]
