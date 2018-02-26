@@ -3,14 +3,14 @@
  "model": "named_storms.dataproviderprocessor",
  "pk": 1,
  "fields": {
-  "name": "grid"
+  "name": "thredds"
  }
 },
 {
  "model": "named_storms.dataproviderprocessor",
  "pk": 2,
  "fields": {
-  "name": "sequence"
+  "name": "erddap"
  }
 },
 {
@@ -46,14 +46,27 @@
  }
 },
 {
+ "model": "named_storms.namedstormcovereddata",
+ "pk": 3,
+ "fields": {
+  "named_storm": 1,
+  "name": "Standard Meteorological data",
+  "date_start": "2017-08-01T21:44:12Z",
+  "date_end": "2017-09-15T21:44:13Z",
+  "geo": "SRID=4326;POLYGON ((-96.6796875 24.2578125, -82.001953125 25.048828125, -78.3984375 31.376953125, -97.20703125 30.498046875, -96.6796875 24.2578125))"
+ }
+},
+{
  "model": "named_storms.namedstormcovereddataprovider",
  "pk": 1,
  "fields": {
   "covered_data": 1,
-  "processor": 1,
+  "processor": 2,
   "name": "NOAA/NCEP",
   "url": "http://upwell.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
-  "active": true
+  "active": true,
+  "data_type": "grid",
+  "data_regex": ""
  }
 },
 {
@@ -64,7 +77,22 @@
   "processor": 2,
   "name": "NOAA/PMEL",
   "url": "http://upwell.pfeg.noaa.gov/erddap/tabledap/apdrcArgoAll",
-  "active": true
+  "active": true,
+  "data_type": "sequence",
+  "data_regex": ""
+ }
+},
+{
+ "model": "named_storms.namedstormcovereddataprovider",
+ "pk": 3,
+ "fields": {
+  "covered_data": 3,
+  "processor": 1,
+  "name": "DODS",
+  "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
+  "active": true,
+  "data_type": "grid",
+  "data_regex": "\\w{5}\\w9999"
  }
 }
 ]

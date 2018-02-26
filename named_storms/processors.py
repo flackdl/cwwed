@@ -9,19 +9,21 @@ from pydap.model import DatasetType
 from requests import HTTPError
 from named_storms.models import NamedStormCoveredDataProvider, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE
 
+# import ssl
+# ssl._create_default_https_context = ssl._create_unverified_context
+
 
 class OpenDapProcessor:
     DEFAULT_DIMENSION_TIME = 'time'
     DEFAULT_DIMENSION_LATITUDE = 'latitude'
     DEFAULT_DIMENSION_LONGITUDE = 'longitude'
-    DEFAULT_DIMENSIONS = {DEFAULT_DIMENSION_TIME, DEFAULT_DIMENSION_LONGITUDE, DEFAULT_DIMENSION_LATITUDE}
+    DEFAULT_DIMENSIONS = {DEFAULT_DIMENSION_TIME, DEFAULT_DIMENSION_LATITUDE, DEFAULT_DIMENSION_LONGITUDE}
 
     dataset = None  # type: DatasetType
     provider = None  # type: NamedStormCoveredDataProvider
     output_path = None  # type: str
     success = None  # type: bool
-    data_type = None  # type: str
-    response_type = 'nc'
+    response_type = 'nc'  # type: str
     response_code = None  # type: int
     request_url = None  # type: str
 
@@ -94,7 +96,7 @@ class OpenDapProcessor:
         lng_start = storm_extent[0]
         lng_end = storm_extent[2]
 
-        if self.data_type == PROCESSOR_DATA_TYPE_GRID:
+        if self.provider.data_type == PROCESSOR_DATA_TYPE_GRID:
 
             #
             # time
@@ -137,7 +139,7 @@ class OpenDapProcessor:
 
             return ','.join(['{}{}'.format(v, ''.join(constraints)) for v in variables])
 
-        elif self.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
+        elif self.provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
             projection = ','.join(list(self.DEFAULT_DIMENSIONS) + variables)
             constraints = '&'.join([
                 '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '>=', time_start),
@@ -149,7 +151,7 @@ class OpenDapProcessor:
             ])
             return '{}&{}'.format(projection, constraints)
         else:
-            raise Exception('Invalid data_type "{}"'.format(self.data_type))
+            raise Exception('Invalid data_type "{}"'.format(self.provider.data_type))
 
     def _grid_constraint_indexes(self, dimension: str, start: float, end: float) -> tuple:
         # find the index range for our constraint values
@@ -166,6 +168,7 @@ class OpenDapProcessor:
         # extent/boundaries of covered data
         # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
         extent = self.provider.covered_data.geo.extent
+        # TODO - we can't assume it's always in this format, must read metadata
         # however, we need to convert lng to "degrees_east" format (i.e 0-360)
         # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
         extent = (
@@ -194,14 +197,12 @@ class OpenDapProcessor:
 
 
 class GridProcessor(OpenDapProcessor):
-    data_type = 'grid'
 
     def _variables(self) -> list:
         return list(self.dataset.keys())
 
 
 class SequenceProcessor(OpenDapProcessor):
-    data_type = 'sequence'
 
     def _variables(self) -> list:
         # a sequence in a dataset has one attribute which is a Sequence, so extract the variables from that

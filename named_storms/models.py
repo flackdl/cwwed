@@ -3,11 +3,23 @@ from django.contrib.gis.db import models
 
 PROCESSOR_DATA_TYPE_SEQUENCE = 'sequence'
 PROCESSOR_DATA_TYPE_GRID = 'grid'
-PROCESSOR_DATA_TYPE_CHOICES = (PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID)
+
+PROCESSOR_DATA_TYPE_CHOICES = (
+    PROCESSOR_DATA_TYPE_SEQUENCE,
+    PROCESSOR_DATA_TYPE_GRID,
+)
+
+PROCESSOR_DATA_SOURCE_ERDDAP = 'erddap'
+PROCESSOR_DATA_SOURCE_THREDDS = 'thredds'
+
+PROCESSOR_DATA_SOURCE_CHOICES = (
+    PROCESSOR_DATA_SOURCE_ERDDAP,
+    PROCESSOR_DATA_SOURCE_THREDDS,
+)
 
 
 class DataProviderProcessor(models.Model):
-    name = models.CharField(max_length=200, choices=zip(PROCESSOR_DATA_TYPE_CHOICES, PROCESSOR_DATA_TYPE_CHOICES))
+    name = models.CharField(max_length=200, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
 
     def __str__(self):
         return self.name
@@ -39,7 +51,9 @@ class NamedStormCoveredDataProvider(models.Model):
     processor = models.ForeignKey(DataProviderProcessor, on_delete=models.CASCADE)
     name = models.CharField(max_length=500)  # i.e  NOAA/NCEP
     url = models.CharField(max_length=500)
-    active = models.BooleanField()
+    active = models.BooleanField(default=True)
+    data_type = models.CharField(max_length=200, choices=zip(PROCESSOR_DATA_TYPE_CHOICES, PROCESSOR_DATA_TYPE_CHOICES))
+    data_regex = models.CharField(max_length=200, blank=True)
 
     def __str__(self):
         return '{} // {}'.format(self.name, self.covered_data)
