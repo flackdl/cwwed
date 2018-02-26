@@ -2,10 +2,10 @@ from django.apps import AppConfig
 
 
 class CoveredDataConfig(AppConfig):
-    name = 'covered_data'
+    name = 'named_storms'
 
     def ready(self):
         """
         Overridden to include custom signals
         """
-        import covered_data.signals  # noqa
+        import named_storms.signals  # noqa

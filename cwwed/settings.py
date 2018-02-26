@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
-    'covered_data.apps.CoveredDataConfig',  # specify AppConfig to include custom signals
+    'named_storms.apps.CoveredDataConfig',  # specify AppConfig to include custom signals
     'audit',
     'rest_framework',
     'rest_framework.authtoken',

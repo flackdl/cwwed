@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from covered_data.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
-from covered_data.api.serializers import NamedStormSerializer, NamedStormCoveredDataSerializer, NamedStormCoveredDataProviderSerializer
+from named_storms.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
+from named_storms.api.serializers import NamedStormSerializer, NamedStormCoveredDataSerializer, NamedStormCoveredDataProviderSerializer
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):

@@ -21,6 +21,6 @@ from audit.proxy import ThreddsProxy
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
-    path('api/', include('covered_data.api.urls')),
+    path('api/', include('named_storms.api.urls')),
     re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
 ]

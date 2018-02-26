@@ -31,7 +31,7 @@ class NamedStormCoveredData(models.Model):
     geo = models.GeometryField(geography=True)
 
     def __str__(self):
-        return '{} ({})'.format(self.name, self.named_storm)
+        return '{} // {}'.format(self.name, self.named_storm)
 
 
 class NamedStormCoveredDataProvider(models.Model):
@@ -42,4 +42,4 @@ class NamedStormCoveredDataProvider(models.Model):
     active = models.BooleanField()
 
     def __str__(self):
-        return self.name
+        return '{} // {}'.format(self.name, self.covered_data)

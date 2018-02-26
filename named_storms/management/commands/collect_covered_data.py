@@ -1,6 +1,6 @@
-from covered_data.models import NamedStorm, PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID
+from named_storms.models import NamedStorm, PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID
 from django.core.management.base import BaseCommand
-from covered_data.processors import GridProcessor, SequenceProcessor
+from named_storms.processors import GridProcessor, SequenceProcessor
 
 
 class Command(BaseCommand):

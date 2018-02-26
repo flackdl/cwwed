@@ -1,5 +1,5 @@
 from django.contrib.gis import admin
-from covered_data.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider, DataProviderProcessor
+from named_storms.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider, DataProviderProcessor
 
 
 @admin.register(NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider, DataProviderProcessor)

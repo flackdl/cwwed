@@ -7,7 +7,7 @@ from django.conf import settings
 from pydap.client import open_url
 from pydap.model import DatasetType
 from requests import HTTPError
-from covered_data.models import NamedStormCoveredDataProvider, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE
+from named_storms.models import NamedStormCoveredDataProvider, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE
 
 
 class OpenDapProcessor:

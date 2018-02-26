@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from covered_data.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
+from named_storms.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
 
 
 class NamedStormSerializer(serializers.ModelSerializer):

@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 ('date_start', models.DateTimeField()),
                 ('date_end', models.DateTimeField()),
                 ('geo', django.contrib.gis.db.models.fields.GeometryField(geography=True, srid=4326)),
-                ('named_storm', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='covered_data.NamedStorm')),
+                ('named_storm', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='named_storms.NamedStorm')),
             ],
         ),
         migrations.CreateModel(
@@ -48,8 +48,8 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=500)),
                 ('url', models.CharField(max_length=500)),
                 ('active', models.BooleanField()),
-                ('covered_data', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='covered_data.NamedStormCoveredData')),
-                ('processor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='covered_data.DataProviderProcessor')),
+                ('covered_data', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='named_storms.NamedStormCoveredData')),
+                ('processor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='named_storms.DataProviderProcessor')),
             ],
         ),
     ]

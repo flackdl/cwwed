@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework import routers
-from covered_data.api import viewsets
+from named_storms.api import viewsets
 
 router = routers.DefaultRouter()
 router.register(r'named-storms', viewsets.NamedStormViewSet)
