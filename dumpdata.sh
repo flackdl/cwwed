@@ -1,7 +1,10 @@
 #!/bin/bash
-apps=(audit auth admin sessions authtoken socialaccount)
+
+excluded_apps=(sites auth admin sessions authtoken socialaccount contenttypes audit)
+
 exclusions=''
-for app in ${apps[*]}; do
+for app in ${excluded_apps[*]}; do
     exclusions="${exclusions} --exclude ${app}"
 done
+
 python manage.py dumpdata --indent 1 ${exclusions}
