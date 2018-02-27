@@ -6,7 +6,7 @@ class NamedStormCoveredDataInline(admin.TabularInline):
     model = NamedStormCoveredData
     show_change_link = True
     extra = 0
-    readonly_fields = ('geo',)
+    exclude = ('geo',)  # editing an inline geometry isn't possible (no way to inherit from GeoAdmin)
 
 
 class NamedStormCoveredDataProviderInline(admin.TabularInline):
@@ -16,14 +16,14 @@ class NamedStormCoveredDataProviderInline(admin.TabularInline):
 
 
 @admin.register(NamedStorm)
-class NamedStormInlineAdmin(admin.OSMGeoAdmin):
+class NamedStormInlineAdmin(admin.GeoModelAdmin):
     inlines = (
         NamedStormCoveredDataInline,
     )
 
 
 @admin.register(NamedStormCoveredData)
-class NamedStormCoveredDataInlineAdmin(admin.OSMGeoAdmin):
+class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
     inlines = (
         NamedStormCoveredDataProviderInline,
     )
