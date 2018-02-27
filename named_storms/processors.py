@@ -7,7 +7,7 @@ from django.conf import settings
 from pydap.client import open_url
 from pydap.model import DatasetType
 from requests import HTTPError
-from named_storms.models import NamedStormCoveredDataProvider, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE
+from named_storms.models import NamedStormCoveredDataProvider
 
 # import ssl
 # ssl._create_default_https_context = ssl._create_unverified_context
@@ -26,11 +26,18 @@ class OpenDapProcessor:
     response_type = 'nc'  # type: str
     response_code = None  # type: int
     request_url = None  # type: str
+    _variables = []  # type: list
+    _time_start = None  # type: float
+    _time_end = None  # type: float
+    _lat_start = None  # type: float
+    _lat_end = None  # type: float
+    _lng_start = None  # type: float
+    _lng_end = None  # type: float
 
     def __init__(self, provider: NamedStormCoveredDataProvider):
         self.provider = provider
         self.request_url = urllib.parse.unquote('{}.{}?{}'.format(
-            self.provider.url, self.response_type, self._constraints()))
+            self.provider.url, self.response_type, self._build_query()))
 
     def fetch(self):
         try:
@@ -44,7 +51,7 @@ class OpenDapProcessor:
 
     def _fetch(self):
 
-        # fetch data with constraints
+        # fetch data
         response = requests.get(self.request_url, stream=True)
 
         self.response_code = response.status_code
@@ -69,89 +76,32 @@ class OpenDapProcessor:
 
         self.success = response.ok
 
-    def _constraints(self) -> str:
-
-        constraints = []
+    def _build_query(self) -> str:
 
         self.dataset = open_url(self.provider.url)
-        variables = self._variables()
+        variables = self._all_variables()
 
         self._verify_dimensions(variables)
 
         # remove dimensions from variables
-        variables = list(set(variables).difference(self.DEFAULT_DIMENSIONS))
+        self._variables = list(set(variables).difference(self.DEFAULT_DIMENSIONS))
 
         # use the covered data start/end dates for constraints
-        time_start = self.provider.covered_data.date_start.timestamp()
-        time_end = self.provider.covered_data.date_end.timestamp()
+        self._time_start = self.provider.covered_data.date_start.timestamp()
+        self._time_end = self.provider.covered_data.date_end.timestamp()
 
         # covered data boundaries
         storm_extent = self._covered_data_extent()
 
         # lat range
-        lat_start = storm_extent[1]
-        lat_end = storm_extent[3]
+        self._lat_start = storm_extent[1]
+        self._lat_end = storm_extent[3]
 
         # lng range
-        lng_start = storm_extent[0]
-        lng_end = storm_extent[2]
+        self._lng_start = storm_extent[0]
+        self._lng_end = storm_extent[2]
 
-        if self.provider.data_type == PROCESSOR_DATA_TYPE_GRID:
-
-            #
-            # time
-            # [x:y]
-            #
-
-            # find the the index range
-            time_start_idx, time_end_idx = self._grid_constraint_indexes('time', time_start, time_end)
-
-            constraints.append('[{}:{}]'.format(
-                time_start_idx,
-                time_end_idx,
-            ))
-
-            #
-            # latitude
-            # [x:y]
-            #
-
-            # find the index range
-            lat_start_idx, lat_end_idx = self._grid_constraint_indexes('latitude', lat_start, lat_end)
-
-            constraints.append('[{}:{}]'.format(
-                lat_start_idx,
-                lat_end_idx,
-            ))
-
-            #
-            # longitude
-            # [x:y]
-            #
-
-            # find the index range
-            lng_start_idx, lng_end_idx = self._grid_constraint_indexes('longitude', lng_start, lng_end)
-
-            constraints.append('[{}:{}]'.format(
-                lng_start_idx,
-                lng_end_idx,
-            ))
-
-            return ','.join(['{}{}'.format(v, ''.join(constraints)) for v in variables])
-
-        elif self.provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
-            projection = ','.join(list(self.DEFAULT_DIMENSIONS) + variables)
-            constraints = '&'.join([
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '>=', time_start),
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '<=', time_end),
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '>=', lng_start),
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '<=', lng_end),
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '>=', lat_start),
-                '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '<=', lat_end),
-            ])
-            return '{}&{}'.format(projection, constraints)
-        else:
-            raise Exception('Invalid data_type "{}"'.format(self.provider.data_type))
+        return self._query()
 
     def _grid_constraint_indexes(self, dimension: str, start: float, end: float) -> tuple:
         # find the index range for our constraint values
@@ -168,7 +118,7 @@ class OpenDapProcessor:
         # extent/boundaries of covered data
         # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
         extent = self.provider.covered_data.geo.extent
-        # TODO - we can't assume it's always in this format, must read metadata
+        # TODO - we can't assume it's always in this format... must read metadata
         # however, we need to convert lng to "degrees_east" format (i.e 0-360)
         # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
         extent = (
@@ -183,7 +133,7 @@ class OpenDapProcessor:
         if not self.DEFAULT_DIMENSIONS.issubset(variables):
             raise Exception('missing expected dimensions')
 
-    def _variables(self):
+    def _all_variables(self):
         raise NotImplementedError
 
     @staticmethod
@@ -195,16 +145,76 @@ class OpenDapProcessor:
                 raise
         return path
 
+    def _query(self):
+        raise NotImplementedError
+
 
 class GridProcessor(OpenDapProcessor):
 
-    def _variables(self) -> list:
+    def _all_variables(self) -> list:
         return list(self.dataset.keys())
+
+    def _query(self):
+        constraints = []
+
+        #
+        # time
+        # [x:y]
+        #
+
+        # find the the index range
+        time_start_idx, time_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_TIME, self._time_start, self._time_end)
+
+        constraints.append('[{}:{}]'.format(
+            time_start_idx,
+            time_end_idx,
+        ))
+
+        #
+        # latitude
+        # [x:y]
+        #
+
+        # find the index range
+        lat_start_idx, lat_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_LATITUDE, self._lat_start, self._lat_end)
+
+        constraints.append('[{}:{}]'.format(
+            lat_start_idx,
+            lat_end_idx,
+        ))
+
+        #
+        # longitude
+        # [x:y]
+        #
+
+        # find the index range
+        lng_start_idx, lng_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_LONGITUDE, self._lng_start, self._lng_end)
+
+        constraints.append('[{}:{}]'.format(
+            lng_start_idx,
+            lng_end_idx,
+        ))
+
+        return ','.join(['{}{}'.format(v, ''.join(constraints)) for v in self._variables])
 
 
 class SequenceProcessor(OpenDapProcessor):
 
-    def _variables(self) -> list:
+    def _all_variables(self) -> list:
+        # TODO - this is a poor assumption on how the sequence data is structured
         # a sequence in a dataset has one attribute which is a Sequence, so extract the variables from that
         keys = list(self.dataset.keys())
         return list(self.dataset[keys[0]].keys())
+
+    def _query(self):
+        projection = ','.join(list(self.DEFAULT_DIMENSIONS) + self._variables)
+        constraints = '&'.join([
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '>=', self._time_start),
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '<=', self._time_end),
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '>=', self._lng_start),
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '<=', self._lng_end),
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '>=', self._lat_start),
+            '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '<=', self._lat_end),
+        ])
+        return '{}&{}'.format(projection, constraints)

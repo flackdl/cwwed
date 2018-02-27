@@ -3,18 +3,16 @@ from django.contrib.gis.db import models
 
 PROCESSOR_DATA_TYPE_SEQUENCE = 'sequence'
 PROCESSOR_DATA_TYPE_GRID = 'grid'
-
 PROCESSOR_DATA_TYPE_CHOICES = (
     PROCESSOR_DATA_TYPE_SEQUENCE,
     PROCESSOR_DATA_TYPE_GRID,
 )
 
-PROCESSOR_DATA_SOURCE_ERDDAP = 'erddap'
-PROCESSOR_DATA_SOURCE_THREDDS = 'thredds'
-
+PROCESSOR_DATA_SOURCE_DAP = 'dap'
+PROCESSOR_DATA_SOURCE_NDBC = 'ndbc'  # National Data Buoy Center - https://dods.ndbc.noaa.gov/
 PROCESSOR_DATA_SOURCE_CHOICES = (
-    PROCESSOR_DATA_SOURCE_ERDDAP,
-    PROCESSOR_DATA_SOURCE_THREDDS,
+    PROCESSOR_DATA_SOURCE_DAP,
+    PROCESSOR_DATA_SOURCE_NDBC,
 )
 
 
@@ -41,6 +39,7 @@ class NamedStormCoveredData(models.Model):
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
     geo = models.GeometryField(geography=True)
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return '{} // {}'.format(self.name, self.named_storm)

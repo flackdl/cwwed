@@ -11,7 +11,7 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS('Named Storm: %s' % storm.name))
 
-            for data in storm.namedstormcovereddata_set.all():
+            for data in storm.namedstormcovereddata_set.all().filter(active=True):
 
                 self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data.name))
 
@@ -19,9 +19,9 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
-                    if provider.processor.name == PROCESSOR_DATA_TYPE_GRID:
+                    if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
                         processor = GridProcessor(provider)
-                    elif provider.processor.name == PROCESSOR_DATA_TYPE_SEQUENCE:
+                    elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
                         processor = SequenceProcessor(provider)
                     else:
                         raise Exception('no processor found for %s' % provider.processor.name)
