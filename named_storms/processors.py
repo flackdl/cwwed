@@ -1,80 +1,101 @@
+import ssl
 import os
 import errno
 import logging
+import xmltodict
+from typing import List
 import requests
-import urllib.parse
+from urllib import parse
 from django.conf import settings
 from pydap.client import open_url
 from pydap.model import DatasetType
 from requests import HTTPError
 from named_storms.models import NamedStormCoveredDataProvider
 
-# import ssl
-# ssl._create_default_https_context = ssl._create_unverified_context
+
+class DataRequest:
+    url: str = None
+    response_code: int = None
+    output_path: str = None
+    success: bool = None
+
+    def __init__(self, url):
+        self.url = url
 
 
 class OpenDapProcessor:
     DEFAULT_DIMENSION_TIME = 'time'
     DEFAULT_DIMENSION_LATITUDE = 'latitude'
     DEFAULT_DIMENSION_LONGITUDE = 'longitude'
-    DEFAULT_DIMENSIONS = {DEFAULT_DIMENSION_TIME, DEFAULT_DIMENSION_LATITUDE, DEFAULT_DIMENSION_LONGITUDE}
+    DEFAULT_DIMENSIONS = {
+        DEFAULT_DIMENSION_TIME,
+        DEFAULT_DIMENSION_LATITUDE,
+        DEFAULT_DIMENSION_LONGITUDE,
+    }
+    dataset: DatasetType = None
+    provider: NamedStormCoveredDataProvider = None
+    response_type: str = 'nc'
+    response_code: int = None
+    data_requests: List[DataRequest] = None
 
-    dataset = None  # type: DatasetType
-    provider = None  # type: NamedStormCoveredDataProvider
-    output_path = None  # type: str
-    success = None  # type: bool
-    response_type = 'nc'  # type: str
-    response_code = None  # type: int
-    request_url = None  # type: str
-    _variables = []  # type: list
-    _time_start = None  # type: float
-    _time_end = None  # type: float
-    _lat_start = None  # type: float
-    _lat_end = None  # type: float
-    _lng_start = None  # type: float
-    _lng_end = None  # type: float
+    _variables: List[str] = None
+    _time_start: float = None
+    _time_end: float = None
+    _lat_start: float = None
+    _lat_end: float = None
+    _lng_start: float = None
+    _lng_end: float = None
 
     def __init__(self, provider: NamedStormCoveredDataProvider):
         self.provider = provider
-        self.request_url = urllib.parse.unquote('{}.{}?{}'.format(
-            self.provider.url, self.response_type, self._build_query()))
+        self.data_requests = self._data_requests()
 
     def fetch(self):
         try:
             self._fetch()
         except HTTPError as e:
-            self.success = False
             logging.warning('HTTPError: %s' % str(e))
         except Exception as e:
-            self.success = False
             logging.warning('Exception: %s' % str(e))
+
+    def is_success(self):
+        return all([r.success for r in self.data_requests])
+
+    def _data_requests(self):
+        return [
+            DataRequest(
+                url=parse.unquote('{}.{}?{}'.format(self.provider.url, self.response_type, self._build_query()))
+            )
+        ]
 
     def _fetch(self):
 
-        # fetch data
-        response = requests.get(self.request_url, stream=True)
+        for data_request in self.data_requests:
 
-        self.response_code = response.status_code
-        response.raise_for_status()
+            # fetch data
+            response = requests.get(data_request.url, stream=True)
 
-        # create a directory to house the storm's covered data
-        path = self._create_directory('{}/{}'.format(
-            settings.COVERED_DATA_CACHE_DIR,
-            self.provider.covered_data.named_storm,
-        ))
+            data_request.response_code = response.status_code
+            response.raise_for_status()
 
-        # store output
-        self.output_path = '{}/{}.{}'.format(
-            path,
-            self.provider.covered_data.name,
-            self.response_type,
-        )
-        with open(self.output_path, 'wb') as fd:
-            # stream the content so it's more efficient
-            for block in response.iter_content(chunk_size=1024):
-                fd.write(block)
+            # create a directory to house the storm's covered data
+            path = self._create_directory('{}/{}'.format(
+                settings.COVERED_DATA_CACHE_DIR,
+                self.provider.covered_data.named_storm,
+            ))
 
-        self.success = response.ok
+            # store output
+            data_request.output_path = '{}/{}.{}'.format(
+                path,
+                self.provider.covered_data.name,
+                self.response_type,
+            )
+            with open(data_request.output_path, 'wb') as fd:
+                # stream the content so it's more efficient
+                for block in response.iter_content(chunk_size=1024):
+                    fd.write(block)
+
+            data_request.success = response.ok
 
     def _build_query(self) -> str:
 
@@ -218,3 +239,36 @@ class SequenceProcessor(OpenDapProcessor):
             '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '<=', self._lat_end),
         ])
         return '{}&{}'.format(projection, constraints)
+
+
+class NDBCProcessor(GridProcessor):
+
+    def _data_requests(self):
+        """
+        https://dods.ndbc.noaa.gov/
+        The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
+        The datasets inside each station includes historical data and the most recent (45 days) data.  There is no overlap.
+            - Historical data is in the format "20cm4h2014.nc"
+            - Current data is in the format "20cm4h9999.nc"
+        NOTE: NDBC's SSL certs are either self hosted or not in the os's bundle, so let's just not verify.
+        """
+        catalog = xmltodict.parse(requests.get(self.provider.url, verify=False).content)
+        station_urls = []
+        dataset_urls = []
+
+        for catalog_ref in catalog['catalog']['dataset']['catalogRef']:
+            station_urls.append('{}/{}'.format(
+                os.path.dirname(self.provider.url),
+                parse.urlparse(catalog_ref['@xlink:href']).path),
+            )
+
+        for station_url in station_urls:
+            station = xmltodict.parse(requests.get(station_url, verify=False).content)
+            station_dataset_urls = []
+            for dataset in station['catalog']['dataset']['dataset']:
+                print(dataset)
+                station_dataset_urls.append(dataset['@name'])
+            #print(station_dataset_urls)
+
+        return [
+        ]

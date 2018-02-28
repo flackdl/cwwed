@@ -1,6 +1,6 @@
-from named_storms.models import NamedStorm, PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID
+from named_storms.models import NamedStorm, PROCESSOR_DATA_TYPE_SEQUENCE, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_SOURCE_NDBC
 from django.core.management.base import BaseCommand
-from named_storms.processors import GridProcessor, SequenceProcessor
+from named_storms.processors import GridProcessor, SequenceProcessor, NDBCProcessor
 
 
 class Command(BaseCommand):
@@ -19,20 +19,25 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
-                    if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
-                        processor = GridProcessor(provider)
-                    elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
-                        processor = SequenceProcessor(provider)
+                    if provider.processor.name == PROCESSOR_DATA_SOURCE_NDBC:
+                        processor = NDBCProcessor(provider)
                     else:
-                        raise Exception('no processor found for %s' % provider.processor.name)
+                        if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
+                            processor = GridProcessor(provider)
+                        elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
+                            processor = SequenceProcessor(provider)
+                        else:
+                            raise Exception('no processor found for %s' % provider.processor.name)
 
-                    self.stdout.write(self.style.WARNING('\t\tURL: %s' % processor.request_url))
+                    for request in processor.data_requests:
+                        self.stdout.write(self.style.WARNING('\t\tURL: %s' % request.url))
 
                     processor.fetch()
 
-                    if processor.success:
+                    if processor.is_success():
                         self.stdout.write(self.style.SUCCESS('\t\tSUCCESS'))
-                        self.stdout.write(self.style.SUCCESS('\t\tSaved to: %s' % processor.output_path))
+                        for request in processor.data_requests:
+                            self.stdout.write(self.style.SUCCESS('\t\tSaved to: %s' % request.output_path))
                         self.stdout.write(self.style.WARNING('\t\tSkipping additional providers'))
                         break
                     else:
