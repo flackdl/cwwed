@@ -1,4 +1,3 @@
-import ssl
 import os
 import errno
 import logging
@@ -250,7 +249,7 @@ class NDBCProcessor(GridProcessor):
         The datasets inside each station includes historical data and the most recent (45 days) data.  There is no overlap.
             - Historical data is in the format "20cm4h2014.nc"
             - Current data is in the format "20cm4h9999.nc"
-        NOTE: NDBC's SSL certs are either self hosted or not in the os's bundle, so let's just not verify.
+        NOTE: NDBC's SSL certs aren't validating so let's just not verify.
         """
         catalog = xmltodict.parse(requests.get(self.provider.url, verify=False).content)
         station_urls = []
@@ -265,10 +264,13 @@ class NDBCProcessor(GridProcessor):
         for station_url in station_urls:
             station = xmltodict.parse(requests.get(station_url, verify=False).content)
             station_dataset_urls = []
-            for dataset in station['catalog']['dataset']['dataset']:
-                print(dataset)
+            datasets = station['catalog']['dataset']['dataset']
+            if not isinstance(datasets, list):
+                datasets = [datasets]
+            for dataset in datasets:
                 station_dataset_urls.append(dataset['@name'])
-            #print(station_dataset_urls)
+            # TODO - use proper xml parser
+            print(station_dataset_urls)
 
         return [
         ]
