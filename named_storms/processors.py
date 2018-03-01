@@ -1,15 +1,19 @@
 import os
 import errno
 import logging
-import xmltodict
+import re
+from datetime import timedelta, datetime
 from typing import List
+import pytz
 import requests
 from urllib import parse
 from django.conf import settings
+from io import BytesIO
 from pydap.client import open_url
 from pydap.model import DatasetType
 from requests import HTTPError
 from named_storms.models import NamedStormCoveredDataProvider
+from lxml import etree
 
 
 class DataRequest:
@@ -37,6 +41,7 @@ class OpenDapProcessor:
     response_code: int = None
     data_requests: List[DataRequest] = None
 
+    _provider_url_parsed = None
     _variables: List[str] = None
     _time_start: float = None
     _time_end: float = None
@@ -47,6 +52,7 @@ class OpenDapProcessor:
 
     def __init__(self, provider: NamedStormCoveredDataProvider):
         self.provider = provider
+        self._provider_url_parsed = parse.urlparse(self.provider.url)
         self.data_requests = self._data_requests()
 
     def fetch(self):
@@ -241,36 +247,89 @@ class SequenceProcessor(OpenDapProcessor):
 
 
 class NDBCProcessor(GridProcessor):
+    """
+    https://dods.ndbc.noaa.gov/
+    The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
+    The datasets inside each station includes historical data and the real-time data (45 days).  There is no overlap.
+        - Historical data is in the format "20cm4h2014.nc"
+        - Current data is in the format "20cm4h9999.nc"
+    NOTE: NDBC's SSL certs aren't validating, so let's just not verify.
+    """
+    # number of days "real-time" data is stored separately from the timestamped files
+    RE_PATTERN = re.compile(r'^(?P<station>\w{5})\w(?P<year>\d{4})\.nc$')
+    REALTIME_DAYS = 45
+    REALTIME_YEAR = 9999
 
     def _data_requests(self):
-        """
-        https://dods.ndbc.noaa.gov/
-        The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
-        The datasets inside each station includes historical data and the most recent (45 days) data.  There is no overlap.
-            - Historical data is in the format "20cm4h2014.nc"
-            - Current data is in the format "20cm4h9999.nc"
-        NOTE: NDBC's SSL certs aren't validating so let's just not verify.
-        """
-        catalog = xmltodict.parse(requests.get(self.provider.url, verify=False).content)
+        namespaces = {
+            'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
+            'xlink': 'http://www.w3.org/1999/xlink',
+        }
+        catalog_response = requests.get(self.provider.url, verify=False)
+        catalog_response.raise_for_status()
+        catalog = etree.parse(BytesIO(catalog_response.content))
+
         station_urls = []
         dataset_urls = []
+        dataset_paths = []
 
-        for catalog_ref in catalog['catalog']['dataset']['catalogRef']:
+        # build a list of all station catalog urls
+        for catalog_ref in catalog.xpath('//catalog:catalogRef', namespaces=namespaces):
+            dir_path = os.path.dirname(self.provider.url)
+            href_key = '{{{}}}href'.format(namespaces['xlink'])
+            station_path = catalog_ref.get(href_key)
             station_urls.append('{}/{}'.format(
-                os.path.dirname(self.provider.url),
-                parse.urlparse(catalog_ref['@xlink:href']).path),
+                dir_path,
+                parse.urlparse(station_path).path),
             )
 
+        # build a list of relevant datasets for each station
         for station_url in station_urls:
-            station = xmltodict.parse(requests.get(station_url, verify=False).content)
-            station_dataset_urls = []
-            datasets = station['catalog']['dataset']['dataset']
-            if not isinstance(datasets, list):
-                datasets = [datasets]
-            for dataset in datasets:
-                station_dataset_urls.append(dataset['@name'])
-            # TODO - use proper xml parser
-            print(station_dataset_urls)
+            has_datasets = False  # TODO - remove after debugging
+            station_response = requests.get(station_url, verify=False)
+            station_response.raise_for_status()
+            station = etree.parse(BytesIO(station_response.content))
+            for dataset in station.xpath('//catalog:dataset', namespaces=namespaces):
+                if self._is_using_dataset(dataset.get('name')):
+                    dataset_paths.append(dataset.get('urlPath'))
+                    has_datasets = True
+                    break  # TODO
+            if has_datasets:
+                break
 
-        return [
-        ]
+        # build a list of opendap urls for all the relevant datasets
+        for dataset_path in dataset_paths:
+            dataset_urls.append('{}://{}/{}/{}'.format(
+                self._provider_url_parsed.scheme,
+                self._provider_url_parsed.hostname,
+                'thredds/dodsC',
+                dataset_path,
+            ))
+
+        return [DataRequest(url=url) for url in dataset_urls]
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        """
+        Determines if we're using this dataset.
+        Format: "20cm4h9999.nc" for real-time and "20cm4h2018.nc" for specific year
+        """
+        # build a map of years to datasets
+        matched = self.RE_PATTERN.match(dataset)
+        if matched:
+            year = int(matched.group('year'))
+            now = datetime.utcnow().replace(tzinfo=pytz.UTC)
+
+            # determine if the start/end dates are within the REALTIME days
+            need_realtime_start = (self.provider.covered_data.date_start + timedelta(days=self.REALTIME_DAYS)) >= now
+            need_realtime_end = (self.provider.covered_data.date_end + timedelta(days=self.REALTIME_DAYS)) >= now
+
+            # "real-time" dataset
+            if year == self.REALTIME_YEAR:
+                return any([need_realtime_start, need_realtime_end])
+            # historical dataset
+            else:
+                # we'll never need the "historical" dataset if the whole date range is within the REALTIME days
+                need_both = need_realtime_start and need_realtime_end
+                resp = not need_both and year in [self.provider.covered_data.date_start.year, self.provider.covered_data.date_end.year]
+                return resp
+        return False
