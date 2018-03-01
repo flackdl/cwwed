@@ -1,4 +1,5 @@
 import os
+import ssl
 import errno
 import logging
 import re
@@ -15,6 +16,10 @@ from requests import HTTPError
 from named_storms.models import NamedStormCoveredDataProvider
 from lxml import etree
 
+
+# this works in combination with passing a Session() with verify=False to open_url
+# ssl._create_default_https_context = ssl._create_unverified_context
+# toggle the ssl on/off intelligently
 
 class DataRequest:
     url: str = None
@@ -66,7 +71,7 @@ class OpenDapProcessor:
     def is_success(self):
         return all([r.success for r in self.data_requests])
 
-    def _data_requests(self):
+    def _data_requests(self) -> List[DataRequest]:
         return [
             DataRequest(
                 url=parse.unquote('{}.{}?{}'.format(self.provider.url, self.response_type, self._build_query()))
@@ -104,7 +109,10 @@ class OpenDapProcessor:
 
     def _build_query(self) -> str:
 
-        self.dataset = open_url(self.provider.url)
+        session = requests.Session()
+        session.verify = self._verify_ssl()
+
+        self.dataset = open_url(self.provider.url, session=session)
         variables = self._all_variables()
 
         self._verify_dimensions(variables)
@@ -174,6 +182,15 @@ class OpenDapProcessor:
     def _query(self):
         raise NotImplementedError
 
+    @staticmethod
+    def _verify_ssl() -> bool:
+        return True
+
+    def _toggle_ssl(self):
+        if ssl._create_default_https_context == ssl.create_default_context:
+            ssl._create_default_https_context = ssl._create_unverified_context
+        else:
+            ssl._create_default_https_context = ssl.create_default_context
 
 class GridProcessor(OpenDapProcessor):
 
@@ -260,7 +277,11 @@ class NDBCProcessor(GridProcessor):
     REALTIME_DAYS = 45
     REALTIME_YEAR = 9999
 
-    def _data_requests(self):
+    @staticmethod
+    def _verify_ssl() -> bool:
+        return False
+
+    def _data_requests(self) -> List[DataRequest]:
         namespaces = {
             'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
             'xlink': 'http://www.w3.org/1999/xlink',
@@ -285,15 +306,16 @@ class NDBCProcessor(GridProcessor):
 
         # build a list of relevant datasets for each station
         for station_url in station_urls:
-            has_datasets = False  # TODO - remove after debugging
+            has_datasets = False  # TODO
             station_response = requests.get(station_url, verify=False)
             station_response.raise_for_status()
             station = etree.parse(BytesIO(station_response.content))
             for dataset in station.xpath('//catalog:dataset', namespaces=namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))
-                    has_datasets = True
+                    has_datasets = True  # TODO
                     break  # TODO
+            # TODO
             if has_datasets:
                 break
 
