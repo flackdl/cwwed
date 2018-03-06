@@ -1,7 +1,6 @@
 import os
 import re
 import sys
-
 import errno
 import requests
 from io import open
@@ -48,7 +47,7 @@ sensors_json = sensors_req.json()
 # filter sensors down to barometric ones
 barometric_sensors = [sensor for sensor in sensors_json if sensor.get('deployment_type_id') == DEPLOYMENT_TYPE_BAROMETRIC]
 
-# print file urls for barometric sensors for this event
+# fetch the files for barometric sensors for this event
 for file in files_json:
     if file['filetype_id'] == FILE_TYPE_DATA and file['instrument_id'] in [s['instrument_id'] for s in barometric_sensors]:
 
