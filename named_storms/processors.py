@@ -10,25 +10,23 @@ import requests
 from urllib import parse
 from django.conf import settings
 from io import BytesIO
-from pydap.client import open_url
-from pydap.model import DatasetType
 from requests import HTTPError
-from named_storms.models import NamedStormCoveredDataProvider
+import xarray.backends
 from lxml import etree
+from named_storms.models import NamedStormCoveredDataProvider
 
-
-# this works in combination with passing a Session() with verify=False to open_url
-# ssl._create_default_https_context = ssl._create_unverified_context
-# toggle the ssl on/off intelligently
 
 class DataRequest:
     url: str = None
-    response_code: int = None
+    dataset: xarray.Dataset = None
+    label: str = None
     output_path: str = None
     success: bool = None
 
-    def __init__(self, url):
+    def __init__(self, url, store: xarray.backends.PydapDataStore, label='default'):
+        self.dataset = xarray.open_dataset(store)
         self.url = url
+        self.label = label
 
 
 class OpenDapProcessor:
@@ -40,10 +38,8 @@ class OpenDapProcessor:
         DEFAULT_DIMENSION_LATITUDE,
         DEFAULT_DIMENSION_LONGITUDE,
     }
-    dataset: DatasetType = None
     provider: NamedStormCoveredDataProvider = None
     response_type: str = 'nc'
-    response_code: int = None
     data_requests: List[DataRequest] = None
 
     _provider_url_parsed = None
@@ -57,7 +53,9 @@ class OpenDapProcessor:
 
     def __init__(self, provider: NamedStormCoveredDataProvider):
         self.provider = provider
+        self._toggle_verify_ssl(enable=self._verify_ssl())
         self._provider_url_parsed = parse.urlparse(self.provider.url)
+        # build a list of all the datasets
         self.data_requests = self._data_requests()
 
     def fetch(self):
@@ -67,54 +65,48 @@ class OpenDapProcessor:
             logging.warning('HTTPError: %s' % str(e))
         except Exception as e:
             logging.warning('Exception: %s' % str(e))
+        finally:
+            # re-enable ssl
+            self._toggle_verify_ssl(enable=True)
 
     def is_success(self):
         return all([r.success for r in self.data_requests])
 
     def _data_requests(self) -> List[DataRequest]:
+        # TODO - update
         return [
-            DataRequest(
-                url=parse.unquote('{}.{}?{}'.format(self.provider.url, self.response_type, self._build_query()))
-            )
         ]
 
     def _fetch(self):
 
         for data_request in self.data_requests:
 
-            # fetch data
-            response = requests.get(data_request.url, stream=True)
-
-            data_request.response_code = response.status_code
-            response.raise_for_status()
+            # sort and slice dataset
+            data_request.dataset = data_request.dataset.sortby(
+                data_request.dataset[self.DEFAULT_DIMENSION_TIME])
+            data_request.dataset = self._slice_dataset(data_request.dataset)
 
             # create a directory to house the storm's covered data
-            path = self._create_directory('{}/{}'.format(
+            path = self._create_directory('{}/{}/{}'.format(
                 settings.COVERED_DATA_CACHE_DIR,
                 self.provider.covered_data.named_storm,
+                self.provider.covered_data.name,
             ))
 
-            # store output
             data_request.output_path = '{}/{}.{}'.format(
                 path,
-                self.provider.covered_data.name,
+                data_request.label,
                 self.response_type,
             )
-            with open(data_request.output_path, 'wb') as fd:
-                # stream the content so it's more efficient
-                for block in response.iter_content(chunk_size=1024):
-                    fd.write(block)
 
-            data_request.success = response.ok
+            # store as netcdf
+            data_request.dataset.to_netcdf(data_request.output_path)
 
-    def _build_query(self) -> str:
+            data_request.success = True
 
-        session = requests.Session()
-        session.verify = self._verify_ssl()
+    def _slice_dataset(self, dataset: xarray.Dataset) -> xarray.Dataset:
 
-        self.dataset = open_url(self.provider.url, session=session)
-        variables = self._all_variables()
-
+        variables = self._all_variables(dataset)
         self._verify_dimensions(variables)
 
         # remove dimensions from variables
@@ -135,16 +127,32 @@ class OpenDapProcessor:
         self._lng_start = storm_extent[0]
         self._lng_end = storm_extent[2]
 
-        return self._query()
+        #
+        # slice the dimensions
+        #
 
-    def _grid_constraint_indexes(self, dimension: str, start: float, end: float) -> tuple:
+        time_start_idx, time_end_idx = self._grid_constraint_indexes(dataset, self.DEFAULT_DIMENSION_TIME, self._time_start, self._time_end)
+        lat_start_idx, lat_end_idx = self._grid_constraint_indexes(dataset, self.DEFAULT_DIMENSION_LATITUDE, self._lat_start, self._lat_end)
+        lng_start_idx, lng_end_idx = self._grid_constraint_indexes(dataset, self.DEFAULT_DIMENSION_LONGITUDE, self._lng_start, self._lng_end)
+
+        dataset = dataset.isel(
+            time=slice(time_start_idx, time_end_idx),
+            latitude=slice(lat_start_idx, lat_end_idx),
+            longitude=slice(lng_start_idx, lng_end_idx),
+        )
+
+        return dataset
+
+    @staticmethod
+    def _grid_constraint_indexes(dataset: xarray.Dataset, dimension: str, start: float, end: float) -> tuple:
         # find the index range for our constraint values
 
-        values = self.dataset[dimension][:].data.tolist()  # convert numpy array to list
+        values = dataset[dimension].values.tolist()  # convert numpy array to list
 
         # find the the index range
-        idx_start = next(idx for idx, v in enumerate(values) if v >= start)
-        idx_end = next(idx for idx, v in enumerate(values) if v >= end)
+        # fallback start/end index to 0/None if it's not in range, respectively
+        idx_start = next((idx for idx, v in enumerate(values) if v >= start), 0)
+        idx_end = next((idx for idx, v in enumerate(values) if v >= end), None)
 
         return idx_start, idx_end
 
@@ -152,7 +160,7 @@ class OpenDapProcessor:
         # extent/boundaries of covered data
         # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
         extent = self.provider.covered_data.geo.extent
-        # TODO - we can't assume it's always in this format... must read metadata
+        # TODO - we can't assume it's always in "degrees_east"... read metadata
         # however, we need to convert lng to "degrees_east" format (i.e 0-360)
         # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
         extent = (
@@ -167,7 +175,7 @@ class OpenDapProcessor:
         if not self.DEFAULT_DIMENSIONS.issubset(variables):
             raise Exception('missing expected dimensions')
 
-    def _all_variables(self):
+    def _all_variables(self, dataset: xarray.Dataset):
         raise NotImplementedError
 
     @staticmethod
@@ -186,16 +194,18 @@ class OpenDapProcessor:
     def _verify_ssl() -> bool:
         return True
 
-    def _toggle_ssl(self):
-        if ssl._create_default_https_context == ssl.create_default_context:
-            ssl._create_default_https_context = ssl._create_unverified_context
-        else:
+    @staticmethod
+    def _toggle_verify_ssl(enable=True):
+        if enable:
             ssl._create_default_https_context = ssl.create_default_context
+        else:
+            ssl._create_default_https_context = ssl._create_unverified_context
+
 
 class GridProcessor(OpenDapProcessor):
 
-    def _all_variables(self) -> list:
-        return list(self.dataset.keys())
+    def _all_variables(self, dataset: xarray.Dataset) -> list:
+        return list(dataset.variables.keys())
 
     def _query(self):
         constraints = []
@@ -244,11 +254,11 @@ class GridProcessor(OpenDapProcessor):
 
 class SequenceProcessor(OpenDapProcessor):
 
-    def _all_variables(self) -> list:
+    def _all_variables(self, dataset: xarray.Dataset) -> list:
         # TODO - this is a poor assumption on how the sequence data is structured
         # a sequence in a dataset has one attribute which is a Sequence, so extract the variables from that
-        keys = list(self.dataset.keys())
-        return list(self.dataset[keys[0]].keys())
+        keys = list(dataset.keys())
+        return list(dataset[keys[0]].keys())
 
     def _query(self):
         projection = ','.join(list(self.DEFAULT_DIMENSIONS) + self._variables)
@@ -282,17 +292,19 @@ class NDBCProcessor(GridProcessor):
         return False
 
     def _data_requests(self) -> List[DataRequest]:
+        station_urls = []
+        dataset_paths = []
+        data_requests = []
+
         namespaces = {
             'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
             'xlink': 'http://www.w3.org/1999/xlink',
         }
-        catalog_response = requests.get(self.provider.url, verify=False)
+
+        # parse the main catalog and iterate through the individual buoy stations
+        catalog_response = requests.get(self.provider.url, verify=self._verify_ssl())
         catalog_response.raise_for_status()
         catalog = etree.parse(BytesIO(catalog_response.content))
-
-        station_urls = []
-        dataset_urls = []
-        dataset_paths = []
 
         # build a list of all station catalog urls
         for catalog_ref in catalog.xpath('//catalog:catalogRef', namespaces=namespaces):
@@ -306,29 +318,41 @@ class NDBCProcessor(GridProcessor):
 
         # build a list of relevant datasets for each station
         for station_url in station_urls:
-            has_datasets = False  # TODO
             station_response = requests.get(station_url, verify=False)
             station_response.raise_for_status()
             station = etree.parse(BytesIO(station_response.content))
             for dataset in station.xpath('//catalog:dataset', namespaces=namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))
-                    has_datasets = True  # TODO
-                    break  # TODO
+                    # TODO
+                    if len(dataset_paths) >= 1:
+                        break
             # TODO
-            if has_datasets:
+            if len(dataset_paths) >= 1:
                 break
 
-        # build a list of opendap urls for all the relevant datasets
+        # use the same session for all requests and conditionally disable ssl verification
+        session = requests.Session()
+        session.verify = self._verify_ssl()
+
+        # build a list of data requests for all the relevant datasets
         for dataset_path in dataset_paths:
-            dataset_urls.append('{}://{}/{}/{}'.format(
+            label, _ = os.path.splitext(os.path.basename(dataset_path))  # remove extension since it's handled later
+            url = '{}://{}/{}/{}'.format(
                 self._provider_url_parsed.scheme,
                 self._provider_url_parsed.hostname,
                 'thredds/dodsC',
                 dataset_path,
+            )
+            # open the dataset url and create the dataset
+            store = xarray.backends.PydapDataStore.open(url, session=session)
+            data_requests.append(DataRequest(
+                url=url,
+                store=store,
+                label=label,
             ))
 
-        return [DataRequest(url=url) for url in dataset_urls]
+        return data_requests
 
     def _is_using_dataset(self, dataset: str) -> bool:
         """
@@ -352,6 +376,5 @@ class NDBCProcessor(GridProcessor):
             else:
                 # we'll never need the "historical" dataset if the whole date range is within the REALTIME days
                 need_both = need_realtime_start and need_realtime_end
-                resp = not need_both and year in [self.provider.covered_data.date_start.year, self.provider.covered_data.date_end.year]
-                return resp
+                return not need_both and year in [self.provider.covered_data.date_start.year, self.provider.covered_data.date_end.year]
         return False
