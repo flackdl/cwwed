@@ -1,6 +1,10 @@
+import os
 import re
 import sys
+
+import errno
 import requests
+from io import open
 
 EVENT_ID_MATTHEW = 135  # default
 
@@ -22,6 +26,14 @@ DEPLOYMENT_TYPE_HUMIDITY = 6
 DEPLOYMENT_TYPE_AIR_TEMPERATURE = 7
 DEPLOYMENT_TYPE_WATER_TEMPERATURE = 8
 DEPLOYMENT_TYPE_RAPID_DEPLOYMENT = 9
+
+# create output directory
+output_directory = 'output'
+try:
+    os.makedirs(output_directory)
+except OSError as exception:
+    if exception.errno != errno.EEXIST:
+        raise
 
 # fetch event data files
 files_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(EVENT_ID))
@@ -55,6 +67,6 @@ for file in files_json:
 
         print('{}\t\t({})'.format(filename, file_url))
 
-        with open(filename, 'w') as f:
+        with open('{}/{}'.format(output_directory, filename), 'wb') as f:
             for chunk in file_req.iter_content(chunk_size=1024):
                 f.write(chunk)
