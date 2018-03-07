@@ -24,7 +24,7 @@ class DataRequest:
     success: bool = None
 
     def __init__(self, url, store: xarray.backends.PydapDataStore, label='default'):
-        self.dataset = xarray.open_dataset(store)
+        self.dataset = xarray.open_dataset(store, decode_times=False)
         self.url = url
         self.label = label
 
@@ -85,6 +85,11 @@ class OpenDapProcessor:
             data_request.dataset = data_request.dataset.sortby(
                 data_request.dataset[self.DEFAULT_DIMENSION_TIME])
             data_request.dataset = self._slice_dataset(data_request.dataset)
+            # verify it has values after getting the subset
+            if not self._dataset_has_dimension_values(data_request.dataset):
+                data_request.success = True
+                logging.warning('Skipping dataset with no values for a dimension ({}): %s' % data_request.url)
+                continue
 
             # create a directory to house the storm's covered data
             path = self._create_directory('{}/{}/{}'.format(
@@ -144,6 +149,10 @@ class OpenDapProcessor:
         return dataset
 
     @staticmethod
+    def _dataset_has_dimension_values(dataset: xarray.Dataset) -> bool:
+        return all(map(lambda x: len(dataset[x]), list(dataset.dims)))
+
+    @staticmethod
     def _grid_constraint_indexes(dataset: xarray.Dataset, dimension: str, start: float, end: float) -> tuple:
         # find the index range for our constraint values
 
@@ -187,9 +196,6 @@ class OpenDapProcessor:
                 raise
         return path
 
-    def _query(self):
-        raise NotImplementedError
-
     @staticmethod
     def _verify_ssl() -> bool:
         return True
@@ -207,50 +213,6 @@ class GridProcessor(OpenDapProcessor):
     def _all_variables(self, dataset: xarray.Dataset) -> list:
         return list(dataset.variables.keys())
 
-    def _query(self):
-        constraints = []
-
-        #
-        # time
-        # [x:y]
-        #
-
-        # find the the index range
-        time_start_idx, time_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_TIME, self._time_start, self._time_end)
-
-        constraints.append('[{}:{}]'.format(
-            time_start_idx,
-            time_end_idx,
-        ))
-
-        #
-        # latitude
-        # [x:y]
-        #
-
-        # find the index range
-        lat_start_idx, lat_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_LATITUDE, self._lat_start, self._lat_end)
-
-        constraints.append('[{}:{}]'.format(
-            lat_start_idx,
-            lat_end_idx,
-        ))
-
-        #
-        # longitude
-        # [x:y]
-        #
-
-        # find the index range
-        lng_start_idx, lng_end_idx = self._grid_constraint_indexes(self.DEFAULT_DIMENSION_LONGITUDE, self._lng_start, self._lng_end)
-
-        constraints.append('[{}:{}]'.format(
-            lng_start_idx,
-            lng_end_idx,
-        ))
-
-        return ','.join(['{}{}'.format(v, ''.join(constraints)) for v in self._variables])
-
 
 class SequenceProcessor(OpenDapProcessor):
 
@@ -259,18 +221,6 @@ class SequenceProcessor(OpenDapProcessor):
         # a sequence in a dataset has one attribute which is a Sequence, so extract the variables from that
         keys = list(dataset.keys())
         return list(dataset[keys[0]].keys())
-
-    def _query(self):
-        projection = ','.join(list(self.DEFAULT_DIMENSIONS) + self._variables)
-        constraints = '&'.join([
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '>=', self._time_start),
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_TIME, '<=', self._time_end),
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '>=', self._lng_start),
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_LONGITUDE, '<=', self._lng_end),
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '>=', self._lat_start),
-            '{}{}{}'.format(self.DEFAULT_DIMENSION_LATITUDE, '<=', self._lat_end),
-        ])
-        return '{}&{}'.format(projection, constraints)
 
 
 class NDBCProcessor(GridProcessor):
@@ -325,11 +275,11 @@ class NDBCProcessor(GridProcessor):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))
                     # TODO
-                    if len(dataset_paths) >= 1:
-                        break
+                    #if len(dataset_paths) >= 3:
+                    #    break
             # TODO
-            if len(dataset_paths) >= 1:
-                break
+            #if len(dataset_paths) >= 3:
+            #    break
 
         # use the same session for all requests and conditionally disable ssl verification
         session = requests.Session()
