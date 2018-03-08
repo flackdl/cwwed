@@ -13,7 +13,7 @@ from io import BytesIO
 from requests import HTTPError
 import xarray.backends
 from lxml import etree
-from named_storms.models import NamedStormCoveredDataProvider
+from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
 
 class DataRequest:
@@ -23,9 +23,9 @@ class DataRequest:
     output_path: str = None
     success: bool = None
 
-    def __init__(self, url, store: xarray.backends.PydapDataStore, label='default'):
-        self.dataset = xarray.open_dataset(store, decode_times=False)
+    def __init__(self, url: str, dataset=None, label='default'):
         self.url = url
+        self.dataset = dataset or xarray.open_dataset(url, decode_times=False)
         self.label = label
 
 
@@ -38,10 +38,12 @@ class OpenDapProcessor:
         DEFAULT_DIMENSION_LATITUDE,
         DEFAULT_DIMENSION_LONGITUDE,
     }
-    provider: NamedStormCoveredDataProvider = None
     response_type: str = 'nc'
     data_requests: List[DataRequest] = None
 
+    _named_storm: NamedStorm = None
+    _provider: CoveredDataProvider = None
+    _named_storm_covered_data: NamedStormCoveredData = None
     _provider_url_parsed = None
     _variables: List[str] = None
     _time_start: float = None
@@ -51,10 +53,12 @@ class OpenDapProcessor:
     _lng_start: float = None
     _lng_end: float = None
 
-    def __init__(self, provider: NamedStormCoveredDataProvider):
-        self.provider = provider
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider):
+        self._named_storm = named_storm
+        self._provider = provider
+        self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(covered_data=self._provider.covered_data)
         self._toggle_verify_ssl(enable=self._verify_ssl())
-        self._provider_url_parsed = parse.urlparse(self.provider.url)
+        self._provider_url_parsed = parse.urlparse(self._provider.url)
         # build a list of all the datasets
         self.data_requests = self._data_requests()
 
@@ -69,33 +73,33 @@ class OpenDapProcessor:
             # re-enable ssl
             self._toggle_verify_ssl(enable=True)
 
-    def is_success(self):
+    def is_success(self) -> bool:
         return all([r.success for r in self.data_requests])
 
     def _data_requests(self) -> List[DataRequest]:
-        # TODO - update
         return [
+            DataRequest(
+                url=self._provider.url,
+            )
         ]
 
     def _fetch(self):
 
         for data_request in self.data_requests:
 
-            # sort and slice dataset
-            data_request.dataset = data_request.dataset.sortby(
-                data_request.dataset[self.DEFAULT_DIMENSION_TIME])
             data_request.dataset = self._slice_dataset(data_request.dataset)
+
             # verify it has values after getting the subset
             if not self._dataset_has_dimension_values(data_request.dataset):
                 data_request.success = True
-                logging.warning('Skipping dataset with no values for a dimension ({}): %s' % data_request.url)
+                logging.info('Skipping dataset with no values for a dimension ({}): %s' % data_request.url)
                 continue
 
             # create a directory to house the storm's covered data
             path = self._create_directory('{}/{}/{}'.format(
                 settings.COVERED_DATA_CACHE_DIR,
-                self.provider.covered_data.named_storm,
-                self.provider.covered_data.name,
+                self._named_storm,
+                self._provider.covered_data,
             ))
 
             data_request.output_path = '{}/{}.{}'.format(
@@ -117,9 +121,9 @@ class OpenDapProcessor:
         # remove dimensions from variables
         self._variables = list(set(variables).difference(self.DEFAULT_DIMENSIONS))
 
-        # use the covered data start/end dates for constraints
-        self._time_start = self.provider.covered_data.date_start.timestamp()
-        self._time_end = self.provider.covered_data.date_end.timestamp()
+        # use the named storm covered data start/end dates for constraints
+        self._time_start = self._named_storm_covered_data.date_start.timestamp()
+        self._time_end = self._named_storm_covered_data.date_end.timestamp()
 
         # covered data boundaries
         storm_extent = self._covered_data_extent()
@@ -168,7 +172,7 @@ class OpenDapProcessor:
     def _covered_data_extent(self) -> tuple:
         # extent/boundaries of covered data
         # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
-        extent = self.provider.covered_data.geo.extent
+        extent = self._named_storm_covered_data.geo.extent
         # TODO - we can't assume it's always in "degrees_east"... read metadata
         # however, we need to convert lng to "degrees_east" format (i.e 0-360)
         # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
@@ -199,6 +203,11 @@ class OpenDapProcessor:
     @staticmethod
     def _verify_ssl() -> bool:
         return True
+
+    def _session(self):
+        session = requests.Session()
+        session.verify = self._verify_ssl()
+        return session
 
     @staticmethod
     def _toggle_verify_ssl(enable=True):
@@ -252,13 +261,13 @@ class NDBCProcessor(GridProcessor):
         }
 
         # parse the main catalog and iterate through the individual buoy stations
-        catalog_response = requests.get(self.provider.url, verify=self._verify_ssl())
+        catalog_response = requests.get(self._provider.url, verify=self._verify_ssl())
         catalog_response.raise_for_status()
         catalog = etree.parse(BytesIO(catalog_response.content))
 
         # build a list of all station catalog urls
         for catalog_ref in catalog.xpath('//catalog:catalogRef', namespaces=namespaces):
-            dir_path = os.path.dirname(self.provider.url)
+            dir_path = os.path.dirname(self._provider.url)
             href_key = '{{{}}}href'.format(namespaces['xlink'])
             station_path = catalog_ref.get(href_key)
             station_urls.append('{}/{}'.format(
@@ -296,9 +305,10 @@ class NDBCProcessor(GridProcessor):
             )
             # open the dataset url and create the dataset
             store = xarray.backends.PydapDataStore.open(url, session=session)
+            dataset = xarray.open_dataset(store, decode_times=False)
             data_requests.append(DataRequest(
                 url=url,
-                store=store,
+                dataset=dataset,
                 label=label,
             ))
 
@@ -316,15 +326,15 @@ class NDBCProcessor(GridProcessor):
             now = datetime.utcnow().replace(tzinfo=pytz.UTC)
 
             # determine if the start/end dates are within the REALTIME days
-            need_realtime_start = (self.provider.covered_data.date_start + timedelta(days=self.REALTIME_DAYS)) >= now
-            need_realtime_end = (self.provider.covered_data.date_end + timedelta(days=self.REALTIME_DAYS)) >= now
+            within_realtime_start = (self._named_storm_covered_data.date_start + timedelta(days=self.REALTIME_DAYS)) >= now
+            within_realtime_end = (self._named_storm_covered_data.date_end + timedelta(days=self.REALTIME_DAYS)) >= now
 
             # "real-time" dataset
             if year == self.REALTIME_YEAR:
-                return any([need_realtime_start, need_realtime_end])
+                return any([within_realtime_start, within_realtime_end])
             # historical dataset
             else:
                 # we'll never need the "historical" dataset if the whole date range is within the REALTIME days
-                need_both = need_realtime_start and need_realtime_end
-                return not need_both and year in [self.provider.covered_data.date_start.year, self.provider.covered_data.date_end.year]
+                need_both = within_realtime_start and within_realtime_end
+                return not need_both and year in [self._named_storm_covered_data.date_start.year, self._named_storm_covered_data.date_end.year]
         return False

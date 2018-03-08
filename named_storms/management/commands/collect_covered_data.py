@@ -7,25 +7,25 @@ class Command(BaseCommand):
     help = 'Collect Covered Data Snapshots'
 
     def handle(self, *args, **options):
-        for storm in NamedStorm.objects.all():
+        for storm in NamedStorm.objects.filter(active=True):
 
             self.stdout.write(self.style.SUCCESS('Named Storm: %s' % storm.name))
 
-            for data in storm.namedstormcovereddata_set.all().filter(active=True):
+            for data in storm.covered_data.filter(active=True):
 
-                self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data.name))
+                self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data))
 
-                for provider in data.namedstormcovereddataprovider_set.all().filter(active=True):
+                for provider in data.covereddataprovider_set.filter(active=True):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
                     if provider.processor.name == PROCESSOR_DATA_SOURCE_NDBC:
-                        processor = NDBCProcessor(provider)
+                        processor = NDBCProcessor(storm, provider)
                     else:
                         if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
-                            processor = GridProcessor(provider)
+                            processor = GridProcessor(storm, provider)
                         elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
-                            processor = SequenceProcessor(provider)
+                            processor = SequenceProcessor(storm, provider)
                         else:
                             raise Exception('no processor found for %s' % provider.processor.name)
 
@@ -39,6 +39,7 @@ class Command(BaseCommand):
                         for request in processor.data_requests:
                             self.stdout.write(self.style.SUCCESS('\t\tSaved to: %s' % request.output_path))
                         self.stdout.write(self.style.WARNING('\t\tSkipping additional providers'))
+                        # skip additional providers since this was successful
                         break
                     else:
                         self.stdout.write(self.style.ERROR('\t\tFailed'))

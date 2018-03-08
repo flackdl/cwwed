@@ -18,84 +18,96 @@
  "pk": 1,
  "fields": {
   "name": "Harvey",
-  "geo": "SRID=4326;POLYGON ((-96.6796875 25.83984375, -83.408203125 28.564453125, -99.140625 34.453125, -96.6796875 25.83984375))",
-  "date_start": "2018-02-23T17:20:16Z",
-  "date_end": "2018-02-23T17:20:17Z"
- }
-},
-{
- "model": "named_storms.namedstormcovereddata",
- "pk": 1,
- "fields": {
-  "named_storm": 1,
-  "name": "Global Forecast System",
-  "date_start": "2017-08-01T17:20:36Z",
-  "date_end": "2017-09-20T17:20:37Z",
-  "geo": "SRID=4326;POLYGON ((-96.064453125 25.400390625, -85.078125 29.443359375, -91.845703125 31.9921875, -99.140625 30.322265625, -96.064453125 25.400390625))",
+  "geo": "SRID=4326;POLYGON ((-95.44921875 24.609375, -78.837890625 25.048828125, -84.111328125 30.76171875, -98.4375 31.81640625, -95.44921875 24.609375))",
+  "date_start": "2017-08-17T20:22:51Z",
+  "date_end": "2017-09-02T20:22:52Z",
   "active": true
  }
 },
 {
- "model": "named_storms.namedstormcovereddata",
+ "model": "named_storms.namedstorm",
  "pk": 2,
  "fields": {
-  "named_storm": 1,
-  "name": "Argo Float Data",
-  "date_start": "2017-08-01T17:21:25Z",
-  "date_end": "2017-09-23T17:21:26Z",
-  "geo": "SRID=4326;POLYGON ((-96.240234375 21.181640625, -74.53125 23.291015625, -77.431640625 34.27734375, -99.404296875 29.53125, -97.91015625 29.091796875, -96.240234375 21.181640625))",
+  "name": "Matthew",
+  "geo": "SRID=4326;POLYGON ((-94.921875 23.642578125, -80.595703125 25.576171875, -81.650390625 30.673828125, -94.921875 23.642578125))",
+  "date_start": "2017-09-28T21:39:17Z",
+  "date_end": "2017-10-07T21:39:18Z",
   "active": true
  }
 },
 {
- "model": "named_storms.namedstormcovereddata",
- "pk": 3,
+ "model": "named_storms.covereddata",
+ "pk": 1,
  "fields": {
-  "named_storm": 1,
   "name": "Standard Meteorological data",
-  "date_start": "2017-08-01T21:44:12Z",
-  "date_end": "2017-09-15T21:44:13Z",
-  "geo": "SRID=4326;POLYGON ((-96.6796875 24.2578125, -82.001953125 25.048828125, -78.3984375 31.376953125, -97.20703125 30.498046875, -96.6796875 24.2578125))",
+  "description": "",
   "active": true
  }
 },
 {
- "model": "named_storms.namedstormcovereddataprovider",
+ "model": "named_storms.covereddata",
+ "pk": 2,
+ "fields": {
+  "name": "Global Forecast System",
+  "description": "",
+  "active": true
+ }
+},
+{
+ "model": "named_storms.covereddataprovider",
  "pk": 1,
  "fields": {
   "covered_data": 1,
-  "processor": 2,
-  "name": "NOAA/NCEP",
-  "url": "http://upwell.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
-  "active": true,
+  "processor": 1,
+  "name": "NDBC",
+  "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
   "data_type": "grid",
-  "data_regex": ""
+  "active": true
  }
 },
 {
- "model": "named_storms.namedstormcovereddataprovider",
+ "model": "named_storms.covereddataprovider",
  "pk": 2,
  "fields": {
   "covered_data": 2,
   "processor": 2,
-  "name": "NOAA/PMEL",
-  "url": "http://upwell.pfeg.noaa.gov/erddap/tabledap/apdrcArgoAll",
-  "active": true,
-  "data_type": "sequence",
-  "data_regex": ""
+  "name": "NOAA/NCEP",
+  "url": "http://coastwatch.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
+  "data_type": "grid",
+  "active": true
  }
 },
 {
- "model": "named_storms.namedstormcovereddataprovider",
+ "model": "named_storms.namedstormcovereddata",
+ "pk": 2,
+ "fields": {
+  "named_storm": 1,
+  "covered_data": 1,
+  "date_start": "2017-08-17T20:39:10Z",
+  "date_end": "2017-09-02T20:39:11Z",
+  "geo": "SRID=4326;POLYGON ((-95.2734375 24.2578125, -80.15625 25.400390625, -82.880859375 32.080078125, -98.173828125 30.146484375, -95.2734375 24.2578125))"
+ }
+},
+{
+ "model": "named_storms.namedstormcovereddata",
  "pk": 3,
  "fields": {
-  "covered_data": 3,
-  "processor": 1,
-  "name": "NDBC",
-  "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
-  "active": true,
-  "data_type": "grid",
-  "data_regex": "\\w{5}\\w9999"
+  "named_storm": 2,
+  "covered_data": 2,
+  "date_start": "2017-09-28T21:41:25Z",
+  "date_end": "2017-10-07T21:41:25Z",
+  "geo": "SRID=4326;POLYGON ((-94.130859375 25.927734375, -81.03515625 24.609375, -83.408203125 31.376953125, -101.865234375 30.146484375, -94.130859375 25.927734375))"
+ }
+},
+{
+ "model": "named_storms.namedstormcovereddata",
+ "pk": 4,
+ "fields": {
+  "named_storm": 1,
+  "covered_data": 2,
+  "date_start": "2017-08-17T16:23:53Z",
+  "date_end": "2017-09-02T16:23:54Z",
+  "geo": "SRID=4326;POLYGON ((-95.9765625 24.9609375, -82.265625 24.78515625, -83.408203125 31.46484375, -98.26171875 30.41015625, -95.9765625 24.9609375))"
  }
 }
 ]

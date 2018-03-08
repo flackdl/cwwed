@@ -1,16 +1,19 @@
 from django.contrib.gis import admin
-from named_storms.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider, DataProviderProcessor
+from named_storms.models import NamedStorm, CoveredData, CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData
 
 
-class NamedStormCoveredDataInline(admin.TabularInline):
-    model = NamedStormCoveredData
+class CoveredDataInline(admin.TabularInline):
+    model = NamedStorm.covered_data.through
     show_change_link = True
     extra = 0
     exclude = ('geo',)  # editing an inline geometry isn't possible (no way to inherit from GeoAdmin)
 
+    def has_add_permission(self, request):  # disable since we can't edit geo which is required
+        return False
+
 
 class NamedStormCoveredDataProviderInline(admin.TabularInline):
-    model = NamedStormCoveredDataProvider
+    model = CoveredDataProvider
     show_change_link = True
     extra = 0
 
@@ -18,17 +21,17 @@ class NamedStormCoveredDataProviderInline(admin.TabularInline):
 @admin.register(NamedStorm)
 class NamedStormInlineAdmin(admin.GeoModelAdmin):
     inlines = (
-        NamedStormCoveredDataInline,
+        CoveredDataInline,
     )
 
 
-@admin.register(NamedStormCoveredData)
+@admin.register(CoveredData)
 class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
     inlines = (
         NamedStormCoveredDataProviderInline,
     )
 
 
-@admin.register(NamedStormCoveredDataProvider, DataProviderProcessor)
+@admin.register(CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData)
 class NamedStormAdmin(admin.GeoModelAdmin):
     pass

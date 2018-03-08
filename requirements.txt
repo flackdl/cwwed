@@ -5,9 +5,10 @@ psycopg2==2.7.3.2
 pytz==2017.3
 boto3==1.5.22
 django-storages==1.6.5
-bpython==0.17
+# bpython - pypi's version has a bug when printing large amounts of data
+git+https://github.com/bpython/bpython.git
 requests==2.18.4
-# Pydap - this specific commit fixes gzip compression issue currently in pip
+# Pydap - this specific commit fixes gzip compression issue currently in pypi
 git+https://github.com/pydap/pydap.git@84e85db948012de7368da610a63376c1e2f273ef
 django-allauth==0.35.0
 django-crispy-forms==1.7.0

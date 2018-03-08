@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from named_storms.models import NamedStorm, NamedStormCoveredData, NamedStormCoveredDataProvider
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -8,13 +8,25 @@ class NamedStormSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class NamedStormDetailSerializer(serializers.ModelSerializer):
+    covered_data = serializers.SerializerMethodField()
+
+    def get_covered_data(self, storm: NamedStorm):
+        return NamedStormCoveredDataSerializer(storm.namedstormcovereddata_set.all(), many=True).data
+
+    class Meta:
+        model = NamedStorm
+        fields = '__all__'
+
+
+class CoveredDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CoveredData
+        fields = '__all__'
+
+
 class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = NamedStormCoveredData
-        fields = '__all__'
-
-
-class NamedStormCoveredDataProviderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = NamedStormCoveredDataProvider
-        fields = '__all__'
+        exclude = ('named_storm',)
+        depth = 1
