@@ -241,9 +241,10 @@ class NDBCProcessor(GridProcessor):
         - Current data is in the format "20cm4h9999.nc"
     NOTE: NDBC's SSL certs aren't validating, so let's just not verify.
     """
-    # number of days "real-time" data is stored separately from the timestamped files
     RE_PATTERN = re.compile(r'^(?P<station>\w{5})\w(?P<year>\d{4})\.nc$')
+    # number of days "real-time" data is stored separately from the timestamped files
     REALTIME_DAYS = 45
+    # "real-time" year format of file
     REALTIME_YEAR = 9999
 
     @staticmethod
