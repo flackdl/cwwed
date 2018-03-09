@@ -7,8 +7,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cwwed.settings')
 
 app = Celery(
     'cwwed',
-    broker='amqp://rabbitmq',
-    backend='amqp://rabbitmq',
+    broker='amqp://',
+    backend='amqp://',
 )
 
 # Using a string here means the worker doesn't have to serialize

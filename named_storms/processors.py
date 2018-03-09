@@ -1,6 +1,7 @@
 import os
 import ssl
 import errno
+import celery
 import logging
 import re
 from datetime import timedelta, datetime
@@ -8,6 +9,7 @@ from typing import List
 import pytz
 import requests
 from urllib import parse
+from cwwed.celery import app
 from django.conf import settings
 from io import BytesIO
 from requests import HTTPError
@@ -236,9 +238,9 @@ class NDBCProcessor(GridProcessor):
     """
     https://dods.ndbc.noaa.gov/
     The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
-    The datasets inside each station includes historical data and the real-time data (45 days).  There is no overlap.
+    The datasets inside each station includes historical data and real-time data (45 days).  There is no overlap.
         - Historical data is in the format "20cm4h2014.nc"
-        - Current data is in the format "20cm4h9999.nc"
+        - "Real-time" data is in the format "20cm4h9999.nc"
     NOTE: NDBC's SSL certs aren't validating, so let's just not verify.
     """
     RE_PATTERN = re.compile(r'^(?P<station>\w{5})\w(?P<year>\d{4})\.nc$')
@@ -277,10 +279,8 @@ class NDBCProcessor(GridProcessor):
             )
 
         # build a list of relevant datasets for each station
-        for station_url in station_urls:
-            station_response = requests.get(station_url, verify=False)
-            station_response.raise_for_status()
-            station = etree.parse(BytesIO(station_response.content))
+        stations = self._station_catalogs(station_urls)
+        for station in stations:
             for dataset in station.xpath('//catalog:dataset', namespaces=namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))
@@ -314,6 +314,24 @@ class NDBCProcessor(GridProcessor):
             ))
 
         return data_requests
+
+    @staticmethod
+    @app.task
+    def _station_catalog(station_url, verify=True):
+        station_response = requests.get(station_url, verify=verify)
+        station_response.raise_for_status()
+        return station_response.content.decode()
+
+    def _station_catalogs(self, station_urls):
+        """
+        :param station_urls: list of station catalog urls
+        :return: list of lxml station elements
+        """
+        task_group = celery.group([self._station_catalog.s(url, self._verify_ssl()) for url in station_urls])
+        task_promise = task_group()
+        stations = task_promise.get()
+        stations = [etree.parse(BytesIO(s.encode())) for s in stations]
+        return stations
 
     def _is_using_dataset(self, dataset: str) -> bool:
         """

@@ -27,25 +27,5 @@ services:
     ports:
       - "5672:5672"
 
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.app
-    command: celery -A cwwed worker -l info
-    links:
-      - rabbitmq
-    depends_on:
-      - rabbitmq
-
-  celery-flower:
-    build:
-      context: .
-      dockerfile: Dockerfile.app
-    command: celery flower -A cwwed --port=5555
-    ports:
-      - "5555:5555"
-    depends_on:
-      - celery-worker
-
 volumes:
   cwwed-postgresql:
