@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class CoveredDataConfig(AppConfig):
+class NamedStormsConfig(AppConfig):
     name = 'named_storms'
 
     def ready(self):
