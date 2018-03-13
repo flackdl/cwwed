@@ -3,7 +3,6 @@
 PENV=/home/danny/.virtualenvs/cwwed-env/bin/
 
 echo "starting celery workers"
-#${PENV}/watchmedo auto-restart -- ${PENV}/celery -A cwwed worker -l info &
 ${PENV}/celery -A cwwed worker -l info &
 
 sleep 5

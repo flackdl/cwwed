@@ -1,28 +1,34 @@
-from celery import shared_task
-from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE
-from named_storms.processors import NDBCProcessor, GridProcessor, SequenceProcessor
+from __future__ import absolute_import, unicode_literals
+import requests
+from django.shortcuts import get_object_or_404
+from cwwed.celery import app
+from named_storms.data.processors import ProcessorData
+from named_storms.models import NamedStorm, CoveredDataProvider
+from named_storms.utils import processor_class
 
 
-@shared_task
-def collect_covered_data(storm_id: int):
-    storm = NamedStorm.objects.get(id=storm_id)
-    for data in storm.covered_data.filter(active=True):
+@app.task
+def fetch_url(url, verify=True):
+    response = requests.get(url, verify=verify)
+    response.raise_for_status()
+    return response.content.decode()  # must return bytes for serialization
 
-        for provider in data.covereddataprovider_set.filter(active=True):
 
-            if provider.processor.name == PROCESSOR_DATA_SOURCE_NDBC:
-                processor = NDBCProcessor(storm, provider)
-            else:
-                if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
-                    processor = GridProcessor(storm, provider)
-                elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
-                    processor = SequenceProcessor(storm, provider)
-                else:
-                    raise Exception('no processor found for %s' % provider.processor.name)
-
-            processor.fetch()
-
-            # success - no need to continue with other providers
-            if processor.is_success():
-                break
-    return True
+@app.task
+def process_dataset(data: list):
+    """
+    :rtype data: list of values for ProcessorData
+    :return:
+    """
+    data = ProcessorData(*data)
+    named_storm = get_object_or_404(NamedStorm, pk=data.named_storm_id)
+    provider = get_object_or_404(CoveredDataProvider, pk=data.provider_id)
+    processor_cls = processor_class(provider)
+    processor = processor_cls(
+        named_storm=named_storm,
+        provider=provider,
+        url=data.url,
+        label=data.label,
+    )
+    processor.fetch()
+    return processor.output_path

@@ -9,6 +9,7 @@ app = Celery(
     'cwwed',
     broker='amqp://',
     backend='amqp://',
+    include=['named_storms.tasks'],
 )
 
 # Using a string here means the worker doesn't have to serialize

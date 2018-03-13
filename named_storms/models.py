@@ -1,6 +1,5 @@
 from django.contrib.gis.db import models
 
-
 PROCESSOR_DATA_TYPE_SEQUENCE = 'sequence'
 PROCESSOR_DATA_TYPE_GRID = 'grid'
 PROCESSOR_DATA_TYPE_CHOICES = (
