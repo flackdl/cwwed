@@ -6,11 +6,12 @@ from collections import namedtuple
 from typing import List
 import requests
 from django.conf import settings
-from requests import HTTPError
 import xarray.backends
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
 
+# data structure which is passed to the processor task.
+# this was chosen because it's easily serializable while still offering type-hints
 ProcessorData = namedtuple(
     'ProcessorData',
     ['named_storm_id', 'provider_id', 'url', 'label'],
@@ -24,6 +25,8 @@ DEFAULT_DIMENSIONS = {
     DEFAULT_DIMENSION_LATITUDE,
     DEFAULT_DIMENSION_LONGITUDE,
 }
+
+DEFAULT_LABEL = 'default'
 
 
 class OpenDapProcessor:
@@ -45,11 +48,11 @@ class OpenDapProcessor:
     _lng_start: float = None
     _lng_end: float = None
 
-    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label='default'):
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label):
         self._named_storm = named_storm
         self._provider = provider
         self.url = url
-        self._label = label
+        self._label = label or DEFAULT_LABEL
         self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(covered_data=self._provider.covered_data)
         self._toggle_verify_ssl(enable=self._verify_ssl())
 
@@ -65,13 +68,9 @@ class OpenDapProcessor:
     def fetch(self):
         try:
             self._fetch()
-        except HTTPError as e:
-            logging.warning('HTTPError: %s' % str(e))
         except Exception as e:
-            logging.warning('Exception: %s' % str(e))
-        finally:
-            # re-enable ssl
-            self._toggle_verify_ssl(enable=True)
+            logging.exception(e)
+            raise
 
     def _fetch(self):
 
@@ -126,6 +125,7 @@ class OpenDapProcessor:
         # slice the dimensions
         #
 
+        # find the array indexes for our slices so we can take advantage of opendap's server side processing vs loading everything into memory
         time_start_idx, time_end_idx = self._grid_constraint_indexes(DEFAULT_DIMENSION_TIME, self._time_start, self._time_end)
         lat_start_idx, lat_end_idx = self._grid_constraint_indexes(DEFAULT_DIMENSION_LATITUDE, self._lat_start, self._lat_end)
         lng_start_idx, lng_end_idx = self._grid_constraint_indexes(DEFAULT_DIMENSION_LONGITUDE, self._lng_start, self._lng_end)

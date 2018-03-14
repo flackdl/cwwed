@@ -30,6 +30,9 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.WARNING('\t\tURL: %s' % processor_data.url))
                         process_dataset.delay(processor_data)
 
+                    # TODO - use callbacks to determine if they all succeeded
+                    # TODO - save output to an intermediate location and then swap? timestamp?
+
                     #for processor in factory.processors():
                     #    self.stdout.write(self.style.WARNING('\t\tURL: %s' % processor.url))
 
