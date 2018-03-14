@@ -79,8 +79,7 @@ class NDBCProcessorFactory(ProcessorFactory):
                 parse.urlparse(station_path).path),
             )
 
-        # TODO
-        #station_urls = station_urls[:12]
+        station_urls = station_urls[:10]  # TODO - remove
 
         # build a list of relevant datasets for each station
         stations = self._station_catalogs(station_urls)

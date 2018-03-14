@@ -1,7 +1,7 @@
+import celery
 from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC
 from django.core.management.base import BaseCommand
-
 from named_storms.tasks import process_dataset
 
 
@@ -26,24 +26,16 @@ class Command(BaseCommand):
                     else:
                         factory = ProcessorFactory(storm, provider)
 
-                    for processor_data in factory.processors_data():
-                        self.stdout.write(self.style.WARNING('\t\tURL: %s' % processor_data.url))
-                        process_dataset.delay(processor_data)
+                    task_group = celery.group([process_dataset.s(data) for data in factory.processors_data()])
+                    group_result = task_group()
+                    group_result.get()  # wait for all tasks to complete
 
-                    # TODO - use callbacks to determine if they all succeeded
                     # TODO - save output to an intermediate location and then swap? timestamp?
 
-                    #for processor in factory.processors():
-                    #    self.stdout.write(self.style.WARNING('\t\tURL: %s' % processor.url))
-
-                    #    processor.fetch()
-
-                    #    if processor.success:
-                    #        self.stdout.write(self.style.SUCCESS('\t\tSUCCESS'))
-                    #        self.stdout.write(self.style.SUCCESS('\t\tSaved to: %s' % processor.output_path))
-                    #        self.stdout.write(self.style.WARNING('\t\tSkipping additional providers'))
-                    #        # skip additional providers since this was successful
-                    #        break
-                    #    else:
-                    #        self.stdout.write(self.style.ERROR('\t\tFailed'))
-                    #        self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
+                    if group_result.successful():
+                        self.stdout.write(self.style.SUCCESS('\t\tSUCCESS'))
+                        # skip additional providers since this was successful
+                        break
+                    else:
+                        self.stdout.write(self.style.ERROR('\t\tFailed'))
+                        self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
