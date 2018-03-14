@@ -10,6 +10,7 @@ from requests import HTTPError
 import xarray.backends
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
+
 ProcessorData = namedtuple(
     'ProcessorData',
     ['named_storm_id', 'provider_id', 'url', 'label'],

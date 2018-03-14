@@ -80,7 +80,7 @@ class NDBCProcessorFactory(ProcessorFactory):
             )
 
         # TODO
-        #station_urls = station_urls[:100]
+        #station_urls = station_urls[:12]
 
         # build a list of relevant datasets for each station
         stations = self._station_catalogs(station_urls)

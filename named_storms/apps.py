@@ -6,6 +6,9 @@ class NamedStormsConfig(AppConfig):
 
     def ready(self):
         """
-        Overridden to include custom signals
+        Overridden to include custom signals and to
+        load modules which are only dynamically imported which prevents django's autoreload mechanism from working (dev)
         """
         import named_storms.signals  # noqa
+        import named_storms.data.processors  # noqa
+        import named_storms.data.factory  # noqa
