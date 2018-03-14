@@ -7,7 +7,7 @@ from named_storms.models import NamedStorm, CoveredDataProvider
 from named_storms.utils import processor_class
 
 
-@app.task(autoretry_for=(Exception,), ignore_result=True)
+@app.task(autoretry_for=(Exception,))
 def fetch_url(url, verify=True):
     response = requests.get(url, verify=verify)
     response.raise_for_status()

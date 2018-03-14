@@ -8,7 +8,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cwwed.settings')
 app = Celery(
     'cwwed',
     broker='amqp://',
-    backend='amqp://',
+    backend='rpc://',
     include=['named_storms.tasks'],
 )
 
