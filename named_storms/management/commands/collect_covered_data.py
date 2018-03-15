@@ -28,7 +28,11 @@ class Command(BaseCommand):
 
                     task_group = celery.group([process_dataset.s(data) for data in factory.processors_data()])
                     group_result = task_group()
-                    group_result.get()  # wait for all tasks to complete
+                    tasks_results = group_result.get()  # waits for all tasks to complete and captures results
+
+                    for result in tasks_results:
+                        self.stdout.write(self.style.WARNING('\t\tURL: %s' % result['url']))
+                        self.stdout.write(self.style.WARNING('\t\tOutput: %s' % result['output_path']))
 
                     # TODO - save output to an intermediate location and then swap? timestamp?
 

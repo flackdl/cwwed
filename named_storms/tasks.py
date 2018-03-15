@@ -31,4 +31,4 @@ def process_dataset(data: list):
         label=data.label,
     )
     processor.fetch()
-    return processor.output_path
+    return processor.to_dict()

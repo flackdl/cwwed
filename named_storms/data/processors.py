@@ -98,6 +98,16 @@ class OpenDapProcessor:
 
         self.success = True
 
+    def to_dict(self):
+        return {
+            'output_path': self.output_path,
+            'url': self.url,
+            'label': str(self._label),
+            'named_storm': str(self._named_storm),
+            'covered_data': str(self._named_storm_covered_data),
+            'provider': str(self._provider),
+        }
+
     def _slice_dataset(self) -> xarray.Dataset:
 
         variables = self._all_variables()
