@@ -5,10 +5,9 @@ import logging
 from collections import namedtuple
 from typing import List
 import requests
-from django.conf import settings
 import xarray.backends
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
-
+from named_storms.utils import named_storm_covered_data_incomplete_path, create_directory
 
 # data structure which is passed to the processor task.
 # this was chosen because it's easily serializable while still offering type-hints
@@ -80,18 +79,19 @@ class OpenDapProcessor:
             logging.info('Skipping dataset with no values for a dimension ({}): %s' % self.url)
             return
 
-        # create a directory to house the storm's covered data
-        path = self._create_directory('{}/{}/{}'.format(
-            settings.COVERED_DATA_CACHE_DIR,
-            self._named_storm,
-            self._provider.covered_data,
-        ))
+        # create a directory to house the storm's covered data (temporary / incomplete path)
+        incomplete_path = '{}/{}'.format(
+            named_storm_covered_data_incomplete_path(
+                self._named_storm,
+            ),
+            self._named_storm_covered_data.covered_data,
+        )
 
-        self.output_path = '{}/{}.{}'.format(
-            path,
+        self.output_path = create_directory('{}/{}.{}'.format(
+            incomplete_path,
             self._label,
             self._response_type,
-        )
+        ))
 
         # store as netcdf
         self._dataset.to_netcdf(self.output_path)
@@ -183,15 +183,6 @@ class OpenDapProcessor:
 
     def _all_variables(self):
         raise NotImplementedError
-
-    @staticmethod
-    def _create_directory(path):
-        try:
-            os.makedirs(path)
-        except OSError as exception:
-            if exception.errno != errno.EEXIST:
-                raise
-        return path
 
     @staticmethod
     def _verify_ssl() -> bool:

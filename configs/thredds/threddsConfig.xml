@@ -4,9 +4,9 @@
     <!-- all options are commented out in standard install - meaning use default values -->
     <!-- see http://www.unidata.ucar.edu/software/thredds/current/tds/reference/ThreddsConfigXMLFile.html -->
     <serverInformation>
-        <name>Initial TDS Installation</name>
+        <name>CWWED TDS</name>
         <logoUrl>/thredds/threddsIcon.gif</logoUrl>
-        <logoAltText>Initial TDS Installation</logoAltText>
+        <logoAltText>CWWED TDS</logoAltText>
 
         <abstract>Scientific Data</abstract>
         <keywords>meteorology, atmosphere, climate, ocean, earth science</keywords>

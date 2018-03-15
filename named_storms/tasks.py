@@ -7,14 +7,21 @@ from named_storms.models import NamedStorm, CoveredDataProvider
 from named_storms.utils import processor_class
 
 
-@app.task(autoretry_for=(Exception,))
+DEFAULT_TASK_ARGS = dict(
+    autoretry_for=(Exception,),
+    default_retry_delay=5,
+    max_retries=10,
+)
+
+
+@app.task(**DEFAULT_TASK_ARGS)
 def fetch_url(url, verify=True):
     response = requests.get(url, verify=verify)
     response.raise_for_status()
     return response.content.decode()  # must return bytes for serialization
 
 
-@app.task(autoretry_for=(Exception,), default_retry_delay=5, max_retries=10)
+@app.task(**DEFAULT_TASK_ARGS)
 def process_dataset(data: list):
     """
     :rtype data: list of values for ProcessorData

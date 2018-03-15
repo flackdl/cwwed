@@ -22,7 +22,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '5ls0f5=_bv-a($n@%7wq6oo)tzcj$c&wl&078leywlt)t-irdj'
+SECRET_KEY = os.environ.get('SECRET_KEY', '5ls0f5=_bv-a($n@%7wq6oo)tzcj$c&wl&078leywlt)t-irdj')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -173,7 +173,8 @@ REST_FRAMEWORK = {
 }
 
 # CWWED
-COVERED_DATA_DIR = '/media/bucket/cwwed/covered-data'
-COVERED_DATA_CACHE_DIR = '{}/cache'.format(COVERED_DATA_DIR)
-COVERED_DATA_SNAPSHOTS_DIR = '{}/snapshots'.format(COVERED_DATA_DIR)
+CWWED_DATA_DIR = '/media/bucket/cwwed'
+CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
+CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = 'incomplete'
+CWWED_COVERED_DATA_CURRENT_DIR_NAME = 'current'
 THREDDS_URL = 'http://localhost:9000/thredds/'
