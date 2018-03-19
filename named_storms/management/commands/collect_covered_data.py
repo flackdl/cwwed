@@ -73,8 +73,9 @@ class Command(BaseCommand):
                     # create archive
                     shutil.make_archive(
                         base_name=stamped_path,
-                        format='zip',
-                        root_dir=stamped_path,
+                        format='gztar',
+                        root_dir=complete_path,
+                        base_dir=os.path.basename(stamped_path),
                     )
 
                     # update "current" symlink to date stamped directory, but
