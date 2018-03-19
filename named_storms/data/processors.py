@@ -79,19 +79,17 @@ class OpenDapProcessor:
             logging.info('Skipping dataset with no values for a dimension ({}): %s' % self.url)
             return
 
-        # create a directory to house the storm's covered data (temporary / incomplete path)
-        incomplete_path = '{}/{}'.format(
-            named_storm_covered_data_incomplete_path(
-                self._named_storm,
-            ),
+        # create the storm's covered data directory in the staging/incomplete directory
+        incomplete_path = create_directory('{}/{}'.format(
+            named_storm_covered_data_incomplete_path(self._named_storm),
             self._named_storm_covered_data.covered_data,
-        )
+        ))
 
-        self.output_path = create_directory('{}/{}.{}'.format(
+        self.output_path = '{}/{}.{}'.format(
             incomplete_path,
             self._label,
             self._response_type,
-        ))
+        )
 
         # store as netcdf
         self._dataset.to_netcdf(self.output_path)

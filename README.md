@@ -33,3 +33,9 @@ Initial Setup
     
     # load dev data
     python manage.py loaddata dev-db.json
+    
+   
+## Production
+
+Define environment variables
+- SLACK_BOT_KEY 

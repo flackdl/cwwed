@@ -17,8 +17,9 @@
         -->
     </service>
 
-    <datasetScan name="Covered Data" ID="coveredDataDatasetScan"
-                 path="covered-data" location="content/covered-data">
+    <datasetScan name="CWWED" ID="coveredDataDatasetScan"
+                 path="cwwed" location="content/">
+
         <metadata inherited="true">
             <serviceName>all</serviceName>
             <dataType>Grid</dataType>
@@ -26,8 +27,11 @@
 
         <filter>
             <include wildcard="*.nc"/>
-            <!-- TODO only include date stamped folders ? -->
-            <!-- <exclude wildcard="incomplete" atomic="false" collection="true"/>-->
+            <!-- TODO figure out symbolic links so we can use "current" ? -->
+            <exclude wildcard="incomplete" atomic="false" collection="true"/>
+            <!-- exclude the date-stamped directories which are daily cached snapshots -->
+            <exclude regExp="^20\d{2}-\d{2}-\d{2}$" atomic="false" collection="true"/>
         </filter>
+
     </datasetScan>
 </catalog>
