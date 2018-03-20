@@ -27,7 +27,7 @@
 
         <filter>
             <include wildcard="*.nc"/>
-            <exclude wildcard="incomplete" atomic="false" collection="true"/>
+            <exclude wildcard=".incomplete" atomic="false" collection="true"/>
         </filter>
 
     </datasetScan>
