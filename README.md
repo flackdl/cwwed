@@ -38,4 +38,4 @@ Initial Setup
 ## Production
 
 Define environment variables
-- SLACK_BOT_KEY 
+- SLACK_BOT_TOKEN

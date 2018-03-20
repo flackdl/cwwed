@@ -26,11 +26,10 @@
         </metadata>
 
         <filter>
+            <!-- TODO: should the current Covered Data be available? -->
             <include wildcard="*.nc"/>
-            <!-- TODO figure out symbolic links so we can use "current" ? -->
             <exclude wildcard="incomplete" atomic="false" collection="true"/>
-            <!-- exclude the date-stamped directories which are daily cached snapshots -->
-            <exclude regExp="^20\d{2}-\d{2}-\d{2}$" atomic="false" collection="true"/>
+            <exclude wildcard="archive" atomic="false" collection="true"/>
         </filter>
 
     </datasetScan>

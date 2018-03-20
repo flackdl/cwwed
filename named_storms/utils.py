@@ -55,3 +55,13 @@ def named_storm_covered_data_incomplete_path(named_storm: NamedStorm):
         named_storm_covered_data_path(named_storm),
         settings.CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME,
     )
+
+
+def named_storm_covered_data_archive_path(named_storm: NamedStorm):
+    """
+    Returns a path to a storm's covered data archive
+    """
+    return '{}/{}'.format(
+        named_storm_covered_data_path(named_storm),
+        settings.CWWED_COVERED_DATA_ARCHIVE_DIR_NAME,
+    )

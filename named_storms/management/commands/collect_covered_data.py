@@ -8,12 +8,12 @@ from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC
 from django.core.management.base import BaseCommand
 from named_storms.tasks import process_dataset
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory
+from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, named_storm_covered_data_archive_path
 
 
 class Command(BaseCommand):
     help = 'Collect Covered Data Snapshots'
-    slack = Slacker(settings.SLACK_BOT_KEY)
+    slack = Slacker(settings.SLACK_BOT_TOKEN)
 
     def handle(self, *args, **options):
         for storm in NamedStorm.objects.filter(active=True):
@@ -56,22 +56,23 @@ class Command(BaseCommand):
                         self.stdout.write(self.style.WARNING('\tTrying next provider'))
 
                 if not covered_data_success:
-                    self.slack.chat.post_message('#errors', 'Error collecting {} from all providers'.format(data))
+                    self.slack.chat.post_message('#errors', 'Error collecting {} from ALL providers'.format(data))
 
             #
             # move all covered data from the staging/incomplete directory to a date-stamped directory
             #
 
             incomplete_path = named_storm_covered_data_incomplete_path(storm)
-            complete_path = named_storm_covered_data_path(storm)
+            archive_path = named_storm_covered_data_archive_path(storm)
             stamped_path = '{}/{}'.format(
-                complete_path,
+                archive_path,
                 datetime.utcnow().strftime('%Y-%m-%d'),
             )
 
             # create directories
             create_directory(incomplete_path)
-            create_directory(stamped_path, remove_if_exists=True)  # overwrite any existing directory
+            create_directory(archive_path)
+            create_directory(stamped_path, remove_if_exists=True)  # overwrite any existing directory so we can run multiple times in a day if necessary
 
             # move all covered data folders to stamped path
             for dir_name in os.listdir(incomplete_path):
@@ -81,18 +82,8 @@ class Command(BaseCommand):
             # create archive
             shutil.make_archive(
                 base_name=stamped_path,
-                format=settings.CWWED_COVERED_DATA_SNAPSHOT_ARCHIVE_TYPE,
-                root_dir=complete_path,
+                format=settings.CWWED_COVERED_DATA_ARCHIVE_TYPE,
+                root_dir=archive_path,
                 base_dir=os.path.basename(stamped_path),
             )
-
-            # update "current" symlink to date-stamped directory, but
-            # first create a temporary link and rename it so it's an atomic operation
-            symlink = '{}/{}'.format(complete_path, settings.CWWED_COVERED_DATA_CURRENT_DIR_NAME)
-            tmp_symlink = '{}.tmp'.format(symlink)
-            os.symlink(
-                stamped_path,
-                tmp_symlink,
-            )
-            os.rename(tmp_symlink, symlink)
 
