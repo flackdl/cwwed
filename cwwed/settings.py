@@ -176,7 +176,6 @@ REST_FRAMEWORK = {
 CWWED_DATA_DIR = '/media/bucket/cwwed'
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = 'incomplete'
-CWWED_COVERED_DATA_ARCHIVE_DIR_NAME = 'archive'
 CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
 THREDDS_URL = 'http://localhost:9000/thredds/'
 SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN', '')

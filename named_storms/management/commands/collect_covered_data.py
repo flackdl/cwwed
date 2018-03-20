@@ -8,7 +8,7 @@ from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC
 from django.core.management.base import BaseCommand
 from named_storms.tasks import process_dataset
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, named_storm_covered_data_archive_path
+from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory
 
 
 class Command(BaseCommand):
@@ -62,16 +62,16 @@ class Command(BaseCommand):
             # move all covered data from the staging/incomplete directory to a date-stamped directory
             #
 
+            complete_path = named_storm_covered_data_path(storm)
             incomplete_path = named_storm_covered_data_incomplete_path(storm)
-            archive_path = named_storm_covered_data_archive_path(storm)
             stamped_path = '{}/{}'.format(
-                archive_path,
+                complete_path,
                 datetime.utcnow().strftime('%Y-%m-%d'),
             )
 
             # create directories
             create_directory(incomplete_path)
-            create_directory(archive_path)
+            create_directory(complete_path)
             create_directory(stamped_path, remove_if_exists=True)  # overwrite any existing directory so we can run multiple times in a day if necessary
 
             # move all covered data folders to stamped path
@@ -83,7 +83,6 @@ class Command(BaseCommand):
             shutil.make_archive(
                 base_name=stamped_path,
                 format=settings.CWWED_COVERED_DATA_ARCHIVE_TYPE,
-                root_dir=archive_path,
+                root_dir=complete_path,
                 base_dir=os.path.basename(stamped_path),
             )
-

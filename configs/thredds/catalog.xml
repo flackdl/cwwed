@@ -26,10 +26,8 @@
         </metadata>
 
         <filter>
-            <!-- TODO: should the current Covered Data be available? -->
             <include wildcard="*.nc"/>
             <exclude wildcard="incomplete" atomic="false" collection="true"/>
-            <exclude wildcard="archive" atomic="false" collection="true"/>
         </filter>
 
     </datasetScan>
