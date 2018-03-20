@@ -38,4 +38,4 @@ Initial Setup
 ## Production
 
 Define environment variables
-- SLACK_BOT_TOKEN
+- SLACK_BOT_TOKEN (app & celery)
