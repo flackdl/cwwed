@@ -91,8 +91,9 @@ class OpenDapProcessor:
             self._response_type,
         )
 
-        # store as netcdf
+        # store as netcdf and close dataset
         self._dataset.to_netcdf(self.output_path)
+        self._dataset.close()
 
         self.success = True
 

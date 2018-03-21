@@ -28,15 +28,15 @@ class CoveredDataSerializer(serializers.ModelSerializer):
 
 
 class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
-    thredds_url = serializers.SerializerMethodField()
-
-    def get_thredds_url(self, obj: NamedStormCoveredData):
-        return '{}://{}/thredds/catalog/covered-data/cache/{}/{}/catalog.html'.format(
-            self.context['request'].scheme,
-            self.context['request'].get_host(),
-            parse.quote(obj.named_storm.name),
-            parse.quote(obj.covered_data.name),
-        )
+    # TODO - point to last known successful snapshot
+    #thredds_url = serializers.SerializerMethodField()
+    #def get_thredds_url(self, obj: NamedStormCoveredData):
+    #    return '{}://{}/thredds/catalog/covered-data/cache/{}/{}/catalog.html'.format(
+    #        self.context['request'].scheme,
+    #        self.context['request'].get_host(),
+    #        parse.quote(obj.named_storm.name),
+    #        parse.quote(obj.covered_data.name),
+    #   )
 
     class Meta:
         model = NamedStormCoveredData

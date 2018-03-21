@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'named_storms.apps.NamedStormsConfig',  # specify AppConfig to include custom signals
+    'data_logs',
     'audit',
     'rest_framework',
     'rest_framework.authtoken',

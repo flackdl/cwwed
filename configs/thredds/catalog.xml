@@ -17,8 +17,10 @@
         -->
     </service>
 
-    <datasetScan name="CWWED" ID="coveredDataDatasetScan"
-                 path="cwwed" location="content/">
+    <datasetScan name="CWWED"
+                 ID="coveredDataDatasetScan"
+                 path="cwwed"
+                 location="content/">
 
         <metadata inherited="true">
             <serviceName>all</serviceName>
