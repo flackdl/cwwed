@@ -5,6 +5,7 @@ from named_storms.api import viewsets
 router = routers.DefaultRouter()
 router.register(r'named-storms', viewsets.NamedStormViewSet)
 router.register(r'covered-data', viewsets.CoveredDataViewSet)
+router.register(r'nsem', viewsets.NSEMViewset)
 
 urlpatterns = [
     path('', include(router.urls)),

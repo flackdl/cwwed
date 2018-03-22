@@ -36,13 +36,22 @@ def processor_class(provider: CoveredDataProvider):
         raise Exception('no processor class found for data type %s' % provider.data_type)
 
 
+def named_storm_path(named_storm: NamedStorm):
+    """
+    Returns a path to a storm's data (top level directory)
+    """
+    return '{}/{}'.format(
+        settings.CWWED_DATA_DIR,
+        named_storm,
+    )
+
+
 def named_storm_covered_data_path(named_storm: NamedStorm):
     """
     Returns a path to a storm's covered data
     """
-    return '{}/{}/{}'.format(
-        settings.CWWED_DATA_DIR,
-        named_storm,
+    return '{}/{}'.format(
+        named_storm_path(named_storm),
         settings.CWWED_COVERED_DATA_DIR_NAME,
     )
 
@@ -54,4 +63,14 @@ def named_storm_covered_data_incomplete_path(named_storm: NamedStorm):
     return '{}/{}'.format(
         named_storm_covered_data_path(named_storm),
         settings.CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME,
+    )
+
+
+def named_storm_nsem_path(named_storm: NamedStorm):
+    """
+    Returns a path to a storm's NSEM product
+    """
+    return '{}/{}'.format(
+        named_storm_path(named_storm),
+        settings.CWWED_NSEM_DIR_NAME,
     )

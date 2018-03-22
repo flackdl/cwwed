@@ -1,8 +1,13 @@
+import os
 import re
+import tarfile
+from typing import List
 from urllib import parse
 from django.conf import settings
 from rest_framework import serializers
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData
+from data_logs.models import NamedStormCoveredDataLog
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
+from named_storms.utils import named_storm_nsem_path, create_directory
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -56,3 +61,34 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         model = NamedStormCoveredData
         exclude = ('named_storm',)
         depth = 1
+
+
+class NSEMSerializer(serializers.ModelSerializer):
+
+    def archive(self, instance: NSEM, logs: List[NamedStormCoveredDataLog]):
+        nsem_path = named_storm_nsem_path(instance.named_storm)
+        archive_path = os.path.join(nsem_path, 'v{}'.format(instance.id), 'data.tgz')
+        create_directory(os.path.dirname(archive_path))
+        tar = tarfile.open(archive_path, mode='w|gz')
+        for log in logs:
+            tar.add(log.snapshot, arcname=os.path.basename(log.snapshot))
+        tar.close()
+        return archive_path
+
+    def create(self, validated_data):
+        # save the record
+        instance = super().create(validated_data)  # type: NSEM
+
+        # archive the covered data snapshots and save the path on this instance
+        logs = instance.named_storm.namedstormcovereddatalog_set.filter(success=True).order_by('-date')
+        if logs.exists():
+            logs_to_archive = []
+            for log in logs:
+                if log.covered_data.name not in [l.covered_data.name for l in logs_to_archive]:
+                    logs_to_archive.append(log)
+            validated_data['model_input'] = self.archive(instance, logs_to_archive)
+        return instance
+
+    class Meta:
+        model = NSEM
+        fields = '__all__'

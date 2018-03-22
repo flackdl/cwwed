@@ -1,6 +1,6 @@
 from rest_framework import viewsets
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData
-from named_storms.api.serializers import NamedStormSerializer, NamedStormCoveredDataSerializer, CoveredDataSerializer, NamedStormDetailSerializer
+from named_storms.models import NamedStorm, CoveredData, NSEM
+from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -21,12 +21,8 @@ class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CoveredDataSerializer
 
 
-class NamedStormCoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = NamedStormCoveredData.objects.all()
-    serializer_class = NamedStormCoveredDataSerializer
-
-    def get_queryset(self):
-        """
-        Expects to be nested under a named storm router
-        """
-        return super().get_queryset().filter(named_storm__id=self.kwargs['storm_id'])
+class NSEMViewset(viewsets.ModelViewSet):
+    permission_classes = ()  # TODO
+    authentication_classes = ()  # TODO
+    queryset = NSEM.objects.all()
+    serializer_class = NSEMSerializer

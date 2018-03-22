@@ -165,12 +165,12 @@ LOGGING = {
 SITE_ID = 1
 
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
-    ),
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -183,5 +183,6 @@ CWWED_DATA_DIR = '/media/bucket/cwwed'
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
 CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
+CWWED_NSEM_DIR_NAME = 'NSEM'
 THREDDS_URL = 'http://localhost:9000/thredds/'
 SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN', '')
