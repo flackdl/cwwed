@@ -6,6 +6,8 @@ from named_storms.api.serializers import NamedStormSerializer, NamedStormCovered
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = NamedStorm.objects.all()
     serializer_class = NamedStormSerializer
+    filter_fields = ('name',)
+    search_fields = ('name',)
 
     def get_serializer_class(self):
         # return a more detailed representation for a specific storm

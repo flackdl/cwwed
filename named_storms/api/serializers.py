@@ -45,7 +45,7 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
                 return '{}://{}/thredds/catalog/cwwed/{}/{}/{}/{}/catalog.html'.format(
                     self.context['request'].scheme,
                     self.context['request'].get_host(),
-                    parse.quote(parse.quote(obj.named_storm.name)),
+                    parse.quote(obj.named_storm.name),
                     parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
                     year,
                     parse.quote(obj.covered_data.name),
