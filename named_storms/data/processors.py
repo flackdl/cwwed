@@ -25,7 +25,7 @@ DEFAULT_DIMENSIONS = {
     DEFAULT_DIMENSION_LONGITUDE,
 }
 
-DEFAULT_LABEL = 'default'
+DEFAULT_LABEL = 'data'
 
 
 class OpenDapProcessor:

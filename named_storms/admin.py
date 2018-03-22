@@ -6,9 +6,9 @@ class CoveredDataInline(admin.TabularInline):
     model = NamedStorm.covered_data.through
     show_change_link = True
     extra = 0
-    exclude = ('geo',)  # editing an inline geometry isn't possible (no way to inherit from GeoAdmin)
+    exclude = ('geo',)  # editing an inline geometry isn't possible (not easy to also inherit from GeoAdmin)
 
-    def has_add_permission(self, request):  # disable since we can't edit geo which is required
+    def has_add_permission(self, request):  # disable since we can't edit geo which is a required field
         return False
 
 
@@ -23,6 +23,8 @@ class NamedStormInlineAdmin(admin.GeoModelAdmin):
     inlines = (
         CoveredDataInline,
     )
+    list_display = ('name', 'date_start', 'date_end', 'active',)
+    list_filter = ('name', 'date_start', 'date_end', 'active',)
 
 
 @admin.register(CoveredData)
