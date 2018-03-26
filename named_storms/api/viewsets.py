@@ -31,9 +31,8 @@ class NSEMViewset(viewsets.ModelViewSet):
     """
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
-    permission_classes = (NSEMDataPermission,)
 
-    @detail_route(url_path='covered-data', methods=['get'])
+    @detail_route(url_path='covered-data', methods=['get'], permission_classes=(NSEMDataPermission,))
     def covered_data(self, *args, **kwargs):
         """
         Returns the actual covered data archive as a streamed response
@@ -50,7 +49,10 @@ class NSEMViewset(viewsets.ModelViewSet):
             content_type=settings.CWWED_NSEM_ARCHIVE_CONTENT_TYPE)
 
         # include a helpful filename header
-        response['Content-Disposition'] = 'attachment; filename="covered-data.{}"'.format(
-            settings.CWWED_NSEM_ARCHIVE_EXTENSION)
+        response['Content-Disposition'] = 'attachment; filename="{}_covered-data_v{}.{}"'.format(
+            instance.named_storm,
+            instance.id,
+            settings.CWWED_NSEM_ARCHIVE_EXTENSION,
+        )
 
         return response
