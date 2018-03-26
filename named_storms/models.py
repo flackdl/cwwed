@@ -70,8 +70,14 @@ class NamedStormCoveredData(models.Model):
 
 
 class NSEM(models.Model):
+    """
+    Named Storm Event Model
+    """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_requested = models.DateTimeField(auto_now_add=True)
     date_returned = models.DateTimeField(null=True)  # manually set once the model output is returned
     model_input = models.TextField(blank=True)
     model_output = models.TextField(blank=True)
+
+    def __str__(self):
+        return 'NSEM: {}'.format(self.named_storm)

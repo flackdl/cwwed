@@ -36,6 +36,13 @@ class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
     )
 
 
-@admin.register(CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData, NSEM)
+@admin.register(CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData)
 class NamedStormAdmin(admin.GeoModelAdmin):
     pass
+
+
+@admin.register(NSEM)
+class NSEMAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'named_storm', 'date_requested', 'date_returned',)
+    list_filter = ('named_storm', 'date_requested', 'date_returned',)
+    readonly_fields = ('date_requested',)

@@ -3,7 +3,6 @@ import os
 import shutil
 from datetime import datetime
 import celery
-from django.conf import settings
 from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory
 from data_logs.models import NamedStormCoveredDataLog
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC
@@ -115,11 +114,3 @@ class Command(BaseCommand):
 
                 if not covered_data_success:
                     slack.chat.post_message('#errors', 'Error collecting {} from ALL providers'.format(data))
-
-            # create archive of stamped directory
-            shutil.make_archive(
-                base_name=stamped_path,
-                format=settings.CWWED_COVERED_DATA_ARCHIVE_TYPE,
-                root_dir=complete_path,
-                base_dir=os.path.basename(stamped_path),
-            )

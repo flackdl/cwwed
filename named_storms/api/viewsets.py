@@ -1,4 +1,7 @@
-from rest_framework import viewsets
+from django.conf import settings
+from django.http import FileResponse
+from rest_framework import viewsets, exceptions
+from rest_framework.decorators import detail_route
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 
@@ -22,7 +25,30 @@ class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class NSEMViewset(viewsets.ModelViewSet):
-    permission_classes = ()  # TODO
-    authentication_classes = ()  # TODO
+    """
+    Named Storm Event Model Viewset
+    """
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
+
+    @detail_route(url_path='covered-data', methods=['get'])
+    def covered_data(self, *args, **kwargs):
+        """
+        Returns the actual covered data archive as a streamed response
+        """
+        instance = self.get_object()  # type: NSEM
+
+        # handle absent archive
+        if not instance.model_input:
+            raise exceptions.NotFound
+
+        # create the response
+        response = FileResponse(
+            open(instance.model_input, 'rb'),
+            content_type=settings.CWWED_NSEM_ARCHIVE_CONTENT_TYPE)
+
+        # include a helpful filename header
+        response['Content-Disposition'] = 'attachment; filename="covered-data.{}"'.format(
+            settings.CWWED_NSEM_ARCHIVE_EXTENSION)
+
+        return response

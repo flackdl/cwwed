@@ -34,7 +34,19 @@ Initial Setup
     # load dev data
     python manage.py loaddata dev-db.json
     
-   
+    
+#### NSEM process
+
+Create "nsem" user in django admin and grant model permissions "add" and "change".
+
+Submit a new NSEM request using the user's generated token:
+
+    curl -H "Authorization: Token 1d3420aed1622ee5aa0e4c1663279c7a1014cbf8" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem/
+    
+Download the covered data for an NSEM record:
+
+    curl http://127.0.0.1:8000/api/nsem/28/covered-data/ > /tmp/data.tgz
+    
 ## Production
 
 Define environment variables

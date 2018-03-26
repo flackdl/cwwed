@@ -1,8 +1,9 @@
 import os
 import errno
 import shutil
+import tarfile
 from django.conf import settings
-from named_storms.models import PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm
+from named_storms.models import PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM
 
 
 def remove_directory(path):
@@ -74,3 +75,32 @@ def named_storm_nsem_path(named_storm: NamedStorm):
         named_storm_path(named_storm),
         settings.CWWED_NSEM_DIR_NAME,
     )
+
+
+def archive_nsem_covered_data(instance: NSEM):
+    """
+    Archives all the covered data for a storm to pass off to the external NSEM
+    """
+
+    # retrieve all the successful covered data by querying the logs
+    # sort by date descending and retrieve unique results
+    logs = instance.named_storm.namedstormcovereddatalog_set.filter(success=True).order_by('-date')
+    if not logs.exists():
+        return None
+    logs_to_archive = []
+    for log in logs:
+        if log.covered_data.name not in [l.covered_data.name for l in logs_to_archive]:
+            logs_to_archive.append(log)
+
+    # create archive path, i.e "Harvey/NSEM/v3/" and open the archive file for writing
+    archive_path = os.path.join(named_storm_nsem_path(instance.named_storm), 'v{}'.format(instance.id))
+    create_directory(archive_path)
+    archive_file = os.path.join(archive_path, settings.CWWED_NSEM_ARCHIVE_INPUT_NAME)
+    tar = tarfile.open(archive_file, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
+
+    # add each snapshot to the archive
+    for log in logs_to_archive:
+        tar.add(log.snapshot, arcname=os.path.basename(log.snapshot))
+    tar.close()
+
+    return archive_file

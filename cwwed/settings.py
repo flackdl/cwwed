@@ -156,6 +156,7 @@ LOGGING = {
             'class': 'logging.StreamHandler',
         },
     },
+    # log everything to the console
     'root': {
         'handlers': ['console'],
         'level': 'INFO',
@@ -184,5 +185,9 @@ CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
 CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
 CWWED_NSEM_DIR_NAME = 'NSEM'
+CWWED_NSEM_ARCHIVE_EXTENSION = 'tgz'
+CWWED_NSEM_ARCHIVE_INPUT_NAME = 'input.{}'.format(CWWED_NSEM_ARCHIVE_EXTENSION)
+CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w|gz'
+CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/gzip'
 THREDDS_URL = 'http://localhost:9000/thredds/'
 SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN', '')
