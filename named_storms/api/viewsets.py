@@ -2,6 +2,7 @@ from django.conf import settings
 from django.http import FileResponse
 from rest_framework import viewsets, exceptions
 from rest_framework.decorators import detail_route
+from named_storms.api.permissions import NSEMDataPermission
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 
@@ -30,6 +31,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     """
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
+    permission_classes = (NSEMDataPermission,)
 
     @detail_route(url_path='covered-data', methods=['get'])
     def covered_data(self, *args, **kwargs):
