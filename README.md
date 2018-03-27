@@ -48,21 +48,21 @@ Submit a new NSEM request using the user's generated token:
     {
         "date_requested": "2018-03-27T13:51:07.227923Z",
         "date_returned": null,
-        "id": 35,
-        "model_input": "/media/bucket/cwwed/Harvey/NSEM/v35/input.tgz",
-        "model_output": "",
+        "id": 38,
+        "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v35/input.tgz",
+        "model_output_snapshot": "",
         "named_storm": 1
     }
 
     
 Download the covered data for an NSEM record:
 
-    curl -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" http://127.0.0.1:8000/api/nsem/35/covered-data/ > /tmp/data.tgz
+    curl -s -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" http://127.0.0.1:8000/api/nsem/38/covered-data/ > /tmp/data.tgz
     
 Upload model output for a specific NSEM record:
 
     # assumes "output.tgz" is in current directory
-    curl -XPUT -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" --data-binary @output.tgz "http://127.0.0.1:8000/api/nsem/35/upload-output/"
+    curl -XPUT -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" --data-binary @output.tgz "http://127.0.0.1:8000/api/nsem/38/upload-output/"
     
 ## Production
 

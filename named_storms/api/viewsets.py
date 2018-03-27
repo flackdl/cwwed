@@ -43,10 +43,12 @@ class NSEMViewset(viewsets.ModelViewSet):
     def upload_output(self, *args, **kwargs):
         tmp_file = self.request.data['file']  # type: TemporaryUploadedFile
         instance = self.get_object()  # type: NSEM
+        path = os.path.join(named_storm_nsem_version_path(instance), 'output.tgz')
         # move tmp file to nsem versioned path
-        shutil.move(
-            tmp_file.temporary_file_path(),
-            os.path.join(named_storm_nsem_version_path(instance), 'output.tgz'))
+        shutil.move(tmp_file.temporary_file_path(), path)
+        # update the instance and save
+        instance.model_output_snapshot = path
+        instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @detail_route(url_path='covered-data', methods=['get'], permission_classes=(NSEMDjangoModelPermissions,))
@@ -57,12 +59,12 @@ class NSEMViewset(viewsets.ModelViewSet):
         instance = self.get_object()  # type: NSEM
 
         # handle absent archive
-        if not instance.model_input or not os.path.exists(instance.model_input):
+        if not instance.covered_data_snapshot or not os.path.exists(instance.covered_data_snapshot):
             raise exceptions.NotFound
 
         # create the response
         response = FileResponse(
-            open(instance.model_input, 'rb'),
+            open(instance.covered_data_snapshot, 'rb'),
             content_type=settings.CWWED_NSEM_ARCHIVE_CONTENT_TYPE)
 
         # include a helpful filename header

@@ -77,8 +77,8 @@ class NSEM(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_requested = models.DateTimeField(auto_now_add=True)
     date_returned = models.DateTimeField(null=True)  # manually set once the model output is returned
-    model_input = models.TextField(blank=True)
-    model_output = models.TextField(blank=True)
+    covered_data_snapshot = models.TextField(blank=True)
+    model_output_snapshot = models.TextField(blank=True)
 
     class Meta:
         permissions = (

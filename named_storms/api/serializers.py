@@ -69,8 +69,8 @@ class NSEMSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def create(self, validated_data):
-        # save the instance first so we can set the "model_input" after archiving the snapshot
+        # save the instance first so we can set the "covered_data_snapshot" after archiving the snapshot
         instance = super().create(validated_data)  # type: NSEM
-        instance.model_input = archive_nsem_covered_data(instance)
+        instance.covered_data_snapshot = archive_nsem_covered_data(instance)
         instance.save()
         return instance
