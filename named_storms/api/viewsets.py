@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime
 from django.conf import settings
 from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.http import FileResponse
@@ -48,6 +49,7 @@ class NSEMViewset(viewsets.ModelViewSet):
         shutil.move(tmp_file.temporary_file_path(), path)
         # update the instance and save
         instance.model_output_snapshot = path
+        instance.date_returned = datetime.utcnow()
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
