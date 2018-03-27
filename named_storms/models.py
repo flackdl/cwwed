@@ -1,4 +1,5 @@
 from django.contrib.gis.db import models
+from django.conf import settings
 
 PROCESSOR_DATA_TYPE_SEQUENCE = 'sequence'
 PROCESSOR_DATA_TYPE_GRID = 'grid'
@@ -78,6 +79,11 @@ class NSEM(models.Model):
     date_returned = models.DateTimeField(null=True)  # manually set once the model output is returned
     model_input = models.TextField(blank=True)
     model_output = models.TextField(blank=True)
+
+    class Meta:
+        permissions = (
+            (settings.CWWED_NSEM_PERMISSION_DOWNLOAD_DATA, "Can download NSEM data"),
+        )
 
     def __str__(self):
         return 'NSEM: {}'.format(self.named_storm)

@@ -1,10 +1,17 @@
+import os
+import shutil
 from django.conf import settings
+from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.http import FileResponse
 from rest_framework import viewsets, exceptions
 from rest_framework.decorators import detail_route
-from named_storms.api.permissions import NSEMDataPermission
+from rest_framework.parsers import FileUploadParser
+from rest_framework.response import Response
+from rest_framework import status
+from named_storms.api.permissions import NSEMDjangoModelPermissions
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
+from named_storms.utils import named_storm_nsem_version_path
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -32,15 +39,25 @@ class NSEMViewset(viewsets.ModelViewSet):
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
 
-    @detail_route(url_path='covered-data', methods=['get'], permission_classes=(NSEMDataPermission,))
+    @detail_route(url_path='(?P<filename>upload-output)', methods=['put'], parser_classes=(FileUploadParser,))
+    def upload_output(self, *args, **kwargs):
+        tmp_file = self.request.data['file']  # type: TemporaryUploadedFile
+        instance = self.get_object()  # type: NSEM
+        # move tmp file to nsem versioned path
+        shutil.move(
+            tmp_file.temporary_file_path(),
+            os.path.join(named_storm_nsem_version_path(instance), 'output.tgz'))
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @detail_route(url_path='covered-data', methods=['get'], permission_classes=(NSEMDjangoModelPermissions,))
     def covered_data(self, *args, **kwargs):
         """
-        Returns the actual covered data archive as a streamed response
+        Returns the actual covered data archive as a streamed file response
         """
         instance = self.get_object()  # type: NSEM
 
         # handle absent archive
-        if not instance.model_input:
+        if not instance.model_input or not os.path.exists(instance.model_input):
             raise exceptions.NotFound
 
         # create the response

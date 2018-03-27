@@ -41,9 +41,9 @@ def named_storm_path(named_storm: NamedStorm):
     """
     Returns a path to a storm's data (top level directory)
     """
-    return '{}/{}'.format(
+    return os.path.join(
         settings.CWWED_DATA_DIR,
-        named_storm,
+        named_storm.name,
     )
 
 
@@ -51,7 +51,7 @@ def named_storm_covered_data_path(named_storm: NamedStorm):
     """
     Returns a path to a storm's covered data
     """
-    return '{}/{}'.format(
+    return os.path.join(
         named_storm_path(named_storm),
         settings.CWWED_COVERED_DATA_DIR_NAME,
     )
@@ -61,30 +61,39 @@ def named_storm_covered_data_incomplete_path(named_storm: NamedStorm):
     """
     Returns a path to a storm's temporary/incomplete covered data
     """
-    return '{}/{}'.format(
+    return os.path.join(
         named_storm_covered_data_path(named_storm),
         settings.CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME,
     )
 
 
-def named_storm_nsem_path(named_storm: NamedStorm):
+def named_storm_nsem_path(nsem: NSEM):
     """
     Returns a path to a storm's NSEM product
     """
-    return '{}/{}'.format(
-        named_storm_path(named_storm),
+    return os.path.join(
+        named_storm_path(nsem.named_storm),
         settings.CWWED_NSEM_DIR_NAME,
     )
 
 
-def archive_nsem_covered_data(instance: NSEM):
+def named_storm_nsem_version_path(nsem: NSEM):
+    """
+    Returns a path to a storm's NSEM product's version
+    """
+    return os.path.join(
+        named_storm_nsem_path(nsem),
+        'v{}'.format(nsem.id))
+
+
+def archive_nsem_covered_data(nsem: NSEM):
     """
     Archives all the covered data for a storm to pass off to the external NSEM
     """
 
     # retrieve all the successful covered data by querying the logs
     # sort by date descending and retrieve unique results
-    logs = instance.named_storm.namedstormcovereddatalog_set.filter(success=True).order_by('-date')
+    logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).order_by('-date')
     if not logs.exists():
         return None
     logs_to_archive = []
@@ -93,7 +102,7 @@ def archive_nsem_covered_data(instance: NSEM):
             logs_to_archive.append(log)
 
     # create archive path, i.e "Harvey/NSEM/v3/" and open the archive file for writing
-    archive_path = os.path.join(named_storm_nsem_path(instance.named_storm), 'v{}'.format(instance.id))
+    archive_path = named_storm_nsem_version_path(nsem)
     create_directory(archive_path)
     archive_file = os.path.join(archive_path, settings.CWWED_NSEM_ARCHIVE_INPUT_NAME)
     tar = tarfile.open(archive_file, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)

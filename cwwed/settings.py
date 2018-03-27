@@ -84,6 +84,11 @@ TEMPLATES = [
     },
 ]
 
+FILE_UPLOAD_HANDLERS = [
+    # stream directly to temporary disk space
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
@@ -179,7 +184,10 @@ REST_FRAMEWORK = {
     ),
 }
 
+#
 # CWWED
+#
+
 CWWED_DATA_DIR = '/media/bucket/cwwed'
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
@@ -189,5 +197,9 @@ CWWED_NSEM_ARCHIVE_EXTENSION = 'tgz'
 CWWED_NSEM_ARCHIVE_INPUT_NAME = 'input.{}'.format(CWWED_NSEM_ARCHIVE_EXTENSION)
 CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w|gz'
 CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/gzip'
+CWWED_NSEM_USER = 'nsem'
+CWWED_NSEM_PERMISSION_DOWNLOAD_DATA = 'download_nsem_data'
+CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD', 'cookie123')
+
 THREDDS_URL = 'http://localhost:9000/thredds/'
 SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN', '')
