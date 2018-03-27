@@ -2,6 +2,7 @@ import re
 from urllib import parse
 from django.conf import settings
 from rest_framework import serializers
+from rest_framework.reverse import reverse
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
 from named_storms.utils import archive_nsem_covered_data
 
@@ -13,15 +14,11 @@ class NamedStormSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class NamedStormDetailSerializer(serializers.ModelSerializer):
+class NamedStormDetailSerializer(NamedStormSerializer):
     covered_data = serializers.SerializerMethodField()
 
     def get_covered_data(self, storm: NamedStorm):
         return NamedStormCoveredDataSerializer(storm.namedstormcovereddata_set.all(), many=True, context=self.context).data
-
-    class Meta:
-        model = NamedStorm
-        fields = '__all__'
 
 
 class CoveredDataSerializer(serializers.ModelSerializer):
@@ -63,6 +60,10 @@ class NSEMSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
     """
+    covered_data_url = serializers.SerializerMethodField()
+
+    def get_covered_data_url(self, obj):
+        return reverse('nsem-covered-data', args=[obj.id], request=self.context['request'])
 
     class Meta:
         model = NSEM
