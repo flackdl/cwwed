@@ -1,7 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.models import User, Permission
 from django.core.management import BaseCommand
-
 from named_storms.models import NSEM
 
 

@@ -107,3 +107,8 @@ venv.bak/
 .idea/
 db.sqlite3
 staticfiles/
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

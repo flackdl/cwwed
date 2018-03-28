@@ -60,9 +60,9 @@ class NSEMSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
     """
-    covered_data_url = serializers.SerializerMethodField()
+    covered_data_snapshot_url = serializers.SerializerMethodField()
 
-    def get_covered_data_url(self, obj):
+    def get_covered_data_snapshot_url(self, obj: NSEM):
         return reverse('nsem-covered-data', args=[obj.id], request=self.context['request'])
 
     class Meta:
