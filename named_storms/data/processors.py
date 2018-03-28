@@ -1,6 +1,5 @@
 import os
 import ssl
-import errno
 import logging
 from collections import namedtuple
 from typing import List
@@ -28,74 +27,31 @@ DEFAULT_DIMENSIONS = {
 DEFAULT_LABEL = 'data'
 
 
-class OpenDapProcessor:
+class BaseProcessor:
     url: str = None
     output_path: str = None
     success: bool = None
 
     _named_storm: NamedStorm = None
     _provider: CoveredDataProvider = None
-    _dataset: xarray.Dataset = None
-    _label: str = None
     _named_storm_covered_data: NamedStormCoveredData = None
-    _response_type: str = 'nc'  # netcdf
-    _variables: List[str] = None
-    _time_start: float = None
-    _time_end: float = None
-    _lat_start: float = None
-    _lat_end: float = None
-    _lng_start: float = None
-    _lng_end: float = None
+    _label: str = None
+    _data_extension: str = None
 
     def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label):
         self._named_storm = named_storm
         self._provider = provider
         self.url = url
         self._label = label or DEFAULT_LABEL
-        self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(covered_data=self._provider.covered_data)
+        self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(
+            covered_data=self._provider.covered_data)
         self._toggle_verify_ssl(enable=self._verify_ssl())
 
-        # open the dataset url and create the dataset/processor
-        # conditionally disable ssl verification
-        session = self._session()
-        session.verify = self._verify_ssl()
-        store = xarray.backends.PydapDataStore.open(url, session=session)
-        # fetch and subset the dataset
-        self._dataset = xarray.open_dataset(store, decode_times=False)
-        self._dataset = self._slice_dataset()
+        # create staging directory
+        create_directory(self._incomplete_path())
 
-    def fetch(self):
-        try:
-            self._fetch()
-        except Exception as e:
-            logging.exception(e)
-            raise
-
-    def _fetch(self):
-
-        # verify it has values after getting the subset
-        if not self._dataset_has_dimension_values():
-            self.success = True
-            logging.info('Skipping dataset with no values for a dimension ({}): %s' % self.url)
-            return
-
-        # create the storm's covered data directory in the staging/incomplete directory
-        incomplete_path = create_directory('{}/{}'.format(
-            named_storm_covered_data_incomplete_path(self._named_storm),
-            self._named_storm_covered_data.covered_data,
-        ))
-
-        self.output_path = '{}/{}.{}'.format(
-            incomplete_path,
-            self._label,
-            self._response_type,
-        )
-
-        # store as netcdf and close dataset
-        self._dataset.to_netcdf(self.output_path)
-        self._dataset.close()
-
-        self.success = True
+        # define where we'll stage the dataset
+        self.output_path = self._output_path()
 
     def to_dict(self):
         return {
@@ -106,6 +62,90 @@ class OpenDapProcessor:
             'covered_data': str(self._named_storm_covered_data),
             'provider': str(self._provider),
         }
+
+    def fetch(self):
+        try:
+            self._fetch()
+        except Exception as e:
+            logging.exception(e)
+            raise
+
+    def _fetch(self):
+        raise NotImplementedError
+
+    def _incomplete_path(self):
+        # return path for the staging/incomplete directory
+        return os.path.join(
+            named_storm_covered_data_incomplete_path(self._named_storm),
+            self._named_storm_covered_data.covered_data.name,
+        )
+
+    def _output_path(self):
+        path = os.path.join(
+            self._incomplete_path(),
+            self._label,
+        )
+        # include extension if it was declared
+        if self._data_extension:
+            path = '{}.{}'.format(path, self._data_extension)
+        return path
+
+    @staticmethod
+    def _toggle_verify_ssl(enable=True):
+        if enable:
+            ssl._create_default_https_context = ssl.create_default_context
+        else:
+            ssl._create_default_https_context = ssl._create_unverified_context
+
+    @staticmethod
+    def _verify_ssl() -> bool:
+        return True
+
+
+class FileProcessor(BaseProcessor):
+
+    def _fetch(self):
+        raise NotImplementedError
+
+
+class OpenDapProcessor(BaseProcessor):
+
+    _dataset: xarray.Dataset = None
+    _data_extension: str = 'nc'  # netcdf
+    _variables: List[str] = None
+    _time_start: float = None
+    _time_end: float = None
+    _lat_start: float = None
+    _lat_end: float = None
+    _lng_start: float = None
+    _lng_end: float = None
+
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label):
+        super().__init__(named_storm, provider, url, label)
+
+        # open the dataset url and create the dataset/processor
+        # conditionally disable ssl verification
+        session = self._session()
+        session.verify = self._verify_ssl()
+        store = xarray.backends.PydapDataStore.open(url, session=session)
+
+        # fetch and subset the dataset
+        self._dataset = xarray.open_dataset(store, decode_times=False)
+        self._dataset = self._slice_dataset()
+
+    def _fetch(self):
+
+        # verify it has values after getting the subset
+        if not self._dataset_has_dimension_values():
+            self.success = True
+            logging.info('Skipping dataset with no values for a dimension ({}): %s' % self.url)
+            return
+
+        # store as netcdf and close dataset
+        self._dataset.to_netcdf(self.output_path)
+        self._dataset.close()
+
+        self.success = True
 
     def _slice_dataset(self) -> xarray.Dataset:
 
@@ -183,21 +223,10 @@ class OpenDapProcessor:
     def _all_variables(self):
         raise NotImplementedError
 
-    @staticmethod
-    def _verify_ssl() -> bool:
-        return True
-
     def _session(self):
         session = requests.Session()
         session.verify = self._verify_ssl()
         return session
-
-    @staticmethod
-    def _toggle_verify_ssl(enable=True):
-        if enable:
-            ssl._create_default_https_context = ssl.create_default_context
-        else:
-            ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class GridProcessor(OpenDapProcessor):
