@@ -2,7 +2,7 @@
 
 https://www.weather.gov/sti/coastalact_cwwed
 
-## Development
+## Development & Initial Setup
 
 Python environment (>=3.6)
 
@@ -33,13 +33,18 @@ Initial Setup
     
     # load dev data
     python manage.py loaddata dev-db.json
+
+    # create "nsem" user & model permissions
+    python manage.py cwwed-init
+    
+#### Helpers
+
+Purge RabbitMQ
+
+    docker-compose exec rabbitmq rabbitmqctl purge_queue celery
     
     
 #### NSEM process
-
-Create "nsem" user in django admin and grant model permissions "add", "change" and custom download permission:
-
-    python manage.py cwwed-init
 
 Submit a new NSEM request using the user's generated token:
 

@@ -3,9 +3,9 @@ import os
 import shutil
 from datetime import datetime
 import celery
-from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory
+from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory
 from data_logs.models import NamedStormCoveredDataLog
-from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC
+from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS
 from django.core.management.base import BaseCommand
 from cwwed import slack
 from named_storms.tasks import process_dataset
@@ -49,8 +49,10 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
-                    if provider.processor.name == PROCESSOR_DATA_SOURCE_NDBC:
+                    if provider.processor == PROCESSOR_DATA_SOURCE_NDBC:
                         factory = NDBCProcessorFactory(storm, provider)
+                    elif provider.processor == PROCESSOR_DATA_SOURCE_USGS:
+                        factory = USGSProcessorFactory(storm, provider)
                     else:
                         factory = ProcessorFactory(storm, provider)
 

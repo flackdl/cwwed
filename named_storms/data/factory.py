@@ -32,9 +32,94 @@ class ProcessorFactory:
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
                 url=self._provider.url,
-                label=None,
             )
         ]
+
+
+class USGSProcessorFactory(ProcessorFactory):
+    """
+    USGS - STN Web Services
+    https://stn.wim.usgs.gov/STNServices/Documentation/home
+
+    REST API which allows you to select an "event" (hurricane) and crawl through various sensors and
+    retrieve associated datasets.
+
+
+    The usgs "event id" is stored in NamedStormCoveredDataProvider.external_storm_id
+    """
+    FILE_TYPE_DATA = 2
+    # some non-data files end up being tagged as "data" files so try and exclude the known offenders
+    EXCLUDED_EXTENSIONS = ['PNG', 'png', 'MOV', 'JPG', 'jpg', 'jpeg', 'pdf']
+    deployment_types = []
+    sensors = []
+
+    def processors_data(self) -> List[ProcessorData]:
+        processors_data = []
+
+        # fetch deployment types
+        deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json')
+        deployment_types_req.raise_for_status()
+        self.deployment_types = deployment_types_req.json()
+
+        # fetch event sensors
+        sensors_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(self._named_storm_covered_data.external_storm_id))
+        sensors_req.raise_for_status()
+        self.sensors = sensors_req.json()
+
+        # fetch event data files
+        files_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(self._named_storm_covered_data.external_storm_id))
+        files_req.raise_for_status()
+        files_json = files_req.json()
+
+        # files_json = files_json[:100]  # TODO - remove
+
+        # build a list of data processors for all the files/sensors for this event
+        for file in files_json:
+
+            # skip files that don't have an associated "instrument_id"
+            if not file.get('instrument_id'):
+                continue
+            # skip files that aren't "data" files
+            if file['filetype_id'] != self.FILE_TYPE_DATA:
+                continue
+            # skip files where their sensors aren't in the valid list of deployment types
+            if not self._is_valid_sensor_deployment_type(file):
+                continue
+            # skip files where their types are blacklisted
+            if not self._is_valid_file(file):
+                continue
+
+            file_url = 'https://stn.wim.usgs.gov/STNServices/Files/{}/item'.format(file['file_id'])
+            processors_data.append(ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=file_url,
+                label=file['name'],
+                group=self._sensor_deployment_type(file['instrument_id']),
+            ))
+
+        return processors_data
+
+    def _is_valid_file(self, file: dict) -> bool:
+        ext = re.sub(r'^.*\.', '', file['name'])
+        return ext not in self.EXCLUDED_EXTENSIONS
+
+    def _is_valid_sensor_deployment_type(self, file: dict) -> bool:
+        sensor = self._sensor(file['instrument_id'])
+        return sensor['deployment_type_id'] in [dt['deployment_type_id'] for dt in self.deployment_types]
+
+    def _sensor(self, instrument_id) -> dict:
+        for sensor in self.sensors:
+            if sensor['instrument_id'] == instrument_id:
+                return sensor
+        raise Exception('Unknown instrument_id {}'.format(instrument_id))
+
+    def _sensor_deployment_type(self, instrument_id) -> str:
+        sensor = self._sensor(instrument_id)
+        for deployment_type in self.deployment_types:
+            if deployment_type['deployment_type_id'] == sensor['deployment_type_id']:
+                return deployment_type['method']
+        raise Exception('Could not find deployment type for instrument_id {}'.format(instrument_id))
 
 
 class NDBCProcessorFactory(ProcessorFactory):

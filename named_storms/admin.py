@@ -1,6 +1,6 @@
 from django.contrib.gis import admin
 from named_storms.models import (
-    NamedStorm, CoveredData, CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData, NSEM,
+    NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NSEM,
 )
 
 
@@ -36,7 +36,7 @@ class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
     )
 
 
-@admin.register(CoveredDataProvider, DataProviderProcessor, NamedStormCoveredData)
+@admin.register(CoveredDataProvider, NamedStormCoveredData)
 class NamedStormAdmin(admin.GeoModelAdmin):
     pass
 

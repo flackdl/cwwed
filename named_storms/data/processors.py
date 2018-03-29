@@ -1,19 +1,22 @@
 import os
 import ssl
 import logging
-from collections import namedtuple
-from typing import List
+from typing import List, NamedTuple
 import requests
 import xarray.backends
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 from named_storms.utils import named_storm_covered_data_incomplete_path, create_directory
 
-# data structure which is passed to the processor task.
-# this was chosen because it's easily serializable while still offering type-hints
-ProcessorData = namedtuple(
-    'ProcessorData',
-    ['named_storm_id', 'provider_id', 'url', 'label'],
-)
+
+# using named tuple as data structure which is passed to the processor task.
+# this was chosen because it's easily serializable via celery while still offering type-hints
+class ProcessorData(NamedTuple):
+    named_storm_id: any
+    provider_id: any
+    url: str
+    label: str = None
+    group: str = None
+
 
 DEFAULT_DIMENSION_TIME = 'time'
 DEFAULT_DIMENSION_LATITUDE = 'latitude'
@@ -30,34 +33,38 @@ DEFAULT_LABEL = 'data'
 class BaseProcessor:
     url: str = None
     output_path: str = None
-    success: bool = None
+    success: bool = True
 
     _named_storm: NamedStorm = None
     _provider: CoveredDataProvider = None
     _named_storm_covered_data: NamedStormCoveredData = None
     _label: str = None
+    _group: str = None
     _data_extension: str = None
 
-    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label):
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label=DEFAULT_LABEL, group=None):
         self._named_storm = named_storm
         self._provider = provider
         self.url = url
-        self._label = label or DEFAULT_LABEL
+        self._label = label
+        self._group = group
         self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(
             covered_data=self._provider.covered_data)
         self._toggle_verify_ssl(enable=self._verify_ssl())
 
-        # create staging directory
+        # create top level staging directory
         create_directory(self._incomplete_path())
 
-        # define where we'll stage the dataset
+        # create dataset directory
         self.output_path = self._output_path()
+        create_directory(os.path.dirname(self.output_path))
 
     def to_dict(self):
         return {
             'output_path': self.output_path,
             'url': self.url,
-            'label': str(self._label),
+            'label': self._label,
+            'group': self._group,
             'named_storm': str(self._named_storm),
             'covered_data': str(self._named_storm_covered_data),
             'provider': str(self._provider),
@@ -67,6 +74,7 @@ class BaseProcessor:
         try:
             self._fetch()
         except Exception as e:
+            self.success = False
             logging.exception(e)
             raise
 
@@ -81,17 +89,29 @@ class BaseProcessor:
         )
 
     def _output_path(self):
-        path = os.path.join(
+        paths = [
             self._incomplete_path(),
-            self._label,
-        )
+        ]
+
+        # conditionally create a secondary "group" directory to house this dataset
+        if self._group:
+            paths.append(self._group)
+
+        file_name = self._label
+
         # include extension if it was declared
         if self._data_extension:
-            path = '{}.{}'.format(path, self._data_extension)
-        return path
+            file_name = '{}.{}'.format(file_name, self._data_extension)
+
+        paths.append(file_name)
+
+        return os.path.join(*paths)
 
     @staticmethod
     def _toggle_verify_ssl(enable=True):
+        """
+        Monkey patch ssl verification
+        """
         if enable:
             ssl._create_default_https_context = ssl.create_default_context
         else:
@@ -102,10 +122,16 @@ class BaseProcessor:
         return True
 
 
-class FileProcessor(BaseProcessor):
+class GenericFileProcessor(BaseProcessor):
 
     def _fetch(self):
-        raise NotImplementedError
+
+        # fetch the actual file
+        file_req = requests.get(self.url, stream=True)
+
+        with open(self.output_path, 'wb') as f:
+            for chunk in file_req.iter_content(chunk_size=1024):
+                f.write(chunk)
 
 
 class OpenDapProcessor(BaseProcessor):
@@ -137,15 +163,12 @@ class OpenDapProcessor(BaseProcessor):
 
         # verify it has values after getting the subset
         if not self._dataset_has_dimension_values():
-            self.success = True
             logging.info('Skipping dataset with no values for a dimension ({}): %s' % self.url)
             return
 
         # store as netcdf and close dataset
         self._dataset.to_netcdf(self.output_path)
         self._dataset.close()
-
-        self.success = True
 
     def _slice_dataset(self) -> xarray.Dataset:
 

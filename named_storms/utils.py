@@ -3,6 +3,7 @@ import errno
 import shutil
 import tarfile
 from django.conf import settings
+
 from named_storms.models import PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM
 
 
@@ -26,15 +27,15 @@ def create_directory(path, remove_if_exists=False):
 
 def processor_class(provider: CoveredDataProvider):
     """
-    Returns a processor class for a provider or throws an exception if not found
+    Returns a processor class for a provider
     """
-    from named_storms.data.processors import GridProcessor, SequenceProcessor
+    from named_storms.data.processors import GridProcessor, SequenceProcessor, GenericFileProcessor
     if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
         return GridProcessor
     elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
         return SequenceProcessor
     else:
-        raise Exception('no processor class found for data type %s' % provider.data_type)
+        return GenericFileProcessor
 
 
 def named_storm_path(named_storm: NamedStorm):
