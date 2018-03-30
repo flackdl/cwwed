@@ -57,12 +57,15 @@ class USGSProcessorFactory(ProcessorFactory):
         processors_data = []
 
         # fetch deployment types
-        deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json')
+        deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json', timeout=10)
         deployment_types_req.raise_for_status()
         self.deployment_types = deployment_types_req.json()
 
         # fetch event sensors
-        sensors_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(self._named_storm_covered_data.external_storm_id))
+        sensors_req = requests.get(
+            'https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(self._named_storm_covered_data.external_storm_id),
+            timeout=10,
+        )
         sensors_req.raise_for_status()
         self.sensors = sensors_req.json()
 
@@ -72,9 +75,26 @@ class USGSProcessorFactory(ProcessorFactory):
         files_json = files_req.json()
 
         # files_json = files_json[:100]  # TODO - remove
+        existing_file_names = []
+
+        # TODO USGS
+        """
+
+        remove duplicates, i.e
+            SCGEO14318_10684844_reprocessed_stormtide_unfiltered.csv
+            SCGEO14318_10684844_reprocessed_stormtide_unfiltered.nc
+
+        put requests timeouts everywhere
+        use more sane celery task retry arguments
+        """
 
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
+            # skip duplicates
+            if file['name'] in existing_file_names:
+                continue
+            else:
+                existing_file_names.append(file['name'])
 
             # skip files that don't have an associated "instrument_id"
             if not file.get('instrument_id'):

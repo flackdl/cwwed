@@ -22,7 +22,7 @@ def fetch_url(url, verify=True, write_to_path=None):
     :param write_to_path: path to store the output vs returning it
     """
     stream = write_to_path is not None
-    response = requests.get(url, verify=verify, stream=stream)
+    response = requests.get(url, verify=verify, timeout=10, stream=stream)
     response.raise_for_status()
 
     # save content

@@ -1,4 +1,6 @@
 import os
+import tempfile
+import shutil
 import ssl
 import logging
 from typing import List, NamedTuple
@@ -127,11 +129,14 @@ class GenericFileProcessor(BaseProcessor):
     def _fetch(self):
 
         # fetch the actual file
-        file_req = requests.get(self.url, stream=True)
+        file_req = requests.get(self.url, stream=True, timeout=10)
 
-        with open(self.output_path, 'wb') as f:
+        # write to tmp space then move
+        _, tmp_file = tempfile.mkstemp()
+        with open(tmp_file, 'wb') as f:
             for chunk in file_req.iter_content(chunk_size=1024):
                 f.write(chunk)
+        shutil.move(tmp_file, self.output_path)
 
 
 class OpenDapProcessor(BaseProcessor):

@@ -43,6 +43,10 @@ Purge RabbitMQ
 
     docker-compose exec rabbitmq rabbitmqctl purge_queue celery
     
+Purge Celery
+
+    celery -A cwwed purge
+    
     
 #### NSEM process
 
