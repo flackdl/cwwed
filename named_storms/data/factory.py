@@ -1,5 +1,6 @@
 import os
 import re
+from functools import cmp_to_key
 import celery
 import pytz
 import requests
@@ -70,31 +71,17 @@ class USGSProcessorFactory(ProcessorFactory):
         self.sensors = sensors_req.json()
 
         # fetch event data files
-        files_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(self._named_storm_covered_data.external_storm_id))
+        files_req = requests.get(
+            'https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(self._named_storm_covered_data.external_storm_id),
+            timeout=10,
+        )
         files_req.raise_for_status()
         files_json = files_req.json()
-
-        # files_json = files_json[:100]  # TODO - remove
-        existing_file_names = []
-
-        # TODO USGS
-        """
-
-        remove duplicates, i.e
-            SCGEO14318_10684844_reprocessed_stormtide_unfiltered.csv
-            SCGEO14318_10684844_reprocessed_stormtide_unfiltered.nc
-
-        put requests timeouts everywhere
-        use more sane celery task retry arguments
-        """
+        # filter files
+        files_json = self._filter_unique_files(files_json)
 
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
-            # skip duplicates
-            if file['name'] in existing_file_names:
-                continue
-            else:
-                existing_file_names.append(file['name'])
 
             # skip files that don't have an associated "instrument_id"
             if not file.get('instrument_id'):
@@ -119,6 +106,51 @@ class USGSProcessorFactory(ProcessorFactory):
             ))
 
         return processors_data
+
+    def _filter_unique_files(self, files: dict):
+        """
+        skip duplicates (and consider identical files with different extensions the same), i.e
+          SCGEO14318_10684844_reprocessed_stormtide_unfiltered.nc
+          SCGEO14318_10684844_reprocessed_stormtide_unfiltered.csv
+        skip duplicates where there's a .csv extension prepended to an .nc extension, i.e
+          FLSTL03732_1028516.csv
+          FLSTL03732_1028516.csv.nc
+        """
+        results = []
+        unique_names = set()
+        # sort them so '.nc' files appear first
+        files = self._sort_files(files)
+
+        for file in files:
+            # remove the redundant .csv middle extension which will correctly prevent a duplicate
+            file['name'] = re.sub(r'.csv.nc$', '.nc', file['name'])
+
+            # get file name without extension
+            file_split = os.path.splitext(file['name'])
+            file_prefix = file_split[0]
+
+            # skip exact duplicates
+            if file_prefix in unique_names:
+                continue
+
+            # add to unique names and final results
+            unique_names.add(file_prefix)
+            results.append(file)
+
+        return results
+
+    @staticmethod
+    def _sort_files(files: dict):
+        """
+        Sort .nc files first (we're excluding duplicate files with different extensions and prefer NetCDF over CSV)
+        """
+        def _nc_sort(a, b):
+            if a['name'].endswith('.nc') and b['name'].endswith('.nc'):
+                return 0
+            elif a['name'].endswith('.nc'):
+                return -1
+            return 1
+        return sorted(files, key=cmp_to_key(_nc_sort))
 
     def _is_valid_file(self, file: dict) -> bool:
         ext = re.sub(r'^.*\.', '', file['name'])
@@ -170,7 +202,7 @@ class NDBCProcessorFactory(ProcessorFactory):
         }
 
         # parse the main catalog and iterate through the individual buoy stations
-        catalog_response = requests.get(self._provider.url, verify=self._verify_ssl)
+        catalog_response = requests.get(self._provider.url, verify=self._verify_ssl, timeout=10)
         catalog_response.raise_for_status()
         catalog = etree.parse(BytesIO(catalog_response.content))
 

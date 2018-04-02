@@ -27,9 +27,9 @@ class Command(BaseCommand):
                 complete_path,
                 datetime.utcnow().strftime('%Y-%m-%d'),
             )
-            create_directory(incomplete_path)
             create_directory(complete_path)
-            create_directory(stamped_path, remove_if_exists=True)  # overwrite any existing directory so we can run multiple times in a day if necessary
+            create_directory(incomplete_path, remove_if_exists=True)
+            create_directory(stamped_path, remove_if_exists=True)
 
             for data in storm.covered_data.filter(active=True):
 

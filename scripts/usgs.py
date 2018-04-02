@@ -35,12 +35,12 @@ except OSError as exception:
         raise
 
 # fetch event data files
-files_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(EVENT_ID))
+files_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(EVENT_ID), timeout=10)
 files_req.raise_for_status()
 files_json = files_req.json()
 
 # fetch event sensors
-sensors_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(EVENT_ID))
+sensors_req = requests.get('https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(EVENT_ID), timeout=10)
 sensors_req.raise_for_status()
 sensors_json = sensors_req.json()
 
@@ -54,7 +54,7 @@ for file in files_json:
         file_url = 'https://stn.wim.usgs.gov/STNServices/Files/{}/item'.format(file['file_id'])
 
         # fetch the actual file
-        file_req = requests.get(file_url, stream=True)
+        file_req = requests.get(file_url, stream=True, timeout=10)
 
         # capture the filename from the headers so we can save it appropriately
         match = re.match('.*filename="(?P<filename>.*)"', file_req.headers['Content-Disposition'])
