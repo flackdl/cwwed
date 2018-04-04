@@ -7,4 +7,4 @@ for app in ${excluded_apps[*]}; do
     exclusions="${exclusions} --exclude ${app}"
 done
 
-python manage.py dumpdata --indent 1 ${exclusions}
+python manage.py dumpdata --indent 2 ${exclusions}

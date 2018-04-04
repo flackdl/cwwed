@@ -3,14 +3,13 @@ import os
 import shutil
 import celery
 from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory
-from data_logs.models import NamedStormCoveredDataLog
-from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS
+from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS, NamedStormCoveredDataLog
 from django.core.management.base import BaseCommand
 from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data
 from named_storms.utils import (
     named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory,
-)
+    remove_directory)
 
 
 class Command(BaseCommand):
@@ -90,6 +89,8 @@ class Command(BaseCommand):
                     if covered_data_success:
 
                         # move the covered data outputs from the incomplete/staging directory to the complete directory
+                        # first remove any previous version in the complete path
+                        remove_directory(os.path.join(complete_path, data.name))
                         shutil.move(os.path.join(incomplete_path, data.name), complete_path)
 
                         # create a task to archive the data

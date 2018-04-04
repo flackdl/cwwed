@@ -5,6 +5,7 @@ import celery
 import pytz
 import requests
 from datetime import datetime, timedelta
+from django.conf import settings
 from lxml import etree
 from typing import List
 from io import BytesIO
@@ -80,7 +81,9 @@ class USGSProcessorFactory(ProcessorFactory):
         # filter files
         files_json = self._filter_unique_files(files_json)
 
-        # files_json = files_json[:15]  # TODO
+        # TODO
+        if settings.DEBUG:
+            files_json = files_json[:10]
 
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
@@ -218,7 +221,9 @@ class NDBCProcessorFactory(ProcessorFactory):
                 parse.urlparse(station_path).path),
             )
 
-        station_urls = station_urls[:10]  # TODO - remove
+        # TODO
+        if settings.DEBUG:
+            station_urls = station_urls[:10]
 
         # build a list of relevant datasets for each station
         stations = self._station_catalogs(station_urls)

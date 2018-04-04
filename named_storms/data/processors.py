@@ -44,11 +44,11 @@ class BaseProcessor:
     _group: str = None
     _data_extension: str = None
 
-    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label=DEFAULT_LABEL, group=None):
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label=None, group=None):
         self._named_storm = named_storm
         self._provider = provider
         self.url = url
-        self._label = label
+        self._label = label or DEFAULT_LABEL
         self._group = group
         self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(
             covered_data=self._provider.covered_data)
@@ -151,14 +151,14 @@ class OpenDapProcessor(BaseProcessor):
     _lng_start: float = None
     _lng_end: float = None
 
-    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label):
-        super().__init__(named_storm, provider, url, label)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         # open the dataset url and create the dataset/processor
         # conditionally disable ssl verification
         session = self._session()
         session.verify = self._verify_ssl()
-        store = xarray.backends.PydapDataStore.open(url, session=session)
+        store = xarray.backends.PydapDataStore.open(self.url, session=session)
 
         # fetch and subset the dataset
         self._dataset = xarray.open_dataset(store, decode_times=False)

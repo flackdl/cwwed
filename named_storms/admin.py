@@ -1,7 +1,7 @@
 from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NSEM,
-)
+    NamedStormCoveredDataLog)
 
 
 class CoveredDataInline(admin.TabularInline):
@@ -46,3 +46,10 @@ class NSEMAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'named_storm', 'date_requested', 'date_returned',)
     list_filter = ('named_storm', 'date_requested', 'date_returned',)
     readonly_fields = ('date_requested',)
+
+
+@admin.register(NamedStormCoveredDataLog)
+class DataLogAdmin(admin.ModelAdmin):
+    list_display = ('named_storm', 'covered_data', 'date', 'success', 'snapshot',)
+    list_filter = ('named_storm', 'covered_data', 'date', 'success',)
+    readonly_fields = ('date',)  # hidden by default since it uses auto_now_add

@@ -5,10 +5,9 @@ import requests
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from cwwed.celery import app
-from data_logs.models import NamedStormCoveredDataLog
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, NSEM, CoveredData
-from named_storms.utils import processor_class, archive_nsem_covered_data, named_storm_covered_data_path, named_storm_covered_data_archive_path
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog
+from named_storms.utils import processor_class, named_storm_covered_data_archive_path
 
 RETRY_ARGS = dict(
     autoretry_for=(Exception,),

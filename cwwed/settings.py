@@ -42,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'named_storms.apps.NamedStormsConfig',  # specify AppConfig to include custom signals
-    'data_logs',
     'audit',
     'rest_framework',
     'rest_framework.authtoken',
@@ -194,7 +193,7 @@ CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
 CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
 CWWED_NSEM_DIR_NAME = 'NSEM'
-CWWED_NSEM_ARCHIVE_INPUT_NAME = 'input.{}'.format(CWWED_ARCHIVE_EXTENSION)
+CWWED_NSEM_ARCHIVE_INPUT_NAME = 'covered-data.{}'.format(CWWED_ARCHIVE_EXTENSION)
 CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w'
 CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/tar'
 CWWED_NSEM_USER = 'nsem'

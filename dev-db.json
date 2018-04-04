@@ -1,113 +1,298 @@
 [
 {
- "model": "named_storms.dataproviderprocessor",
- "pk": 1,
- "fields": {
-  "name": "ndbc"
- }
+  "model": "named_storms.namedstorm",
+  "pk": 1,
+  "fields": {
+    "name": "Harvey",
+    "geo": "SRID=4326;POLYGON ((-95.44921875 24.609375, -78.837890625 25.048828125, -84.111328125 30.76171875, -98.4375 31.81640625, -95.44921875 24.609375))",
+    "date_start": "2017-08-17T20:22:51Z",
+    "date_end": "2017-09-02T20:22:52Z",
+    "active": true
+  }
 },
 {
- "model": "named_storms.dataproviderprocessor",
- "pk": 2,
- "fields": {
-  "name": "dap"
- }
+  "model": "named_storms.namedstorm",
+  "pk": 2,
+  "fields": {
+    "name": "Matthew",
+    "geo": "SRID=4326;POLYGON ((-94.921875 23.642578125, -80.595703125 25.576171875, -81.650390625 30.673828125, -94.921875 23.642578125))",
+    "date_start": "2017-09-28T21:39:17Z",
+    "date_end": "2017-10-07T21:39:18Z",
+    "active": false
+  }
 },
 {
- "model": "named_storms.namedstorm",
- "pk": 1,
- "fields": {
-  "name": "Harvey",
-  "geo": "SRID=4326;POLYGON ((-95.44921875 24.609375, -78.837890625 25.048828125, -84.111328125 30.76171875, -98.4375 31.81640625, -95.44921875 24.609375))",
-  "date_start": "2017-08-17T20:22:51Z",
-  "date_end": "2017-09-02T20:22:52Z",
-  "active": true
- }
+  "model": "named_storms.covereddata",
+  "pk": 1,
+  "fields": {
+    "name": "NDBC - Standard Meteorological data",
+    "description": "The National Data Buoy Center is a part of the National Oceanic and Atmospheric Administration's National Weather Service. NDBC designs, develops, operates, and maintains a network of data collecting buoys and coastal stations",
+    "active": true
+  }
 },
 {
- "model": "named_storms.namedstorm",
- "pk": 2,
- "fields": {
-  "name": "Matthew",
-  "geo": "SRID=4326;POLYGON ((-94.921875 23.642578125, -80.595703125 25.576171875, -81.650390625 30.673828125, -94.921875 23.642578125))",
-  "date_start": "2017-09-28T21:39:17Z",
-  "date_end": "2017-10-07T21:39:18Z",
-  "active": true
- }
+  "model": "named_storms.covereddata",
+  "pk": 2,
+  "fields": {
+    "name": "Global Forecast System",
+    "description": "The Global Forecast System (GFS) is a weather forecast model produced by the National Centers for Environmental Prediction (NCEP). Dozens of atmospheric and land-soil variables are available through this dataset, from temperatures, winds, and precipitation to soil moisture and atmospheric ozone concentration. The entire globe is covered by the GFS at a base horizontal resolution of 18 miles (28 kilometers) between grid points, which is used by the operational forecasters who predict weather out to 16 days in the future. Horizontal resolution drops to 44 miles (70 kilometers) between grid point for forecasts between one week and two weeks.",
+    "active": true
+  }
 },
 {
- "model": "named_storms.covereddata",
- "pk": 1,
- "fields": {
-  "name": "Standard Meteorological data",
-  "description": "",
-  "active": true
- }
+  "model": "named_storms.covereddata",
+  "pk": 3,
+  "fields": {
+    "name": "USGS Short-Term Network",
+    "description": "The USGS Short-Term Network (STN) is a national-scale application and database designed to support USGS event-based sensor deployments and High-Water Mark (HWM) data collection efforts. The STN database is designed to encourage, but not require, repeated visits to temporary sensor deployment (wave or water level) or HWM locations. By developing a system that encourages repeated, as-needed deployments in the same locations, it facilitates the development of longer-term datasets of storm events than would be feasible by relying on field personnel's memories of previous deployments or interpretations of paper records alone. Such efficient responses have become a cornerstone of the USGS Hazards Response.",
+    "active": true
+  }
 },
 {
- "model": "named_storms.covereddata",
- "pk": 2,
- "fields": {
-  "name": "Global Forecast System",
-  "description": "",
-  "active": true
- }
+  "model": "named_storms.covereddataprovider",
+  "pk": 1,
+  "fields": {
+    "covered_data": 1,
+    "processor": "ndbc",
+    "name": "NDBC",
+    "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
+    "data_type": "grid",
+    "active": true
+  }
 },
 {
- "model": "named_storms.covereddataprovider",
- "pk": 1,
- "fields": {
-  "covered_data": 1,
-  "processor": 1,
-  "name": "NDBC",
-  "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
-  "data_type": "grid",
-  "active": true
- }
+  "model": "named_storms.covereddataprovider",
+  "pk": 2,
+  "fields": {
+    "covered_data": 2,
+    "processor": "dap",
+    "name": "NOAA/NCEP",
+    "url": "http://coastwatch.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
+    "data_type": "grid",
+    "active": true
+  }
 },
 {
- "model": "named_storms.covereddataprovider",
- "pk": 2,
- "fields": {
-  "covered_data": 2,
-  "processor": 2,
-  "name": "NOAA/NCEP",
-  "url": "http://coastwatch.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
-  "data_type": "grid",
-  "active": true
- }
+  "model": "named_storms.covereddataprovider",
+  "pk": 3,
+  "fields": {
+    "covered_data": 3,
+    "processor": "usgs",
+    "name": "NDBC",
+    "url": "https://stn.wim.usgs.gov/STNServices/Documentation/home",
+    "data_type": "",
+    "active": true
+  }
 },
 {
- "model": "named_storms.namedstormcovereddata",
- "pk": 2,
- "fields": {
-  "named_storm": 1,
-  "covered_data": 1,
-  "date_start": "2017-08-17T20:39:10Z",
-  "date_end": "2017-09-02T20:39:11Z",
-  "geo": "SRID=4326;POLYGON ((-95.2734375 24.2578125, -80.15625 25.400390625, -82.880859375 32.080078125, -98.173828125 30.146484375, -95.2734375 24.2578125))"
- }
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 2,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "date_start": "2017-08-17T20:39:10Z",
+    "date_end": "2017-09-02T20:39:11Z",
+    "geo": "SRID=4326;POLYGON ((-95.2734375 24.2578125, -80.15625 25.400390625, -82.880859375 32.080078125, -98.173828125 30.146484375, -95.2734375 24.2578125))",
+    "external_storm_id": ""
+  }
 },
 {
- "model": "named_storms.namedstormcovereddata",
- "pk": 3,
- "fields": {
-  "named_storm": 2,
-  "covered_data": 2,
-  "date_start": "2017-09-28T21:41:25Z",
-  "date_end": "2017-10-07T21:41:25Z",
-  "geo": "SRID=4326;POLYGON ((-94.130859375 25.927734375, -81.03515625 24.609375, -83.408203125 31.376953125, -101.865234375 30.146484375, -94.130859375 25.927734375))"
- }
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 3,
+  "fields": {
+    "named_storm": 2,
+    "covered_data": 2,
+    "date_start": "2017-09-28T21:41:25Z",
+    "date_end": "2017-10-07T21:41:25Z",
+    "geo": "SRID=4326;POLYGON ((-94.130859375 25.927734375, -81.03515625 24.609375, -83.408203125 31.376953125, -101.865234375 30.146484375, -94.130859375 25.927734375))",
+    "external_storm_id": ""
+  }
 },
 {
- "model": "named_storms.namedstormcovereddata",
- "pk": 4,
- "fields": {
-  "named_storm": 1,
-  "covered_data": 2,
-  "date_start": "2017-08-17T16:23:53Z",
-  "date_end": "2017-09-02T16:23:54Z",
-  "geo": "SRID=4326;POLYGON ((-95.9765625 24.9609375, -82.265625 24.78515625, -83.408203125 31.46484375, -98.26171875 30.41015625, -95.9765625 24.9609375))"
- }
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 4,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 2,
+    "date_start": "2017-08-17T16:23:53Z",
+    "date_end": "2017-09-02T16:23:54Z",
+    "geo": "SRID=4326;POLYGON ((-95.9765625 24.9609375, -82.265625 24.78515625, -83.408203125 31.46484375, -98.26171875 30.41015625, -95.9765625 24.9609375))",
+    "external_storm_id": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 5,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "date_start": "2017-08-17T18:15:58Z",
+    "date_end": "2017-09-02T18:15:59Z",
+    "geo": "SRID=4326;POLYGON ((-96.240234375 26.630859375, -89.560546875 29.00390625, -83.759765625 28.65234375, -83.671875 32.080078125, -99.755859375 29.8828125, -96.240234375 26.630859375))",
+    "external_storm_id": "135"
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 44,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-04-04T16:21:58.431Z",
+    "date_returned": null,
+    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v44/input.tar",
+    "model_output_snapshot": ""
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 45,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-04-04T16:24:41.561Z",
+    "date_returned": "2018-04-04T16:34:37.378Z",
+    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v45/covered-data.tar",
+    "model_output_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v45/output.tgz"
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 46,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-04-04T16:33:15.759Z",
+    "date_returned": "2018-04-04T16:35:22.016Z",
+    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v46/covered-data.tar",
+    "model_output_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v46/output.tgz"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 1,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-04-04T16:00:58.340Z",
+    "success": true,
+    "snapshot": "",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 2,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-04-04T16:01:59.292Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "__init__() got an unexpected keyword argument 'group'"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 3,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 2,
+    "provider": 2,
+    "date": "2018-04-04T16:02:59.358Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "__init__() got an unexpected keyword argument 'group'"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 4,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-04-04T16:12:16.280Z",
+    "success": true,
+    "snapshot": "",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 5,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-04-04T16:15:56.386Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/USGS Short-Term Network.tar.gz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 6,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-04-04T16:16:14.908Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/NDBC - Standard Meteorological data.tar.gz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 7,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 2,
+    "provider": 2,
+    "date": "2018-04-04T16:17:35.947Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/Global Forecast System.tar.gz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 8,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-04-04T16:31:15.939Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/USGS Short-Term Network.tar.gz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 9,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-04-04T16:31:35.073Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/NDBC - Standard Meteorological data.tar.gz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 10,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 2,
+    "provider": 2,
+    "date": "2018-04-04T16:32:26.150Z",
+    "success": true,
+    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/Global Forecast System.tar.gz",
+    "exception": ""
+  }
 }
 ]
