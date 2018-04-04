@@ -55,10 +55,11 @@ Submit a new NSEM request using the user's generated token:
     curl -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem/
     
     {
-        "date_requested": "2018-03-27T13:51:07.227923Z",
-        "date_returned": null,
         "id": 38,
-        "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v35/input.tgz",
+        "covered_data_snapshot_url": "http://127.0.0.1:8000/api/nsem/43/covered-data/",
+        "date_requested": "2018-04-04T14:28:00.646771Z",
+        "date_returned": null,
+        "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v43/input.tar",
         "model_output_snapshot": "",
         "named_storm": 1
     }
@@ -69,6 +70,8 @@ Download the covered data for an NSEM record:
     curl -s -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" http://127.0.0.1:8000/api/nsem/38/covered-data/ > /tmp/data.tgz
     
 Upload model output for a specific NSEM record:
+
+*NOTE: The input format must be tar+gzipped, i.e "output.tgz".*
 
     # assumes "output.tgz" is in current directory
     curl -XPUT -H "Authorization: Token 32d7c8e358dda87b16e400f90a74ea55dac72fa8" --data-binary @output.tgz "http://127.0.0.1:8000/api/nsem/38/upload-output/"
