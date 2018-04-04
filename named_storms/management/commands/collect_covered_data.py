@@ -1,15 +1,16 @@
 import logging
 import os
 import shutil
-from datetime import datetime
 import celery
 from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory
 from data_logs.models import NamedStormCoveredDataLog
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS
 from django.core.management.base import BaseCommand
 from cwwed import slack
-from named_storms.tasks import process_dataset
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory
+from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data
+from named_storms.utils import (
+    named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory,
+)
 
 
 class Command(BaseCommand):
@@ -20,16 +21,11 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS('Named Storm: %s' % storm))
 
-            # define and create output directories
+            # create output directories
             complete_path = named_storm_covered_data_path(storm)
             incomplete_path = named_storm_covered_data_incomplete_path(storm)
-            stamped_path = os.path.join(
-                complete_path,
-                datetime.utcnow().strftime('%Y-%m-%d'),
-            )
             create_directory(complete_path)
             create_directory(incomplete_path, remove_if_exists=True)
-            create_directory(stamped_path, remove_if_exists=True)
 
             for data in storm.covered_data.filter(active=True):
 
@@ -70,7 +66,7 @@ class Command(BaseCommand):
                         continue
 
                     # fetch data in parallel but wait for all tasks to complete and captures results
-                    task_group = celery.group([process_dataset.s(data) for data in processors_data])
+                    task_group = celery.group([process_dataset_task.s(data) for data in processors_data])
                     group_result = task_group()
 
                     # we must handle exceptions from the actual results
@@ -87,16 +83,21 @@ class Command(BaseCommand):
 
                     covered_data_success = group_result.successful()
 
+                    # save the log
                     log.success = covered_data_success
+                    log.save()
 
                     if covered_data_success:
 
-                        # move the covered data outputs from the incomplete/staging directory to the date-stamped directory
-                        shutil.move(os.path.join(incomplete_path, data.name), stamped_path)
+                        # move the covered data outputs from the incomplete/staging directory to the complete directory
+                        shutil.move(os.path.join(incomplete_path, data.name), complete_path)
 
-                        # save the output in the log
-                        log.snapshot = os.path.join(stamped_path, data.name)
-                        log.save()
+                        # create a task to archive the data
+                        archive_named_storm_covered_data.delay(
+                            named_storm_id=storm.id,
+                            covered_data_id=data.id,
+                            log_id=log.id,
+                        )
 
                         # debug/output
                         for result in tasks_results:
@@ -104,15 +105,13 @@ class Command(BaseCommand):
                             self.stdout.write(self.style.WARNING('\t\tOutput: %s' % result['output_path']))
 
                         self.stdout.write(self.style.SUCCESS('\t\tSUCCESS'))
+
                         # skip additional providers since this was successful
                         break
                     else:
                         slack.chat.post_message('#errors', 'Error collecting {} from {}'.format(data, provider))
                         self.stdout.write(self.style.ERROR('\t\tFailed'))
                         self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
-
-                    # save the log
-                    log.save()
 
                 if not covered_data_success:
                     slack.chat.post_message('#errors', 'Error collecting {} from ALL providers'.format(data))

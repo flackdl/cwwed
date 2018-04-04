@@ -80,6 +80,8 @@ class USGSProcessorFactory(ProcessorFactory):
         # filter files
         files_json = self._filter_unique_files(files_json)
 
+        # files_json = files_json[:15]  # TODO
+
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
 
@@ -249,7 +251,7 @@ class NDBCProcessorFactory(ProcessorFactory):
         :param station_urls: list of station catalog urls
         :return: list of lxml station elements
         """
-        task_group = celery.group([tasks.fetch_url.s(url, self._verify_ssl) for url in station_urls])
+        task_group = celery.group([tasks.fetch_url_task.s(url, self._verify_ssl) for url in station_urls])
         task_promise = task_group()
         stations = task_promise.get()
         stations = [etree.parse(BytesIO(s.encode())) for s in stations]

@@ -3,8 +3,9 @@ import errno
 import shutil
 import tarfile
 from django.conf import settings
-
-from named_storms.models import PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM
+from named_storms.models import (
+    PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM, CoveredData,
+)
 
 
 def remove_directory(path):
@@ -38,7 +39,7 @@ def processor_class(provider: CoveredDataProvider):
         return GenericFileProcessor
 
 
-def named_storm_path(named_storm: NamedStorm):
+def named_storm_path(named_storm: NamedStorm) -> str:
     """
     Returns a path to a storm's data (top level directory)
     """
@@ -48,7 +49,7 @@ def named_storm_path(named_storm: NamedStorm):
     )
 
 
-def named_storm_covered_data_path(named_storm: NamedStorm):
+def named_storm_covered_data_path(named_storm: NamedStorm) -> str:
     """
     Returns a path to a storm's covered data
     """
@@ -58,7 +59,7 @@ def named_storm_covered_data_path(named_storm: NamedStorm):
     )
 
 
-def named_storm_covered_data_incomplete_path(named_storm: NamedStorm):
+def named_storm_covered_data_incomplete_path(named_storm: NamedStorm) -> str:
     """
     Returns a path to a storm's temporary/incomplete covered data
     """
@@ -68,7 +69,17 @@ def named_storm_covered_data_incomplete_path(named_storm: NamedStorm):
     )
 
 
-def named_storm_nsem_path(nsem: NSEM):
+def named_storm_covered_data_archive_path(named_storm: NamedStorm, covered_data: CoveredData) -> str:
+    """
+    Returns a path to a storm's covered data archive
+    """
+    return os.path.join(
+        named_storm_covered_data_path(named_storm),
+        covered_data.name,
+    )
+
+
+def named_storm_nsem_path(nsem: NSEM) -> str:
     """
     Returns a path to a storm's NSEM product
     """
@@ -78,7 +89,7 @@ def named_storm_nsem_path(nsem: NSEM):
     )
 
 
-def named_storm_nsem_version_path(nsem: NSEM):
+def named_storm_nsem_version_path(nsem: NSEM) -> str:
     """
     Returns a path to a storm's NSEM product's version
     """
@@ -89,7 +100,7 @@ def named_storm_nsem_version_path(nsem: NSEM):
 
 def archive_nsem_covered_data(nsem: NSEM):
     """
-    Archives all the covered data for a storm to pass off to the external NSEM
+    Creates a single archive from all the covered data archives to pass off to the external NSEM
     """
 
     # retrieve all the successful covered data by querying the logs

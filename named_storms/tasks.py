@@ -1,21 +1,24 @@
 from __future__ import absolute_import, unicode_literals
+import shutil
+import os
 import requests
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from cwwed.celery import app
+from data_logs.models import NamedStormCoveredDataLog
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider
-from named_storms.utils import processor_class
+from named_storms.models import NamedStorm, CoveredDataProvider, NSEM, CoveredData
+from named_storms.utils import processor_class, archive_nsem_covered_data, named_storm_covered_data_path, named_storm_covered_data_archive_path
 
-
-DEFAULT_TASK_ARGS = dict(
+RETRY_ARGS = dict(
     autoretry_for=(Exception,),
     default_retry_delay=5,
     max_retries=10,
 )
 
 
-@app.task(**DEFAULT_TASK_ARGS)
-def fetch_url(url, verify=True, write_to_path=None):
+@app.task(**RETRY_ARGS)
+def fetch_url_task(url, verify=True, write_to_path=None):
     """
     :param url: URL to fetch
     :param verify: whether to verify ssl
@@ -36,8 +39,8 @@ def fetch_url(url, verify=True, write_to_path=None):
     return response.content.decode()  # must return bytes for serialization
 
 
-@app.task(**DEFAULT_TASK_ARGS)
-def process_dataset(data: list):
+@app.task(**RETRY_ARGS)
+def process_dataset_task(data: list):
     """
     Run the dataset processor
     """
@@ -54,3 +57,30 @@ def process_dataset(data: list):
     )
     processor.fetch()
     return processor.to_dict()
+
+
+@app.task  # no retry
+def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
+    """
+    :param named_storm_id: id for a NamedStorm record
+    :param covered_data_id: id for a CoveredData record
+    :param log_id: id for a NamedStormCoveredDataLog
+    """
+    named_storm = get_object_or_404(NamedStorm, pk=named_storm_id)
+    covered_data = get_object_or_404(CoveredData, pk=covered_data_id)
+    log = get_object_or_404(NamedStormCoveredDataLog, pk=log_id)
+    archive_path = named_storm_covered_data_archive_path(named_storm, covered_data)
+
+    # create archive
+    path = shutil.make_archive(
+        base_name=archive_path,
+        format=settings.CWWED_COVERED_DATA_ARCHIVE_TYPE,
+        root_dir=os.path.dirname(archive_path),
+        base_dir=covered_data.name,
+    )
+
+    # save the output in the log
+    log.snapshot = path
+    log.save()
+
+    return path

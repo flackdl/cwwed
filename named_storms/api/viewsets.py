@@ -73,7 +73,7 @@ class NSEMViewset(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename="{}_covered-data_v{}.{}"'.format(
             instance.named_storm,
             instance.id,
-            settings.CWWED_NSEM_ARCHIVE_EXTENSION,
+            settings.CWWED_ARCHIVE_EXTENSION,
         )
 
         return response
