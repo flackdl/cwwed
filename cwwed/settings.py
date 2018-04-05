@@ -103,6 +103,7 @@ WSGI_APPLICATION = 'cwwed.wsgi.application'
 # https://docs.djangoproject.com/en/2.0/ref/settings/#databases
 
 DATABASES = {
+    # https://github.com/kennethreitz/dj-database-url
     'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres'),
 }
 

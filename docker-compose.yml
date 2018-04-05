@@ -27,5 +27,14 @@ services:
     ports:
       - "5672:5672"
 
+  cwwed:
+    build:
+      context: .
+    ports:
+      - "8888:80"
+    environment:
+      DJANGO_SETTINGS_MODULE: cwwed.settings-prod
+      DATABASE_URL: postgis://postgres@postgis:5432/postgres
+
 volumes:
   cwwed-postgresql:
