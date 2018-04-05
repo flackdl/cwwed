@@ -76,8 +76,21 @@ Upload model output for a specific NSEM record:
     # assumes "output.tgz" is in current directory
     curl -XPUT -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" --data-binary @output.tgz "http://127.0.0.1:8000/api/nsem/45/upload-output/"
     
-## Production
+## Production *-TODO-*
+Setup RDS with proper VPC and security group permissions.
 
-Define environment variables
-- SLACK_BOT_TOKEN (app & celery)
+Create EFS instance and configure `.ebextensions/storage-efs-mountfilesystem.config` with instance id.
+
+Environment variables
+- DJANGO_SETTINGS_MODULE
+- DATABASE_URL
+- SLACK_BOT_TOKEN
 - CWWED_NSEM_PASSWORD
+
+Create S3 bucket and configure CORS settings (prepopulated settings look ok).  However, django-storages my configure it for us with AWS_AUTO_CREATE_BUCKET.
+
+Elastic Beanstalk
+    eb init
+    eb create
+    # set environment variables (incomplete example)
+    eb setenv DJANGO_SETTINGS_MODULE=cwwed.settings-prod DATABASE_URL=postgis://XXXX:XXXX@XXXX:5432/XXXX

@@ -4,6 +4,7 @@ ENV PYTHONUNBUFFERED 1
 
 RUN apt-get update && apt-get install -y \
     libgdal-dev \
+    postgresql-client \
     && echo
 
 RUN mkdir /app
