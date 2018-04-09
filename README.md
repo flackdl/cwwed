@@ -84,16 +84,30 @@ EFS:
 - Assign EFS security group to EC2 instance(s).  (TODO - figure out how auto scaling default security groups work)
 
 Environment variables
+- SECRET_KEY
 - DJANGO_SETTINGS_MODULE
 - DATABASE_URL
 - SLACK_BOT_TOKEN
 - CWWED_NSEM_PASSWORD
+- AWS_STORAGE_BUCKET_NAME 
 
 Create S3 bucket and configure CORS settings (prepopulated settings look ok).
 However, django-storages might configure it for us with `AWS_AUTO_CREATE_BUCKET`.
 
 Elastic Beanstalk
+
     eb init
     eb create
-    # set environment variables (incomplete example)
-    eb setenv DJANGO_SETTINGS_MODULE=cwwed.settings-prod DATABASE_URL=postgis://XXXX:XXXX@XXXX:5432/XXXX
+    # set environment variables
+    eb setenv \
+        DJANGO_SETTINGS_MODULE=cwwed.settings_aws \
+        DATABASE_URL=postgis://XXXX:XXXX@XXXX:5432/XXXX \
+        SLACK_BOT_TOKEN=@@@ \
+        CWWED_NSEM_PASSWORD=@@@ \
+        AWS_STORAGE_BUCKET_NAME=@@@ \
+        SECRET_KEY=@@@
+    eb deploy
+    
+Collect Static Files
+
+    DJANGO_SETTINGS_MODULE=cwwed.settings_aws AWS_STORAGE_BUCKET_NAME=@@@ python manage.py collectstatic

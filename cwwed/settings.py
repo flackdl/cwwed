@@ -22,11 +22,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', '5ls0f5=_bv-a($n@%7wq6oo)tzcj$c&wl&078leywlt)t-irdj')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'ssshhh...')
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# TODO
 DEBUG = True
 
+# TODO
+# https://docs.djangoproject.com/en/2.0/topics/security/#host-headers-virtual-hosting
 ALLOWED_HOSTS = ['*']
 
 
@@ -212,5 +215,7 @@ CWWED_NSEM_USER = 'nsem'
 CWWED_NSEM_PERMISSION_DOWNLOAD_DATA = 'download_nsem_data'
 CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD', 'cookie123')
 
+# TODO
 THREDDS_URL = 'http://localhost:9000/thredds/'
-SLACK_BOT_TOKEN = os.environ.get('SLACK_BOT_TOKEN', '')
+
+SLACK_BOT_TOKEN = os.environ['SLACK_BOT_TOKEN']
