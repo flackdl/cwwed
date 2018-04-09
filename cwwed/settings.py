@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',  # for drf
+    'corsheaders',  # for drf
     'revproxy',  # django-revproxy
     'storages',  # django-storages
     'allauth',
@@ -58,6 +59,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -183,6 +185,15 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
     ),
 }
+
+# django-cors-headers
+# https://github.com/ottoyiu/django-cors-headers/
+CORS_URLS_REGEX = r'^/api/.*$'
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_METHODS = (
+    'GET',
+    'OPTIONS',
+)
 
 #
 # CWWED

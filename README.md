@@ -79,7 +79,9 @@ Upload model output for a specific NSEM record:
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
 
-Create EFS instance and configure `.ebextensions/storage-efs-mountfilesystem.config` with instance id.
+EFS:
+- Create EFS instance and configure `.ebextensions/storage-efs-mountfilesystem.config` with instance id.
+- Assign EFS security group to EC2 instance(s).  (TODO - figure out how auto scaling default security groups work)
 
 Environment variables
 - DJANGO_SETTINGS_MODULE
@@ -87,7 +89,8 @@ Environment variables
 - SLACK_BOT_TOKEN
 - CWWED_NSEM_PASSWORD
 
-Create S3 bucket and configure CORS settings (prepopulated settings look ok).  However, django-storages my configure it for us with AWS_AUTO_CREATE_BUCKET.
+Create S3 bucket and configure CORS settings (prepopulated settings look ok).
+However, django-storages might configure it for us with `AWS_AUTO_CREATE_BUCKET`.
 
 Elastic Beanstalk
     eb init
