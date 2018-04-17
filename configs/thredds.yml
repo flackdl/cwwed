@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thredds-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: thredds-container
+  template:
+    metadata:
+      labels:
+        app: thredds-container
+    spec:
+      containers:
+      - name: thredds-container
+        image: cwwed-thredds
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+#        volumeMounts:
+#        - mountPath: /media/bucket/cwwed
+#          name: cwwed-volume
+#      volumes:
+#      - name: cwwed-volume
+#        hostPath:
+#          # directory location on host
+#          path: /media/bucket/cwwed
+#          # this field is optional
+#          type: Directory

@@ -15,7 +15,7 @@ spec:
       containers:
       - name: cwwed-container
         image: cwwed-app:latest
-        imagePullPolicy: Never  # necessary for minikube since it's a local image
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
         env:
