@@ -80,7 +80,7 @@ Upload model output for a specific NSEM record:
 Setup RDS with proper VPC and security group permissions.
 
 EFS:
-- Create EFS instance and configure `.ebextensions/storage-efs-mountfilesystem.config` with instance id.
+- Create EFS instance
 - Assign EFS security group to EC2 instance(s).  (TODO - figure out how auto scaling default security groups work)
 
 Environment variables
@@ -92,22 +92,12 @@ Environment variables
 - AWS_STORAGE_BUCKET_NAME 
 
 Create S3 bucket and configure CORS settings (prepopulated settings look ok).
-However, django-storages might configure it for us with `AWS_AUTO_CREATE_BUCKET`.
+However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
 
-Elastic Beanstalk
-
-    eb init
-    eb create
-    # set environment variables
-    eb setenv \
-        DJANGO_SETTINGS_MODULE=cwwed.settings_aws \
-        DATABASE_URL=postgis://XXXX:XXXX@XXXX:5432/XXXX \
-        SLACK_BOT_TOKEN=@@@ \
-        CWWED_NSEM_PASSWORD=@@@ \
-        AWS_STORAGE_BUCKET_NAME=@@@ \
-        SECRET_KEY=@@@
-    eb deploy
-    
 Collect Static Files
 
-    DJANGO_SETTINGS_MODULE=cwwed.settings_aws AWS_STORAGE_BUCKET_NAME=@@@ python manage.py collectstatic
+    AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
+    
+Create secrets
+
+    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
