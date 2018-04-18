@@ -85,6 +85,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # NOTE: this automatically configures the docker & kubectl environments to point to the minikube cluster
     minikube start --memory 8192
     
+    # run if you want the docker & kubectl environments in a different terminal
+    eval $(minikube docker-env)
+    
     # build images
     docker build -t cwwed-app .
     docker build -t cwwed-thredds configs/thredds
@@ -92,15 +95,40 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # create secrets
     kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
     
-    # create volume
-    kubectl apply -f configs/volume.yml
+    # create volumes
+    kubectl apply -f configs/local_volume-cwwed.yml
+    kubectl apply -f configs/local_volume-postgis.yml
     
     # create deployments
-    kubectl apply -f configs/cwwed.yml
-    kubectl apply -f configs/thredds.yml
+    kubectl apply -f configs/deployment-cwwed.yml
+    kubectl apply -f configs/deployment-thredds.yml
+    kubectl apply -f configs/deployment-rabbitmq.yml
+    kubectl apply -f configs/local_deployment-postgis.yml
     
-    # run if you want the kubectl env in a separate terminal
-    eval $(minikube docker-env)
+    # create services
+    kubectl apply -f configs/local_service-cwwed.yml
+    kubectl apply -f configs/local_service-postgis.yml
+    kubectl apply -f configs/local_service-thredds.yml
+    kubectl apply -f configs/local_service-rabbitmq.yml
+    
+    #
+    # execute commands on cwwed pod
+    #
+    
+    # get pod name
+    CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
+    
+    # connect to pod
+    kubectl exec -it $CWWED_POD bash
+    
+    # initializations
+    kubectl exec -it $CWWED_POD python manage.py migrate
+    kubectl exec -it $CWWED_POD python manage.py createsuperuser
+    kubectl exec -it $CWWED_POD python manage.py cwwed-init
+    kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
+    
+    # get minikube/vm cwwed url
+    minikube service cwwed-app-service --url
     
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
