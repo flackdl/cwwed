@@ -4,9 +4,14 @@ https://www.weather.gov/sti/coastalact_cwwed
 
 ## Development & Initial Setup
 
-Python environment (>=3.6)
+Python version: >=3.6
 
-    # create the environment
+### Running via Docker Compose
+   
+    # start PostGIS/THREDDS/RabbitMQ via Docker
+    docker-compose up
+
+    # create the python environment
     mkvirtualenv cwwed-env
     
     # install requirements
@@ -14,6 +19,12 @@ Python environment (>=3.6)
     
     # activate environment (if not already done)
     workon cwwed-env
+    
+    # start server
+    python manage.py runserver
+    
+    # start Celery and Flower (celery web management)
+    python manage.py celery
     
 Initial Setup
 
@@ -28,14 +39,6 @@ Initial Setup
 
     # create "nsem" user & model permissions
     python manage.py cwwed-init
-   
-Start PostGIS/THREDDS/RabbitMQ
-
-    docker-compose up
-    
-Start Celery and Flower
-
-    python manage.py celery
     
 #### Helpers
 
