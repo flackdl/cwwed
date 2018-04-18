@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: cwwed-app-service
+spec:
+  selector:
+    app: cwwed-container
+  ports:
+  - protocol: TCP
+    port: 8888
+    targetPort: 80
+  type: NodePort

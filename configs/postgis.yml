@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgis-container
+  template:
+    metadata:
+      labels:
+        app: postgis-container
+    spec:
+      volumes:
+      - name: postgis-volume-storage
+        persistentVolumeClaim:
+         claimName: postgis-volume-claim
+      containers:
+      - name: postgis-container
+        image: mdillon/postgis:9.6
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - mountPath: "/var/lib/postgresql/data"
+          name: postgis-volume-storage

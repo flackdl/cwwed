@@ -12,19 +12,16 @@ spec:
       labels:
         app: thredds-container
     spec:
+      volumes:
+      - name: cwwed-volume-storage
+        persistentVolumeClaim:
+         claimName: cwwed-volume-claim
       containers:
       - name: thredds-container
         image: cwwed-thredds
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
-#        volumeMounts:
-#        - mountPath: /media/bucket/cwwed
-#          name: cwwed-volume
-#      volumes:
-#      - name: cwwed-volume
-#        hostPath:
-#          # directory location on host
-#          path: /media/bucket/cwwed
-#          # this field is optional
-#          type: Directory
+        volumeMounts:
+        - mountPath: "/media/bucket/cwwed"
+          name: cwwed-volume-storage

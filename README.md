@@ -82,8 +82,8 @@ Upload model output for a specific NSEM record:
 Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
 
     # start cluster in vm
-    # NOTE: this automatically configures the kubectl environment to point to the new cluster
-    minikube start --memory 8192 --mount /media/bucket/cwwed:/media/bucket/cwwed
+    # NOTE: this automatically configures the docker & kubectl environments to point to the minikube cluster
+    minikube start --memory 8192
     
     # build images
     docker build -t cwwed-app .

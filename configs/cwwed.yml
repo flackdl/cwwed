@@ -12,12 +12,19 @@ spec:
       labels:
         app: cwwed-container
     spec:
+      volumes:
+      - name: cwwed-volume-storage
+        persistentVolumeClaim:
+         claimName: cwwed-volume-claim
       containers:
       - name: cwwed-container
         image: cwwed-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
+        volumeMounts:
+        - mountPath: "/media/bucket/cwwed"
+          name: cwwed-volume-storage
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings_aws
