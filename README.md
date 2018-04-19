@@ -4,12 +4,7 @@ https://www.weather.gov/sti/coastalact_cwwed
 
 ## Development & Initial Setup
 
-Python version: >=3.6
-
-### Running via Docker Compose
-   
-    # start PostGIS/THREDDS/RabbitMQ via Docker
-    docker-compose up
+### Python Environment (>=3.6)
 
     # create the python environment
     mkvirtualenv cwwed-env
@@ -17,8 +12,13 @@ Python version: >=3.6
     # install requirements
     pip install -r requirements.txt
     
-    # activate environment (if not already done)
+    # activate environment if in a new shell
     workon cwwed-env
+
+### Running via Docker Compose
+   
+    # start PostGIS/THREDDS/RabbitMQ via Docker
+    docker-compose up
     
     # start server
     python manage.py runserver
@@ -66,15 +66,15 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     docker build -t cwwed-app .
     docker build -t cwwed-thredds configs/thredds
     
+    # create secrets
+    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
+    
     # create services
     kubectl apply -f configs/local_service-cwwed.yml
     kubectl apply -f configs/local_service-postgis.yml
     kubectl apply -f configs/local_service-thredds.yml
     kubectl apply -f configs/local_service-rabbitmq.yml
     kubectl apply -f configs/local_service-celery-flower.yml
-    
-    # create secrets
-    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
     
     # create volumes
     kubectl apply -f configs/local_volume-cwwed.yml
@@ -87,6 +87,12 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml
     kubectl apply -f configs/local_deployment-postgis.yml
+    
+    # delete everything
+    ls -1 configs/*.yml | while read config; do kubectl delete -f $config; done
+    
+    # create everything (in the right order: services, volumes then deployments)
+    ls -1 configs/local_service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
     
     #
     # execute commands on cwwed pod
@@ -103,6 +109,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     kubectl exec -it $CWWED_POD python manage.py createsuperuser
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
     kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
+    
+    # collect covered data
+    kubectl exec -it $CWWED_POD python manage.py collect_covered_data
     
     # get minikube/vm cwwed url
     minikube service cwwed-app-service --url

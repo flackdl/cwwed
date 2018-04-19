@@ -8,9 +8,9 @@ spec:
   capacity:
     storage: 10Gi
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   hostPath:
-    path: "/media/bucket/cwwed"
+    path: "/data/cwwed"
 
 ---
 
@@ -19,8 +19,9 @@ apiVersion: v1
 metadata:
   name: cwwed-volume-claim
 spec:
+  storageClassName: ""
+  volumeName: cwwed-volume
   accessModes:
-    #- ReadWriteOnce
     - ReadWriteMany
   resources:
     requests:
