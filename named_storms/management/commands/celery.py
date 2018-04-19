@@ -10,7 +10,7 @@ def restart_celery():
     subprocess.call(shlex.split(cmd))
 
     # start celery
-    cmd = 'celery worker -l info -A cwwed'
+    cmd = 'celery worker -A cwwed -l info'
     subprocess.Popen(shlex.split(cmd))
 
     # start flower

@@ -1,0 +1,12 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: celery-flower-service
+spec:
+  selector:
+    app: celery-flower-container
+  ports:
+  - protocol: TCP
+    port: 5555
+    targetPort: 5555
+  type: NodePort

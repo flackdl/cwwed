@@ -1,39 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cwwed-deployment
+  name: celery-flower-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cwwed-container
+      app: celery-flower-container
   template:
     metadata:
       labels:
-        app: cwwed-container
+        app: celery-flower-container
     spec:
-      volumes:
-      - name: cwwed-volume-storage
-        persistentVolumeClaim:
-         claimName: cwwed-volume-claim
       containers:
-      - name: cwwed-container
+      - name: celery-flower-container
         image: cwwed-app:latest
         imagePullPolicy: IfNotPresent
+        command: ['celery']
+        args: ['flower', '-A', 'cwwed', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']
         ports:
-        - containerPort: 80
-        volumeMounts:
-        - mountPath: "/media/bucket/cwwed"
-          name: cwwed-volume-storage
+        - containerPort: 5555
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings_aws
           - name: AWS_STORAGE_BUCKET_NAME
             value: cwwed-static-assets
-          - name: CELERY_BROKER
-            value: rabbitmq-service
-          - name: CELERY_BACKEND
-            value: rabbitmq-service
           # secrets
           - name: DATABASE_URL
             value: postgis://postgres@postgis-service:5432/postgres
@@ -51,8 +42,3 @@ spec:
               secretKeyRef:
                 name: cwwed-secrets
                 key: SECRET_KEY
-          - name: CWWED_NSEM_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_NSEM_PASSWORD

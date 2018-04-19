@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cwwed-deployment
+  name: celery-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cwwed-container
+      app: celery-container
   template:
     metadata:
       labels:
-        app: cwwed-container
+        app: celery-container
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
          claimName: cwwed-volume-claim
       containers:
-      - name: cwwed-container
+      - name: celery-container
         image: cwwed-app:latest
         imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 80
+        command: ['celery']
+        args: ['worker', '-A', 'cwwed', '-l', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
@@ -51,8 +51,3 @@ spec:
               secretKeyRef:
                 name: cwwed-secrets
                 key: SECRET_KEY
-          - name: CWWED_NSEM_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_NSEM_PASSWORD
