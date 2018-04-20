@@ -61,6 +61,7 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
     # run if you want the docker & kubectl environments in a different terminal
     eval $(minikube docker-env)
+    kubectl config use-context minikube
     
     # build images
     docker build -t cwwed-app .
@@ -69,34 +70,30 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # create secrets
     kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
     
-    # create services
-    kubectl apply -f configs/local_service-cwwed.yml
+    # create everything all at once (in the right order: services, volumes then deployments)
+    ls -1 configs/local_service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
+    
+    # delete everything
+    ls -1 configs/*.yml | while read config; do kubectl delete -f $config; done
+    
+    # create services individually
+    kubectl apply -f configs/service-cwwed.yml
     kubectl apply -f configs/local_service-postgis.yml
     kubectl apply -f configs/local_service-thredds.yml
     kubectl apply -f configs/local_service-rabbitmq.yml
     kubectl apply -f configs/local_service-celery-flower.yml
     
-    # create volumes
+    # create volumes individually
     kubectl apply -f configs/local_volume-cwwed.yml
     kubectl apply -f configs/local_volume-postgis.yml
     
-    # create deployments
+    # create deployments individually
     kubectl apply -f configs/deployment-cwwed.yml
     kubectl apply -f configs/deployment-thredds.yml
     kubectl apply -f configs/deployment-rabbitmq.yml
     kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml
     kubectl apply -f configs/local_deployment-postgis.yml
-    
-    # delete everything
-    ls -1 configs/*.yml | while read config; do kubectl delete -f $config; done
-    
-    # create everything (in the right order: services, volumes then deployments)
-    ls -1 configs/local_service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
-    
-    #
-    # execute commands on cwwed pod
-    #
     
     # get pod name
     CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
@@ -118,6 +115,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
     # get minikube/vm celery/flower url
     minikube service celery-flower-service --url
+    
+    # delete minikube cluster
+    minikube delete
     
     
 ## Production *-TODO-*
@@ -141,6 +141,9 @@ However, `django-storages` might configure it for us with the setting `AWS_AUTO_
 Collect Static Files
 
     AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
+    
+    # create cluster (dev)
+    kops create cluster --master-count 1 --node-count 1 --master-size t2.medium --node-size t2.micro --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
     
 ## NSEM process

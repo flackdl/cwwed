@@ -215,7 +215,6 @@ CWWED_NSEM_USER = 'nsem'
 CWWED_NSEM_PERMISSION_DOWNLOAD_DATA = 'download_nsem_data'
 CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD', 'cookie123')
 
-# TODO
-THREDDS_URL = 'http://localhost:9000/thredds/'
+THREDDS_URL = 'http://{}:9000/thredds/'.format(os.environ.get('THREDDS_HOST', 'localhost'))
 
 SLACK_BOT_TOKEN = os.environ['SLACK_BOT_TOKEN']

@@ -34,9 +34,13 @@ spec:
             value: rabbitmq-service
           - name: CELERY_BACKEND
             value: rabbitmq-service
+          - name: THREDDS_HOST
+            value: thredds-service
           # secrets
           - name: DATABASE_URL
+            # minikube
             value: postgis://postgres@postgis-service:5432/postgres
+            # TODO
             #valueFrom:
             #  secretKeyRef:
             #    name: cwwed-secrets
