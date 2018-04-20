@@ -79,9 +79,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # create services individually
     kubectl apply -f configs/service-cwwed.yml
     kubectl apply -f configs/local_service-postgis.yml
-    kubectl apply -f configs/local_service-thredds.yml
-    kubectl apply -f configs/local_service-rabbitmq.yml
-    kubectl apply -f configs/local_service-celery-flower.yml
+    kubectl apply -f configs/service-thredds.yml
+    kubectl apply -f configs/service-rabbitmq.yml
+    kubectl apply -f configs/service-celery-flower.yml
     
     # create volumes individually
     kubectl apply -f configs/local_volume-cwwed.yml

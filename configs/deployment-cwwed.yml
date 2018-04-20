@@ -39,12 +39,11 @@ spec:
           # secrets
           - name: DATABASE_URL
             # minikube
-            value: postgis://postgres@postgis-service:5432/postgres
-            # TODO
-            #valueFrom:
-            #  secretKeyRef:
-            #    name: cwwed-secrets
-            #    key: DATABASE_URL
+            #value: postgis://postgres@postgis-service:5432/postgres
+            valueFrom:
+              secretKeyRef:
+                name: cwwed-secrets
+                key: DATABASE_URL
           - name: SLACK_BOT_TOKEN
             valueFrom:
               secretKeyRef:
