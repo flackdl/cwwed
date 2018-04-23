@@ -15,10 +15,12 @@ spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-         claimName: cwwed-volume-claim
+        # minikube
+        #claimName: cwwed-volume-claim
+         claimName: efs
       containers:
       - name: thredds-container
-        image: cwwed-thredds
+        image: flackdl/thredds
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080

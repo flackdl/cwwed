@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: celery-flower-container
-        image: cwwed-app:latest
+        image: flackdl/cwwed:kubernetes
         imagePullPolicy: IfNotPresent
         command: ['celery']
         args: ['flower', '-A', 'cwwed', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']
@@ -27,11 +27,12 @@ spec:
             value: cwwed-static-assets
           # secrets
           - name: DATABASE_URL
-            value: postgis://postgres@postgis-service:5432/postgres
-            #valueFrom:
-            #  secretKeyRef:
-            #    name: cwwed-secrets
-            #    key: DATABASE_URL
+            # minikube
+            #value: postgis://postgres@postgis-service:5432/postgres
+            valueFrom:
+              secretKeyRef:
+                name: cwwed-secrets
+                key: DATABASE_URL
           - name: SLACK_BOT_TOKEN
             valueFrom:
               secretKeyRef:

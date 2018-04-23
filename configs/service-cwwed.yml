@@ -7,6 +7,6 @@ spec:
     app: cwwed-container
   ports:
   - protocol: TCP
-    port: 8888
+    port: 80
     targetPort: 80
   type: LoadBalancer

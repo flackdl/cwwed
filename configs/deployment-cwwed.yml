@@ -15,10 +15,12 @@ spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-         claimName: cwwed-volume-claim
+        # minikube
+        #claimName: cwwed-volume-claim
+         claimName: efs
       containers:
       - name: cwwed-container
-        image: cwwed-app:latest
+        image: flackdl/cwwed:kubernetes
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80

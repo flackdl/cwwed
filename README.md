@@ -70,8 +70,8 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # create secrets
     kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
     
-    # create everything all at once (in the right order: services, volumes then deployments)
-    ls -1 configs/local_service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
+    # create everything all at once (in the right order: services, local volumes then deployments)
+    ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
     
     # delete everything
     ls -1 configs/*.yml | while read config; do kubectl delete -f $config; done
@@ -138,12 +138,14 @@ Environment variables
 Create S3 bucket and configure CORS settings (prepopulated settings look ok).
 However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
 
-Collect Static Files
-
+    # collect static files
     AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
     
     # create cluster (dev)
     kops create cluster --master-count 1 --node-count 1 --master-size t2.medium --node-size t2.micro --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    
+    # configure kubectl environment to point at aws cluster
+    kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
     
     
 ## NSEM process
