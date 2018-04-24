@@ -156,6 +156,9 @@ However, `django-storages` might configure it for us with the setting `AWS_AUTO_
     # collect covered data
     kubectl exec -it XXX -- python manage.py collect_covered_data --settings=cwwed.settings_aws
     
+    # force a rolling update (to repull images)
+    kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
+    
     
 ## NSEM process
 
