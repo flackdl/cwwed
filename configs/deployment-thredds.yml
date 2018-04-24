@@ -21,7 +21,7 @@ spec:
       containers:
       - name: thredds-container
         image: flackdl/thredds
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         volumeMounts:

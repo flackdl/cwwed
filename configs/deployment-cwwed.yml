@@ -21,7 +21,7 @@ spec:
       containers:
       - name: cwwed-container
         image: flackdl/cwwed:kubernetes
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
         volumeMounts:

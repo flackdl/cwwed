@@ -21,7 +21,7 @@ spec:
       containers:
       - name: celery-container
         image: flackdl/cwwed:kubernetes
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         command: ['celery']
         args: ['worker', '-A', 'cwwed', '-l', 'info']
         volumeMounts:
