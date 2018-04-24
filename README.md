@@ -138,7 +138,7 @@ Environment variables
 Create S3 bucket and configure CORS settings (prepopulated settings look ok).
 However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
 
-    # collect static files
+    # collect static files to S3 (from local/dev computer since it's auth'd with aws)
     AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
     
     # create cluster (dev)
@@ -146,6 +146,15 @@ However, `django-storages` might configure it for us with the setting `AWS_AUTO_
     
     # configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
+    
+    # create EFS and make sure it's in the same VPC as the cluster, along with the node's security group
+    
+    # patch the persistent volume to "retain" rather than delete if the claim is deleted
+    # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
+    kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    
+    # collect covered data
+    kubectl exec -it XXX -- python manage.py collect_covered_data --settings=cwwed.settings_aws
     
     
 ## NSEM process

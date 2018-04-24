@@ -38,6 +38,8 @@ spec:
             value: rabbitmq-service
           - name: THREDDS_HOST
             value: thredds-service
+          - name: THREDDS_PORT
+            value: 8080
           # secrets
           - name: DATABASE_URL
             # minikube
