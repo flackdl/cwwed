@@ -1,29 +1,26 @@
-apiVersion: apps/v1
-kind: Deployment
+#apiVersion: batch/v1beta1
+apiVersion: batch/v1
+#kind: CronJob
+kind: Job
 metadata:
-  name: celery-deployment
+  name: cwwed-container-covered-data
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: celery-container
+  # once a day, early morning, east coast
+  #schedule: "8 * * * *"
+  #jobTemplate:
+  #spec:
   template:
-    metadata:
-      labels:
-        app: celery-container
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-        # minikube
-        #claimName: cwwed-volume-claim
          claimName: efs
+      restartPolicy: OnFailure
       containers:
-      - name: celery-container
+      - name: cwwed-container-covered-data
         image: flackdl/cwwed:kubernetes
-        imagePullPolicy: Always
-        command: ['celery']
-        args: ['worker', '-P', 'eventlet', '--concurrency=100', '-A', 'cwwed', '-l', 'info']
+        command: ['python']
+        args: ['manage.py', 'collect_covered_data']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
@@ -38,8 +35,6 @@ spec:
             value: rabbitmq-service
           # secrets
           - name: DATABASE_URL
-            # minikube
-            #value: postgis://postgres@postgis-service:5432/postgres
             valueFrom:
               secretKeyRef:
                 name: cwwed-secrets
