@@ -71,10 +71,10 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
     
     # create everything all at once (in the right order: services, local volumes then deployments)
-    ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | while read config; do kubectl apply -f $config; done
+    ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | xargs -L 1 kubectl apply -f
     
     # delete everything
-    ls -1 configs/*.yml | while read config; do kubectl delete -f $config; done
+    ls -1 configs/*.yml | xargs -L 1 kubectl delete -f
     
     # create services individually
     kubectl apply -f configs/service-cwwed.yml

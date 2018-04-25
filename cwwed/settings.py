@@ -109,7 +109,7 @@ WSGI_APPLICATION = 'cwwed.wsgi.application'
 
 DATABASES = {
     # https://github.com/kennethreitz/dj-database-url
-    'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres'),
+    'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres', conn_max_age=300),
 }
 
 
