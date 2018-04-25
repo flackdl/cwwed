@@ -25,5 +25,5 @@ spec:
         ports:
         - containerPort: 8080
         volumeMounts:
-        - mountPath: "/media/bucket/cwwed"
+        - mountPath: "/usr/local/tomcat/content/thredds/public"
           name: cwwed-volume-storage
