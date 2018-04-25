@@ -25,8 +25,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = os.environ.get('SECRET_KEY', 'ssshhh...')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# TODO
-DEBUG = True
+DEBUG = False if not os.environ.get('DEBUG') else True
 
 # TODO
 # https://docs.djangoproject.com/en/2.0/topics/security/#host-headers-virtual-hosting

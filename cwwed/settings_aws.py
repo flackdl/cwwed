@@ -1,8 +1,6 @@
 from .settings import *
 import os
 
-DEBUG = False
-
 # django-storages
 # http://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html
 AWS_AUTO_CREATE_BUCKET = True

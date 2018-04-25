@@ -23,7 +23,7 @@ spec:
         image: flackdl/cwwed:kubernetes
         imagePullPolicy: Always
         command: ['celery']
-        args: ['worker', '-P', 'eventlet', '--concurrency=100', '-A', 'cwwed', '-l', 'info']
+        args: ['worker', '--concurrency=20', '-A', 'cwwed', '-l', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
