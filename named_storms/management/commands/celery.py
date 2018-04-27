@@ -10,7 +10,7 @@ def restart_celery():
     subprocess.call(shlex.split(cmd))
 
     # start celery
-    cmd = 'celery worker -P eventlet --concurrency=100 -A cwwed -l info'
+    cmd = 'celery worker --concurrency=10 -A cwwed -l info'
     subprocess.Popen(shlex.split(cmd))
 
     # start flower

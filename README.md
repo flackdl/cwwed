@@ -153,12 +153,27 @@ However, `django-storages` might configure it for us with the setting `AWS_AUTO_
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     
-    # collect covered data
-    kubectl exec -it XXX -- python manage.py collect_covered_data --settings=cwwed.settings_aws
+    # collect covered data via job
+    kubectl apply -f configs/job_collect-covered-data.yml
     
     # force a rolling update (to repull images)
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
+   
+Kubernetes Dashboard
     
+    # create kubernetes dashboard
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+    
+    # apply user/roles
+    kubectl apply -f configs/kube-service-account.yml
+    kubectl apply -f configs/kube-cluster-role-binding.yml
+    
+    # get token
+    kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin | awk '{print $1}')
+    
+    # start proxy
+    kubectl proxy
+
     
 ## NSEM process
 

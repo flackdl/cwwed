@@ -27,3 +27,4 @@ spec:
         volumeMounts:
         - mountPath: "/usr/local/tomcat/content/thredds/public"
           name: cwwed-volume-storage
+          readOnly: true
