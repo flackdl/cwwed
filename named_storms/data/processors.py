@@ -137,7 +137,7 @@ class GenericFileProcessor(BaseProcessor):
             for chunk in file_req.iter_content(chunk_size=1024):
                 f.write(chunk)
         # set file permissions
-        os.chmod(tmp_file, 420)  # -rw-r--r--
+        os.chmod(tmp_file, 0o644)  # -rw-r--r-- (using octal literal notation)
         shutil.move(tmp_file, self.output_path)
 
 

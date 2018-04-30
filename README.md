@@ -141,13 +141,27 @@ However, `django-storages` might configure it for us with the setting `AWS_AUTO_
     # collect static files to S3 (from local/dev computer since it's auth'd with aws)
     AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
     
+Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
+
     # create cluster (dev)
-    kops create cluster --master-count 1 --node-count 1 --master-size t2.medium --node-size t2.micro --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.micro --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
-    # configure kubectl environment to point at aws cluster
+    # (if necessary) configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
     
+    # create secrets
+    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
+    
     # create EFS and make sure it's in the same VPC as the cluster, along with the node's security group
+    
+    # create efs volume (can take a couple minutes to create the provisioner pod)
+    # https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
+    kubectl apply -f configs/volume-efs.yml
+    # patch (after RBAC stuff)
+    kubectl patch deployment efs-provisioner -p '{"spec":{"template":{"spec":{"serviceAccount":"efs-provisioner"}}}}'
+    
+    # create everything all at once (in the right order: services, volumes then deployments)
+    ls -1 configs/service-*.yml configs/volume-* configs/deployment-* | xargs -L 1 kubectl apply -f
     
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/

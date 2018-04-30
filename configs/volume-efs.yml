@@ -54,6 +54,8 @@ apiVersion: storage.k8s.io/v1
 metadata:
   name: aws-efs
 provisioner: example.com/aws-efs
+parameters:
+  gidAllocate: "false"
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
