@@ -18,7 +18,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: cwwed-container-covered-data
-        image: flackdl/cwwed:kubernetes
+        image: flackdl/cwwed:s3
         command: ['python']
         args: ['manage.py', 'collect_covered_data']
         volumeMounts:

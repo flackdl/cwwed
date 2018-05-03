@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: celery-flower-container
-        image: flackdl/cwwed:kubernetes
+        image: flackdl/cwwed:s3
         imagePullPolicy: Always
         command: ['celery']
         args: ['flower', '-A', 'cwwed', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']
