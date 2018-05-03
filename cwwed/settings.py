@@ -153,6 +153,9 @@ STATIC_URL = '/static/'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = '/media/bucket/cwwed'
+
 
 # Logging
 # https://docs.djangoproject.com/en/2.0/topics/logging/
@@ -201,14 +204,16 @@ CORS_ALLOW_METHODS = (
 # CWWED
 #
 
-CWWED_ARCHIVE_EXTENSION = 'tar'
-CWWED_DATA_DIR = '/media/bucket/cwwed'
+CWWED_ARCHIVE_EXTENSION = 'tgz'
+CWWED_DATA_DIR = MEDIA_ROOT
+CWWED_THREDDS_DIR = 'THREDDS'
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
+CWWED_COVERED_ARCHIVE_DIR_NAME = 'Covered Data Archive'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
 CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
 CWWED_NSEM_DIR_NAME = 'NSEM'
 CWWED_NSEM_ARCHIVE_INPUT_NAME = 'covered-data.{}'.format(CWWED_ARCHIVE_EXTENSION)
-CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w'
+CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w:gz'
 CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/tar'
 CWWED_NSEM_USER = 'nsem'
 CWWED_NSEM_PERMISSION_DOWNLOAD_DATA = 'download_nsem_data'

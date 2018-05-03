@@ -52,28 +52,3 @@ class NSEMViewset(viewsets.ModelViewSet):
         instance.date_returned = datetime.utcnow()
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    @detail_route(url_path='covered-data', methods=['get'], permission_classes=(NSEMDjangoModelPermissions,))
-    def covered_data(self, *args, **kwargs):
-        """
-        Returns the actual covered data archive as a streamed file response
-        """
-        instance = self.get_object()  # type: NSEM
-
-        # handle absent archive
-        if not instance.covered_data_snapshot or not os.path.exists(instance.covered_data_snapshot):
-            raise exceptions.NotFound
-
-        # create the response
-        response = FileResponse(
-            open(instance.covered_data_snapshot, 'rb'),
-            content_type=settings.CWWED_NSEM_ARCHIVE_CONTENT_TYPE)
-
-        # include a helpful filename header
-        response['Content-Disposition'] = 'attachment; filename="{}_covered-data_v{}.{}"'.format(
-            instance.named_storm,
-            instance.id,
-            settings.CWWED_ARCHIVE_EXTENSION,
-        )
-
-        return response

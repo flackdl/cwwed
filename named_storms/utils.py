@@ -1,8 +1,10 @@
 import os
 import errno
 import shutil
-import tarfile
 from django.conf import settings
+from django.core.files import File
+from django.core.files.storage import default_storage
+
 from named_storms.models import (
     PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM, CoveredData,
 )
@@ -45,6 +47,7 @@ def named_storm_path(named_storm: NamedStorm) -> str:
     """
     return os.path.join(
         settings.CWWED_DATA_DIR,
+        settings.CWWED_THREDDS_DIR,
         named_storm.name,
     )
 
@@ -98,30 +101,16 @@ def named_storm_nsem_version_path(nsem: NSEM) -> str:
         'v{}'.format(nsem.id))
 
 
-def archive_nsem_covered_data(nsem: NSEM):
+def copy_path_to_archive_storage(source_path: str, destination_path: str):
     """
-    Creates a single archive from all the covered data archives to pass off to the external NSEM
+    Copies source to destination using "default_storage" and returns the path
     """
+    # copy path to archive storage
+    with File(open(source_path, 'rb')) as fd:
 
-    # retrieve all the successful covered data by querying the logs
-    # sort by date descending and retrieve unique results
-    logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).order_by('-date')
-    if not logs.exists():
-        return None
-    logs_to_archive = []
-    for log in logs:
-        if log.covered_data.name not in [l.covered_data.name for l in logs_to_archive]:
-            logs_to_archive.append(log)
+        # remove any existing storage
+        if default_storage.exists(destination_path):
+            default_storage.delete(destination_path)
+        default_storage.save(destination_path, fd)
 
-    # create archive path, i.e "Harvey/NSEM/v3/" and open the archive file for writing
-    archive_path = named_storm_nsem_version_path(nsem)
-    create_directory(archive_path)
-    archive_file = os.path.join(archive_path, settings.CWWED_NSEM_ARCHIVE_INPUT_NAME)
-    tar = tarfile.open(archive_file, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
-
-    # add each snapshot to the archive
-    for log in logs_to_archive:
-        tar.add(log.snapshot, arcname=os.path.basename(log.snapshot))
-    tar.close()
-
-    return archive_file
+    return destination_path

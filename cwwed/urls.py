@@ -17,6 +17,8 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include, re_path
 from audit.proxy import ThreddsProxy
+from django.conf.urls.static import static
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,3 +26,6 @@ urlpatterns = [
     path('api/', include('named_storms.api.urls')),
     re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
 ]
+
+# serving media in dev only
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

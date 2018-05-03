@@ -1,13 +1,14 @@
 from __future__ import absolute_import, unicode_literals
-import shutil
+from django.core.files.storage import default_storage
 import os
+import tarfile
 import requests
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from cwwed.celery import app
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog
-from named_storms.utils import processor_class, named_storm_covered_data_archive_path
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
+from named_storms.utils import processor_class, named_storm_covered_data_archive_path, copy_path_to_archive_storage
 
 RETRY_ARGS = dict(
     autoretry_for=(Exception,),
@@ -58,7 +59,7 @@ def process_dataset_task(data: list):
     return processor.to_dict()
 
 
-@app.task  # no retry
+@app.task(**RETRY_ARGS)
 def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
     """
     :param named_storm_id: id for a NamedStorm record
@@ -68,18 +69,72 @@ def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
     named_storm = get_object_or_404(NamedStorm, pk=named_storm_id)
     covered_data = get_object_or_404(CoveredData, pk=covered_data_id)
     log = get_object_or_404(NamedStormCoveredDataLog, pk=log_id)
-    archive_path = named_storm_covered_data_archive_path(named_storm, covered_data)
 
-    # create archive
-    path = shutil.make_archive(
-        base_name=archive_path,
-        format=settings.CWWED_COVERED_DATA_ARCHIVE_TYPE,
-        root_dir=os.path.dirname(archive_path),
-        base_dir=covered_data.name,
+    archive_path = named_storm_covered_data_archive_path(named_storm, covered_data)
+    tar_path = '{}.{}'.format(
+        os.path.join(os.path.dirname(archive_path), os.path.basename(archive_path)),  # guarantees no trailing slash
+        settings.CWWED_ARCHIVE_EXTENSION,
     )
 
-    # save the output in the log
-    log.snapshot = path
+    # create tar in local storage
+    tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
+    tar.add(archive_path, arcname=os.path.basename(archive_path))
+    tar.close()
+
+    storage_path = os.path.join(
+        settings.CWWED_COVERED_ARCHIVE_DIR_NAME,
+        named_storm.name,
+        os.path.basename(tar_path),
+    )
+
+    # copy tar to archive storage
+    snapshot_path = copy_path_to_archive_storage(tar_path, storage_path)
+
+    # remove local tar
+    os.remove(tar_path)
+
+    # update the log with the saved snapshot
+    log.snapshot = snapshot_path
     log.save()
 
-    return path
+    return log.snapshot
+
+
+@app.task(**RETRY_ARGS)
+def archive_nsem_covered_data(nsem_id):
+    """
+    Creates a single archive from all the covered data archives to pass off to the external NSEM
+    """
+
+    # retrieve all the successful covered data by querying the logs
+    # exclude any logs where the snapshot archive hasn't been created yet
+    # sort by date descending and retrieve unique results
+    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
+    if not logs.exists():
+        return None
+    logs_to_archive = []
+    for log in logs:
+        if log.covered_data.name not in [l.covered_data.name for l in logs_to_archive]:
+            logs_to_archive.append(log)
+
+    storage_path = os.path.join(
+        settings.CWWED_NSEM_DIR_NAME,
+        nsem.named_storm.name,
+        'v{}'.format(nsem.id),
+    )
+
+    for log in logs:
+        src_path = log.snapshot
+        with default_storage.open(src_path, 'rb') as src_fd:
+            dest_path = os.path.join(storage_path, os.path.basename(src_path))
+            # copy snapshot to versioned nsem location in archive storage
+            # delete any existing version if it exists
+            if default_storage.exists(dest_path):
+                default_storage.delete(dest_path)
+            default_storage.save(dest_path, src_fd)
+
+    nsem.covered_data_snapshot = storage_path
+    nsem.save()
+
+    return default_storage.url(storage_path)

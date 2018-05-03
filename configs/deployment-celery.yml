@@ -54,3 +54,13 @@ spec:
               secretKeyRef:
                 name: cwwed-secrets
                 key: SECRET_KEY
+          - name: CWWED_ARCHIVES_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: cwwed-secrets
+                key: CWWED_ARCHIVES_ACCESS_KEY_ID
+          - name: CWWED_ARCHIVES_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: cwwed-secrets
+                key: CWWED_ARCHIVES_SECRET_ACCESS_KEY

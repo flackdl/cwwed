@@ -2,9 +2,8 @@ import re
 from urllib import parse
 from django.conf import settings
 from rest_framework import serializers
-from rest_framework.reverse import reverse
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
-from named_storms.utils import archive_nsem_covered_data
+from named_storms.tasks import archive_nsem_covered_data
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -36,6 +35,7 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         """
         logs = obj.named_storm.namedstormcovereddatalog_set.filter(success=True, covered_data=obj.covered_data).order_by('-date')
         if logs.exists():
+            # TODO - this year-based naming convention is deprecated and needs updating
             # get date-stamped year for directory name
             match = re.match(r'.*(?P<year>\d{4}-\d{2}-\d{2}).*', logs[0].snapshot)
             if match:
@@ -60,18 +60,13 @@ class NSEMSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
     """
-    covered_data_snapshot_url = serializers.SerializerMethodField()
-
-    def get_covered_data_snapshot_url(self, obj: NSEM):
-        return reverse('nsem-covered-data', args=[obj.id], request=self.context['request'])
 
     class Meta:
         model = NSEM
         fields = '__all__'
 
     def create(self, validated_data):
-        # save the instance first so we can set the "covered_data_snapshot" after archiving the covered data snapshots
+        # save the instance first so we can create a task to archive the covered data snapshot
         instance = super().create(validated_data)  # type: NSEM
-        instance.covered_data_snapshot = archive_nsem_covered_data(instance)
-        instance.save()
+        archive_nsem_covered_data.delay(instance.id)
         return instance
