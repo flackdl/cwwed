@@ -101,11 +101,11 @@ def named_storm_nsem_version_path(nsem: NSEM) -> str:
         'v{}'.format(nsem.id))
 
 
-def copy_path_to_archive_storage(source_path: str, destination_path: str):
+def copy_path_to_default_storage(source_path: str, destination_path: str):
     """
     Copies source to destination using "default_storage" and returns the path
     """
-    # copy path to archive storage
+    # copy path to default storage
     with File(open(source_path, 'rb')) as fd:
 
         # remove any existing storage

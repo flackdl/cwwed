@@ -1,15 +1,12 @@
 import os
 import shutil
 from datetime import datetime
-from django.conf import settings
 from django.core.files.uploadedfile import TemporaryUploadedFile
-from django.http import FileResponse
-from rest_framework import viewsets, exceptions
+from rest_framework import viewsets
 from rest_framework.decorators import detail_route
 from rest_framework.parsers import FileUploadParser
 from rest_framework.response import Response
 from rest_framework import status
-from named_storms.api.permissions import NSEMDjangoModelPermissions
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 from named_storms.utils import named_storm_nsem_version_path

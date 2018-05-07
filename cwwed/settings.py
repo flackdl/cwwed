@@ -151,7 +151,7 @@ USE_TZ = True
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/static/'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.LocalFileSystemStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/bucket/cwwed'

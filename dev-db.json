@@ -78,7 +78,7 @@
   "fields": {
     "covered_data": 3,
     "processor": "usgs",
-    "name": "NDBC",
+    "name": "USGS",
     "url": "https://stn.wim.usgs.gov/STNServices/Documentation/home",
     "data_type": "",
     "active": true

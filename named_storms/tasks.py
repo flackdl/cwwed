@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from cwwed.celery import app
 from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
-from named_storms.utils import processor_class, named_storm_covered_data_archive_path, copy_path_to_archive_storage
+from named_storms.utils import processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage
 
 RETRY_ARGS = dict(
     autoretry_for=(Exception,),
@@ -87,8 +87,8 @@ def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
         os.path.basename(tar_path),
     )
 
-    # copy tar to archive storage
-    snapshot_path = copy_path_to_archive_storage(tar_path, storage_path)
+    # copy tar to default storage
+    snapshot_path = copy_path_to_default_storage(tar_path, storage_path)
 
     # remove local tar
     os.remove(tar_path)
@@ -126,13 +126,9 @@ def archive_nsem_covered_data(nsem_id):
 
     for log in logs:
         src_path = log.snapshot
-        with default_storage.open(src_path, 'rb') as src_fd:
-            dest_path = os.path.join(storage_path, os.path.basename(src_path))
-            # copy snapshot to versioned nsem location in archive storage
-            # delete any existing version if it exists
-            if default_storage.exists(dest_path):
-                default_storage.delete(dest_path)
-            default_storage.save(dest_path, src_fd)
+        dest_path = os.path.join(storage_path, os.path.basename(src_path))
+        # copy snapshot to versioned nsem location in default storage
+        default_storage.copy(src_path, dest_path)
 
     nsem.covered_data_snapshot = storage_path
     nsem.save()

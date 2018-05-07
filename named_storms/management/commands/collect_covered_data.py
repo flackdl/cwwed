@@ -44,6 +44,7 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
+                    # instantiate the right processor factory
                     if provider.processor == PROCESSOR_DATA_SOURCE_NDBC:
                         factory = NDBCProcessorFactory(storm, provider)
                     elif provider.processor == PROCESSOR_DATA_SOURCE_USGS:

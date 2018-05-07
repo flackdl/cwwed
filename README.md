@@ -68,7 +68,16 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     docker build -t cwwed-thredds configs/thredds
     
     # create secrets
-    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) --from-literal=CWWED_ARCHIVES_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/cwwed_archives_access_key_id.txt) --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt)
+    # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
+    kubectl create secret generic cwwed-secrets \
+        --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
+        --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
+        --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \
+        --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) \
+        --from-literal=CWWED_ARCHIVES_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/cwwed_archives_access_key_id.txt) \
+        --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt) \
+        --from-literal=CELERY_FLOWER_USER=$(cat ~/Documents/cwwed/secrets/celery_flower_user.txt) \
+        --from-literal=CELERY_FLOWER_PASSWORD=$(cat ~/Documents/cwwed/secrets/celery_flower_password.txt)
     
     # create everything all at once (in the right order: services, local volumes then deployments)
     ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | xargs -L 1 kubectl apply -f
@@ -133,7 +142,6 @@ Environment variables
 - `DATABASE_URL`
 - `SLACK_BOT_TOKEN`
 - `CWWED_NSEM_PASSWORD`
-- `AWS_STORAGE_BUCKET_NAME`
 
 Create S3 bucket and configure CORS settings (prepopulated settings look ok).
 However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
@@ -149,8 +157,7 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     # (if necessary) configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
     
-    # create secrets
-    kubectl create secret generic cwwed-secrets --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt)
+    # create secrets (REFER to secrets in dev instructions)
     
     # create EFS and make sure it's in the same VPC as the cluster, along with the node's security group
     
