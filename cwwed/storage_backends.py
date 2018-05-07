@@ -1,6 +1,5 @@
 import boto3
 from django.conf import settings
-from django.core.files import File
 from django.core.files.storage import FileSystemStorage
 from storages.backends.s3boto3 import S3Boto3Storage
 
@@ -10,13 +9,15 @@ class LocalFileSystemStorage(FileSystemStorage):
     Thin wrapper around the default `FileSystemStorage` to provide a "copy" method along with the `ObjectStorage` class.
     """
 
-    # TODO - this doesn't work
     def copy(self, source: str, destination: str):
         # delete any existing version if it exists
         if self.exists(destination):
             self.delete(destination)
-        with File(open(destination, 'rb')) as fd:
-            self.save(source, fd)
+
+        with self.open(source, 'rb') as s:
+            with self.open(destination, 'wb') as d:
+                for chunk in s.chunks():
+                    d.write(chunk)
 
 
 class ObjectStorage(S3Boto3Storage):
