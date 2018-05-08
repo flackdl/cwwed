@@ -1,3 +1,4 @@
+import os
 import boto3
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
@@ -6,10 +7,13 @@ from storages.backends.s3boto3 import S3Boto3Storage
 
 class LocalFileSystemStorage(FileSystemStorage):
     """
-    Thin wrapper around the default `FileSystemStorage` to provide a "copy" method along with the `ObjectStorage` class.
+    Thin wrapper around the default `FileSystemStorage` to provide a "copy" method
     """
 
     def copy(self, source: str, destination: str):
+        """
+        Copies source to destination in local storage
+        """
         # delete any existing version if it exists
         if self.exists(destination):
             self.delete(destination)
@@ -36,11 +40,19 @@ class ObjectStorage(S3Boto3Storage):
         super().__init__(*args, **kwargs)
 
     def copy(self, source: str, destination: str):
+        """
+        Copies an S3 object to another location withing the same bucket
+        """
         # delete any existing version if it exists
         if self.exists(destination):
             self.delete(destination)
 
-        s3 = boto3.resource('s3')
+        # create s3 client
+        s3 = boto3.resource(
+            's3',
+            aws_access_key_id=os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID'],
+            aws_secret_access_key=os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY'],
+        )
         copy_source = {
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
             'Key': source,

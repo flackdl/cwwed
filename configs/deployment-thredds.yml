@@ -19,9 +19,6 @@ spec:
         #claimName: cwwed-volume-claim
          claimName: efs
       containers:
-        resources:
-          requests:
-            memory: "2000M"
       - name: thredds-container
         image: flackdl/thredds
         imagePullPolicy: Always
@@ -31,3 +28,6 @@ spec:
         - mountPath: "/usr/local/tomcat/content/thredds/public"
           name: cwwed-volume-storage
           readOnly: true
+        resources:
+          requests:
+            memory: "1000M"

@@ -20,7 +20,7 @@
     <datasetScan name="CWWED"
                  ID="coveredDataDatasetScan"
                  path="cwwed"
-                 location="content/">
+                 location="content/THREDDS/">
 
         <metadata inherited="true">
             <serviceName>all</serviceName>
