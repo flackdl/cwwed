@@ -50,8 +50,8 @@ class ObjectStorage(S3Boto3Storage):
         # create s3 client
         s3 = boto3.resource(
             's3',
-            aws_access_key_id=os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID'],
-            aws_secret_access_key=os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY'],
+            aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
         )
         copy_source = {
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
