@@ -128,7 +128,7 @@ def archive_nsem_covered_data(nsem_id):
         src_path = log.snapshot
         dest_path = os.path.join(storage_path, os.path.basename(src_path))
         # copy snapshot to versioned nsem location in default storage
-        default_storage.copy(src_path, dest_path)
+        default_storage.copy_within_storage(src_path, dest_path)
 
     nsem.covered_data_snapshot = storage_path
     nsem.save()

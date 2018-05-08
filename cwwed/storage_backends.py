@@ -1,16 +1,27 @@
-import os
 import boto3
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from storages.backends.s3boto3 import S3Boto3Storage
 
 
-class LocalFileSystemStorage(FileSystemStorage):
+class DefaultStorageMixin:
+    """
+    Mixin for default storage backends to provide some extra methods
+    """
+
+    def copy_within_storage(self, source: str, destination: str):
+        raise NotImplementedError('copy is not implemented')
+
+    def storage_url(self, path):
+        raise NotImplementedError('storage_url is not implemented')
+
+
+class LocalFileSystemStorage(DefaultStorageMixin, FileSystemStorage):
     """
     Thin wrapper around the default `FileSystemStorage` to provide a "copy" method
     """
 
-    def copy(self, source: str, destination: str):
+    def copy_within_storage(self, source: str, destination: str):
         """
         Copies source to destination in local storage
         """
@@ -23,8 +34,11 @@ class LocalFileSystemStorage(FileSystemStorage):
                 for chunk in s.chunks():
                     d.write(chunk)
 
+    def storage_url(self, path):
+        return '{}{}'.format(settings.MEDIA_URL, path)
 
-class ObjectStorage(S3Boto3Storage):
+
+class ObjectStorage(DefaultStorageMixin, S3Boto3Storage):
     """
     AWS S3 Storage backend
     """
@@ -39,9 +53,9 @@ class ObjectStorage(S3Boto3Storage):
 
         super().__init__(*args, **kwargs)
 
-    def copy(self, source: str, destination: str):
+    def copy_within_storage(self, source: str, destination: str):
         """
-        Copies an S3 object to another location withing the same bucket
+        Copies an S3 object to another location within the same bucket
         """
         # delete any existing version if it exists
         if self.exists(destination):
@@ -58,6 +72,9 @@ class ObjectStorage(S3Boto3Storage):
             'Key': source,
         }
         s3.meta.client.copy(copy_source, settings.AWS_ARCHIVE_BUCKET_NAME, destination)
+
+    def storage_url(self, path):
+        return 's3://{}/{}'.format(self.bucket_name, path)
 
 
 class StaticStorage(S3Boto3Storage):

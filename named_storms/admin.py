@@ -43,7 +43,7 @@ class NamedStormAdmin(admin.GeoModelAdmin):
 
 @admin.register(NSEM)
 class NSEMAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'named_storm', 'date_requested', 'date_returned',)
+    list_display = ('id', 'named_storm', 'date_requested', 'date_returned', 'covered_data_snapshot')
     list_filter = ('named_storm', 'date_requested', 'date_returned',)
     readonly_fields = ('date_requested',)
 

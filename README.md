@@ -198,21 +198,23 @@ Kubernetes Dashboard
     
 ## NSEM process
 
+*TODO - update to use AWS S3*
+
 Submit a new NSEM request using the user's generated token:
 
     curl -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem/
     
     {
         "id": 45,
-        "covered_data_snapshot_url": "http://127.0.0.1:8000/api/nsem/43/covered-data/",
         "date_requested": "2018-04-04T14:28:00.646771Z",
         "date_returned": null,
-        "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v43/input.tar",
+        "covered_data_snapshot": "Harvey/NSEM/v43/input.tar",
         "model_output_snapshot": "",
         "named_storm": 1
     }
 
     
+*TODO*
 Download the covered data for an NSEM record:
 
     curl -s -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" http://127.0.0.1:8000/api/nsem/45/covered-data/ > /tmp/data.tgz
@@ -224,7 +226,19 @@ Upload model output for a specific NSEM record:
     # assumes "output.tgz" is in current directory
     curl -XPUT -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" --data-binary @output.tgz "http://127.0.0.1:8000/api/nsem/45/upload-output/"
     
+    # upload using checksum
+    FILE="output.tgz"
+    CHECKSUM=$(openssl md5 -binary "${FILE}" | base64)
+    aws s3api put-object --bucket cwwed-archives --key "NSEM/upload/$(basename "${FILE}")" --body "${FILE}" --metadata md5chksum=${CHECKSUM} --content-md5 ${CHECKSUM} --profile nsem
     
-## NSEM shared data
-
-Create AWS user with permissions from `configs/aws/s3-policy-nsem-shared.json` and they'll be able to upload to `s3://cwwed-shared/nsem/`.  See the [wiki instructions](https://github.com/CWWED/cwwed/wiki/NSEM-Shared-Storage-(AWS-S3))
+    # verify uploaded checksum via cli
+    aws s3api head-object --bucket cwwed-archives --key "NSEM/upload/$(basename "${FILE}")"  --profile nsem
+    
+    # verify downloaded checksum via python
+    b64encode(hashlib.md5(open('NDBC - Standard Meteorological data.tgz', 'rb').read()).digest())
+    
+    
+## NSEM AWS policies
+Create AWS user "nsem" and assign the following polices:
+ - `configs/aws/s3-policy-nsem-shared.json` and they'll be able to upload to `s3://cwwed-shared/nsem/`.  See the [wiki instructions](https://github.com/CWWED/cwwed/wiki/NSEM-Shared-Storage-(AWS-S3))
+ - `configs/aws/s3-policy-nsem-upload.json` and they'll be able to upload to `s3://cwwed-archives/NSEM/upload/`.

@@ -1,6 +1,7 @@
 import re
 from urllib import parse
 from django.conf import settings
+from django.core.files.storage import default_storage
 from rest_framework import serializers
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
 from named_storms.tasks import archive_nsem_covered_data
@@ -60,6 +61,11 @@ class NSEMSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
     """
+
+    storage_url = serializers.SerializerMethodField()
+
+    def get_storage_url(self, obj: NSEM):
+        return default_storage.storage_url(obj.covered_data_snapshot)
 
     class Meta:
         model = NSEM
