@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: celery-flower-container
-        image: flackdl/cwwed:s3
+        image: flackdl/cwwed
         imagePullPolicy: Always
         command: ['celery']
         args: ['flower', '-A', 'cwwed', '--basic_auth=$(CELERY_FLOWER_USER):$(CELERY_FLOWER_PASSWORD)', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']

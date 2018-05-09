@@ -20,7 +20,7 @@ spec:
          claimName: efs
       containers:
       - name: cwwed-container
-        image: flackdl/cwwed:s3
+        image: flackdl/cwwed
         imagePullPolicy: Always
         ports:
         - containerPort: 80

@@ -20,7 +20,7 @@ spec:
          claimName: efs
       containers:
       - name: celery-container
-        image: flackdl/cwwed:s3
+        image: flackdl/cwwed
         imagePullPolicy: Always
         command: ['celery']
         args: ['worker', '--concurrency=10', '-A', 'cwwed', '-l', 'info']
