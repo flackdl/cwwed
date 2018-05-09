@@ -249,10 +249,24 @@ Upload model output for a specific NSEM record:
 Update the "nsem" record to indicate the post-storm assessment has been uploaded.
 
     # update the nsem version with the aws s3 path (expects to be named by the version, i.e "v76.tgz")
-    curl -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"model_output_snapshot": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
+    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"model_output_snapshot": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
     
+    {
+      "id": 76,
+      "storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
+      "date_requested": "2018-05-09T18:48:47.685854Z",
+      "date_returned": null,
+      "covered_data_snapshot": "NSEM/Harvey/v58/Covered Data",
+      "model_output_snapshot": "NSEM/upload/v58.tgz",
+      "model_output_snapshot_extracted": false,
+      "named_storm": 1
+    }
     
+The `model_output_snapshot_extracted` field will initially be `false` until a background job has processed the upload.
+
 ## NSEM AWS policies
+
 Create AWS user "nsem" and assign the following polices:
+
  - `configs/aws/s3-policy-nsem-shared.json` and they'll be able to upload to `s3://cwwed-shared/nsem/`.  See the [wiki instructions](https://github.com/CWWED/cwwed/wiki/NSEM-Shared-Storage-(AWS-S3))
- - `configs/aws/s3-policy-nsem-upload.json` and they'll be able to upload to `s3://cwwed-archives/NSEM/upload/`.
+ - `configs/aws/s3-policy-nsem-upload.json` and they'll be able to read everything in `s3://cwwed-archives/NSEM/` and upload to `s3://cwwed-archives/NSEM/upload/`.
