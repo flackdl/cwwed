@@ -92,6 +92,7 @@ class NSEM(models.Model):
     date_returned = models.DateTimeField(null=True)  # manually set once the model output is returned
     covered_data_snapshot = models.TextField(blank=True)  # path to the covered data snapshot
     model_output_snapshot = models.TextField(blank=True)  # path to the model output snapshot
+    model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
 
     def __str__(self):
         return 'NSEM: {}'.format(self.named_storm)

@@ -1,10 +1,10 @@
+import os
 import re
 from urllib import parse
 from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework import serializers
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
-from named_storms.tasks import archive_nsem_covered_data
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -62,17 +62,31 @@ class NSEMSerializer(serializers.ModelSerializer):
     Named Storm Event Model Serializer
     """
 
-    storage_url = serializers.SerializerMethodField()
-
-    def get_storage_url(self, obj: NSEM):
-        return default_storage.storage_url(obj.covered_data_snapshot)
-
     class Meta:
         model = NSEM
         fields = '__all__'
 
-    def create(self, validated_data):
-        # save the instance first so we can create a task to archive the covered data snapshot
-        instance = super().create(validated_data)  # type: NSEM
-        archive_nsem_covered_data.delay(instance.id)
-        return instance
+    storage_url = serializers.SerializerMethodField()
+
+    def get_storage_url(self, obj: NSEM):
+        if obj.covered_data_snapshot:
+            return default_storage.storage_url(obj.covered_data_snapshot)
+        return None
+
+    def validate_model_output_snapshot(self, value):
+        """
+        Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
+        """
+        if self.instance:
+            s3_path = os.path.join(
+                settings.CWWED_NSEM_DIR_NAME,
+                settings.CWWED_NSEM_UPLOAD_DIR_NAME,
+                'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)
+            )
+            # verify the path is in the expected format
+            if s3_path != value:
+                raise serializers.ValidationError("'model_output_snapshot' should equal '{}'".format(s3_path))
+            # verify the path exists
+            if not default_storage.exists(s3_path):
+                raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
+        return value
