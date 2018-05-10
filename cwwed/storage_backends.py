@@ -1,7 +1,9 @@
+import os
 import boto3
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from storages.backends.s3boto3 import S3Boto3Storage
+from named_storms.utils import create_directory
 
 
 class DefaultStorageMixin:
@@ -25,6 +27,11 @@ class LocalFileSystemStorage(DefaultStorageMixin, FileSystemStorage):
         """
         Copies source to destination in local storage
         """
+
+        # create the directories in case they don't exist yet
+        create_directory(os.path.join(settings.CWWED_DATA_DIR, os.path.dirname(destination)))
+        create_directory(os.path.join(settings.CWWED_DATA_DIR, os.path.dirname(source)))
+
         # delete any existing version if it exists
         if self.exists(destination):
             self.delete(destination)

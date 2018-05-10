@@ -66,9 +66,9 @@ class NSEMSerializer(serializers.ModelSerializer):
         model = NSEM
         fields = '__all__'
 
-    storage_url = serializers.SerializerMethodField()
+    covered_data_storage_url = serializers.SerializerMethodField()
 
-    def get_storage_url(self, obj: NSEM):
+    def get_covered_data_storage_url(self, obj: NSEM):
         if obj.covered_data_snapshot:
             return default_storage.storage_url(obj.covered_data_snapshot)
         return None

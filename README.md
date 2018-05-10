@@ -206,7 +206,7 @@ Submit a new NSEM request using the user's generated token:
     curl -sH "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem/
     {
         "id":76,
-        "storage_url": null,
+        "covered_data_storage_url": null,
         "date_requested": "2018-05-09T17:25:42.695051Z",
         "date_returned": null, 
         "covered_data_snapshot": "",
@@ -215,15 +215,15 @@ Submit a new NSEM request using the user's generated token:
         "named_storm": 1,
     }
     
-The `storage_url` in the response will initially be empty, but a background process will have been initiated and eventually populate the AWS S3 bucket which you'll download the covered data from.
+The `covered_data_storage_url` in the response will initially be empty, but a background process will have been initiated and eventually populate the AWS S3 bucket which you'll download the covered data from.
 
-Wait a few minutes and re-query the "nsem" record to see if `storage_url` has been populated.
+Wait a few minutes and re-query the "nsem" record to see if `covered_data_storage_url` has been populated.
 
     curl -sH "Content-Type: application/json" http://127.0.0.1:8000/api/nsem/76/
     
     {
         "id": 76,
-        "storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
+        "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
         "date_requested": "2018-05-09T17:48:22.583653Z",
         "date_returned": "2018-05-09T18:02:28.497192Z",
         "covered_data_snapshot": "NSEM/Harvey/v76/Covered Data",
@@ -253,7 +253,7 @@ Update the "nsem" record to indicate the post-storm assessment has been uploaded
     
     {
       "id": 76,
-      "storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
+      "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
       "date_requested": "2018-05-09T18:48:47.685854Z",
       "date_returned": null,
       "covered_data_snapshot": "NSEM/Harvey/v58/Covered Data",
