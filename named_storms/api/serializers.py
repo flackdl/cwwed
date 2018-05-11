@@ -75,9 +75,15 @@ class NSEMSerializer(serializers.ModelSerializer):
 
     def validate_model_output_snapshot(self, value):
         """
+        Check that it hasn't already been processed
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
         """
-        if self.instance:
+        obj = self.instance  # type: NSEM
+        if obj:
+            # already extracted
+            if obj.model_output_snapshot_extracted:
+                raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
+
             s3_path = os.path.join(
                 settings.CWWED_NSEM_DIR_NAME,
                 settings.CWWED_NSEM_UPLOAD_DIR_NAME,
