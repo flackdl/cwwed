@@ -1,3 +1,4 @@
+import json
 import os
 import errno
 import argparse
@@ -53,7 +54,7 @@ def upload_psa(args):
     file = args['file']
 
     # query the psa
-    nsem_data = get_psa(psa_id)
+    nsem_data = fetch_psa(psa_id)
 
     # verify the covered data has been packaged (necessary for parsing bucket)
     if not nsem_data.get('covered_data_storage_url'):
@@ -99,7 +100,7 @@ def upload_psa(args):
     print('Successfully updated PSA in CWWED')
 
 
-def get_psa(psa_id):
+def fetch_psa(psa_id):
     # query the api using a particular psa to find the object storage path for the Covered Data
     url = '{}{}/'.format(
         os.path.join(API_ROOT, ENDPOINT_NSEM),
@@ -110,6 +111,10 @@ def get_psa(psa_id):
     nsem_data = response.json()
 
     return nsem_data
+
+
+def get_psa(args):
+    print(json.dumps(fetch_psa(args['psa-id']), indent=2))
 
 
 def download_cd(args):
@@ -127,7 +132,7 @@ def download_cd(args):
     for _ in range(COVERED_DATA_SNAPSHOT_ATTEMPTS):
 
         # query the psa
-        nsem_data = get_psa(psa_id)
+        nsem_data = fetch_psa(psa_id)
 
         # verify the "storage key" exists and points to an S3 object store
         # i.e s3://cwwed-archives/NSEM/Harvey/v76/Covered Data
@@ -196,6 +201,11 @@ parser_psa_upload.add_argument("psa-id", help='The id of this post-storm assessm
 parser_psa_upload.add_argument("file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload')
 parser_psa_upload.add_argument("api-token", help='API token')
 parser_psa_upload.set_defaults(func=upload_psa)
+
+# psa - get
+parser_psa_get = subparsers_psa.add_parser('get', help='Get a PSA')
+parser_psa_get.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
+parser_psa_get.set_defaults(func=get_psa)
 
 #
 # Covered Data
