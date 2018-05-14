@@ -113,14 +113,14 @@ def get_psa(psa_id):
 
 
 def download_cd(args):
+    psa_id = args['psa-id']
+
     # create the output directory if it's been declared
     output_dir = args['output_dir']
     if output_dir:
         create_directory(output_dir)
     else:
-        output_dir = './'
-
-    psa_id = args['psa-id']
+        output_dir = './PSA-v{}-CD'.format(psa_id)
 
     # query the psa and see if the covered data has been packaged and ready for download.
     # sleep in between attempts for a limited amount of tries
