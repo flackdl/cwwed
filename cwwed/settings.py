@@ -219,7 +219,6 @@ CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w:gz'
 CWWED_NSEM_ARCHIVE_READ_MODE = 'r:gz'
 CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/tar'
 CWWED_NSEM_USER = 'nsem'
-CWWED_NSEM_PERMISSION_DOWNLOAD_DATA = 'download_nsem_data'
 CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD', 'cookie123')
 
 THREDDS_URL = 'http://{}:9000/thredds/'.format(os.environ.get('THREDDS_HOST', 'localhost'))

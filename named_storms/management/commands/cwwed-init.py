@@ -23,7 +23,6 @@ class Command(BaseCommand):
         perm_names = [
             'change_{}'.format(NSEM._meta.model_name),  # change model
             'add_{}'.format(NSEM._meta.model_name),  # add model
-            settings.CWWED_NSEM_PERMISSION_DOWNLOAD_DATA,  # custom download permission
         ]
         perms = Permission.objects.filter(codename__in=perm_names)
         user.user_permissions.set([p for p in perms])  # iterate because it won't accept a Queryset
