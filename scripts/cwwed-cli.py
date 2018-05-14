@@ -2,6 +2,7 @@ import json
 import os
 import errno
 import argparse
+from getpass import getpass
 from time import sleep
 from urllib import parse
 import boto3
@@ -10,6 +11,7 @@ import requests
 
 API_ROOT = 'http://dev.cwwed-staging.com/api/'
 ENDPOINT_NSEM = 'nsem/'
+ENDPOINT_AUTH = 'auth/'
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
 COVERED_DATA_SNAPSHOT_ATTEMPTS = 30
 NSEM_UPLOAD_BASE_PATH = 'NSEM/upload/'
@@ -178,8 +180,31 @@ def download_cd(args):
     print('Successfully downloaded Covered Data to {}'.format(output_dir))
 
 
+def authenticate(args):
+    username = input('Username: ')
+    password = getpass('Password: ')
+    url = os.path.join(API_ROOT, ENDPOINT_AUTH)
+    data = {
+        "username": username,
+        "password": password,
+    }
+    # retrieve token from user/pass
+    response = requests.post(url, data=data)
+    response.raise_for_status()
+    token_response = response.json()
+    print('Token: {}'.format(token_response['token']))
+
+
 parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
 subparsers = parser.add_subparsers(title='Commands', help='Commands')
+
+#
+# Auth
+#
+
+# authenticate and retrieve token
+parser_cd = subparsers.add_parser('auth', help='Authenticate with username/password and receive token')
+parser_cd.set_defaults(func=authenticate)
 
 #
 # Post Storm Assessment
