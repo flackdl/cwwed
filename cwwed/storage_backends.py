@@ -1,56 +1,16 @@
 import os
 import boto3
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
 from storages.backends.s3boto3 import S3Boto3Storage
-from named_storms.utils import create_directory
 
 
-class DefaultStorageMixin:
-    """
-    Mixin for default storage backends to provide some extra methods
-    """
-
-    def copy_within_storage(self, source: str, destination: str):
-        raise NotImplementedError('copy is not implemented')
-
-    def storage_url(self, path):
-        raise NotImplementedError('storage_url is not implemented')
-
-
-class LocalFileSystemStorage(DefaultStorageMixin, FileSystemStorage):
-    """
-    Thin wrapper around the default `FileSystemStorage` to provide a "copy" method
-    """
-
-    def copy_within_storage(self, source: str, destination: str):
-        """
-        Copies source to destination in local storage
-        """
-
-        # create the directories in case they don't exist yet
-        create_directory(os.path.join(settings.CWWED_DATA_DIR, os.path.dirname(destination)))
-        create_directory(os.path.join(settings.CWWED_DATA_DIR, os.path.dirname(source)))
-
-        # delete any existing version if it exists
-        if self.exists(destination):
-            self.delete(destination)
-
-        with self.open(source, 'rb') as s:
-            with self.open(destination, 'wb') as d:
-                for chunk in s.chunks():
-                    d.write(chunk)
-
-    def storage_url(self, path):
-        return '{}{}'.format(settings.MEDIA_URL, path)
-
-
-class ObjectStorage(DefaultStorageMixin, S3Boto3Storage):
+class S3ObjectStorage(S3Boto3Storage):
     """
     AWS S3 Storage backend
     """
 
     def __init__(self, *args, **kwargs):
+        self.location = self._get_location()  # ie. "local", "dev", "prod" etc
         self.default_acl = 'private'
         self.access_key = settings.CWWED_ARCHIVES_ACCESS_KEY_ID
         self.secret_key = settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY
@@ -60,13 +20,27 @@ class ObjectStorage(DefaultStorageMixin, S3Boto3Storage):
 
         super().__init__(*args, **kwargs)
 
+    @staticmethod
+    def _get_location():
+        """
+        Defines a "prefix" path in storage.  Empty if we're deploying to production
+        """
+        if settings.DEPLOY_STAGE == settings.DEPLOY_STAGE_PROD:
+            return ''
+        return settings.DEPLOY_STAGE
+
     def copy_within_storage(self, source: str, destination: str):
         """
         Copies an S3 object to another location within the same bucket
         """
+
         # delete any existing version if it exists
         if self.exists(destination):
             self.delete(destination)
+
+        # create absolute references to account for the default_storage "location" (prefix)
+        source_absolute = self.path(source)
+        destination_absolute = self.path(destination)
 
         # create s3 client
         s3 = boto3.resource(
@@ -76,15 +50,26 @@ class ObjectStorage(DefaultStorageMixin, S3Boto3Storage):
         )
         copy_source = {
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
-            'Key': source,
+            'Key': source_absolute,
         }
-        s3.meta.client.copy(copy_source, settings.AWS_ARCHIVE_BUCKET_NAME, destination)
+        s3.meta.client.copy(copy_source, settings.AWS_ARCHIVE_BUCKET_NAME, destination_absolute)
+
+    def path(self, path):
+        """
+        Include the default_storage "location" (prefix)
+        """
+        return os.path.join(self.location, path)
 
     def storage_url(self, path):
-        return 's3://{}/{}'.format(self.bucket_name, path)
+        return os.path.join(
+            's3://',
+            self.bucket_name,
+            self.location,
+            path,
+        )
 
 
-class StaticStorage(S3Boto3Storage):
+class S3StaticStorage(S3Boto3Storage):
     """
     AWS S3 Storage backend for static assets
     """

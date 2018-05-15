@@ -34,7 +34,7 @@ services:
       - "8888:80"
     env_file: .env  # not in version control
     environment:
-      DJANGO_SETTINGS_MODULE: cwwed.settings_aws
+      DJANGO_SETTINGS_MODULE: cwwed.settings
       DATABASE_URL: postgis://postgres@postgis:5432/postgres
     depends_on:
       - postgis

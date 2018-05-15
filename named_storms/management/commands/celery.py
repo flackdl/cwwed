@@ -1,3 +1,4 @@
+import os
 import shlex
 import subprocess
 from django.core.management.base import BaseCommand
@@ -9,13 +10,15 @@ def restart_celery():
     cmd = 'pkill celery'
     subprocess.call(shlex.split(cmd))
 
+    env = os.environ.copy()
+
     # start celery
     cmd = 'celery worker -A cwwed -l info'
-    subprocess.Popen(shlex.split(cmd))
+    subprocess.Popen(shlex.split(cmd), env=env)
 
     # start flower
     cmd = 'celery flower -A cwwed --port=5555'
-    subprocess.Popen(shlex.split(cmd))
+    subprocess.Popen(shlex.split(cmd), env=env)
 
 
 class Command(BaseCommand):

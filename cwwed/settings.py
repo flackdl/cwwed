@@ -24,8 +24,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'ssshhh...')
 
+DEPLOY_STAGE_LOCAL = 'local'
+DEPLOY_STAGE_DEV = 'dev'
+DEPLOY_STAGE_TEST = 'test'
+DEPLOY_STAGE_PROD = 'prod'
+DEPLOY_STAGE = os.environ.get('DEPLOY_STAGE', DEPLOY_STAGE_LOCAL)
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False if not os.environ.get('DEBUG') else True
+DEBUG = True if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else False
 
 # TODO
 # https://docs.djangoproject.com/en/2.0/topics/security/#host-headers-virtual-hosting
@@ -148,10 +154,18 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATIC_URL = '/static/'
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
-DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.LocalFileSystemStorage'
+# django-storages
+# http://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html
+
+# static storage
+AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'cwwed-static-assets')
+STATIC_URL = "https://%s.s3.amazonaws.com/" % AWS_STORAGE_BUCKET_NAME
+STATICFILES_STORAGE = 'cwwed.storage_backends.S3StaticStorage'
+
+# custom file storage
+DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.S3ObjectStorage'
+AWS_ARCHIVE_BUCKET_NAME = 'cwwed-archives'
+AWS_S3_ARCHIVE_DOMAIN = '%s.s3.amazonaws.com' % AWS_ARCHIVE_BUCKET_NAME
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/bucket/cwwed'
@@ -207,19 +221,20 @@ CORS_ALLOW_METHODS = (
 CWWED_ARCHIVE_EXTENSION = 'tgz'
 CWWED_DATA_DIR = MEDIA_ROOT
 CWWED_THREDDS_DIR = 'THREDDS'
+
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_ARCHIVE_DIR_NAME = 'Covered Data Archive'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
-CWWED_COVERED_DATA_ARCHIVE_TYPE = 'gztar'
+
 CWWED_NSEM_DIR_NAME = 'NSEM'
 CWWED_NSEM_PSA_DIR_NAME = 'Post Storm Assessment'
 CWWED_NSEM_UPLOAD_DIR_NAME = 'upload'
-CWWED_NSEM_ARCHIVE_INPUT_NAME = 'covered-data.{}'.format(CWWED_ARCHIVE_EXTENSION)
 CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w:gz'
 CWWED_NSEM_ARCHIVE_READ_MODE = 'r:gz'
-CWWED_NSEM_ARCHIVE_CONTENT_TYPE = 'application/tar'
 CWWED_NSEM_USER = 'nsem'
-CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD', 'cookie123')
+
+CWWED_ARCHIVES_ACCESS_KEY_ID = os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID']
+CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY']
 
 THREDDS_URL = 'http://{}:9000/thredds/'.format(os.environ.get('THREDDS_HOST', 'localhost'))
 

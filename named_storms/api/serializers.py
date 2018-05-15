@@ -1,5 +1,4 @@
 import os
-import re
 from urllib import parse
 from django.conf import settings
 from django.core.files.storage import default_storage
@@ -28,28 +27,6 @@ class CoveredDataSerializer(serializers.ModelSerializer):
 
 
 class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
-    thredds_url = serializers.SerializerMethodField()
-
-    def get_thredds_url(self, obj: NamedStormCoveredData):
-        """
-        find the most recent, successful covered data snapshot and return it's thredds url
-        """
-        logs = obj.named_storm.namedstormcovereddatalog_set.filter(success=True, covered_data=obj.covered_data).order_by('-date')
-        if logs.exists():
-            # TODO - this year-based naming convention is deprecated and needs updating
-            # get date-stamped year for directory name
-            match = re.match(r'.*(?P<year>\d{4}-\d{2}-\d{2}).*', logs[0].snapshot)
-            if match:
-                year = match.group('year')
-                return '{}://{}/thredds/catalog/cwwed/{}/{}/{}/{}/catalog.html'.format(
-                    self.context['request'].scheme,
-                    self.context['request'].get_host(),
-                    parse.quote(obj.named_storm.name),
-                    parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
-                    year,
-                    parse.quote(obj.covered_data.name),
-                )
-        return None
 
     class Meta:
         model = NamedStormCoveredData
@@ -66,7 +43,23 @@ class NSEMSerializer(serializers.ModelSerializer):
         model = NSEM
         fields = '__all__'
 
+    model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
+    thredds_url_nsem = serializers.SerializerMethodField()
+
+    def get_thredds_url_nsem(self, obj: NSEM):
+        if not obj.model_output_snapshot_extracted:
+            return None
+        return os.path.join(
+            settings.THREDDS_URL,
+            'catalog',
+            'cwwed',
+            parse.quote(obj.named_storm.name),
+            parse.quote(settings.CWWED_NSEM_DIR_NAME),
+            'v{}'.format(obj.id),
+            parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
+            'catalog.html',
+        )
 
     def get_covered_data_storage_url(self, obj: NSEM):
         if obj.covered_data_snapshot:
@@ -80,19 +73,35 @@ class NSEMSerializer(serializers.ModelSerializer):
         """
         obj = self.instance  # type: NSEM
         if obj:
+
             # already extracted
             if obj.model_output_snapshot_extracted:
                 raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
 
-            s3_path = os.path.join(
-                settings.CWWED_NSEM_DIR_NAME,
-                settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-                'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)
-            )
+            s3_path = self._get_model_output_upload_path()
+
             # verify the path is in the expected format
             if s3_path != value:
                 raise serializers.ValidationError("'model_output_snapshot' should equal '{}'".format(s3_path))
+
+            # remove any prefixed "location" from the default_storage instance
+            location_prefix = '{}/'.format(default_storage.location)
+            if s3_path.startswith(location_prefix):
+                s3_path = s3_path.replace(location_prefix, '')
+
             # verify the path exists
             if not default_storage.exists(s3_path):
                 raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
+
+            return s3_path
         return value
+
+    def get_model_output_upload_path(self, obj: NSEM):
+        return self._get_model_output_upload_path()
+
+    def _get_model_output_upload_path(self) -> str:
+        return default_storage.path(os.path.join(
+            settings.CWWED_NSEM_DIR_NAME,
+            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
+            'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)),
+        )

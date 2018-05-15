@@ -32,7 +32,7 @@ spec:
             memory: "2000M"
         env:
           - name: DJANGO_SETTINGS_MODULE
-            value: cwwed.settings_aws
+            value: cwwed.settings
           - name: CELERY_BROKER
             value: rabbitmq-service
           - name: CELERY_BACKEND

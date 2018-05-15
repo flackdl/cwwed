@@ -10,6 +10,7 @@ import sys
 import requests
 
 API_ROOT = 'http://dev.cwwed-staging.com/api/'
+#API_ROOT = 'http://localhost:8000/api/'
 ENDPOINT_NSEM = 'nsem/'
 ENDPOINT_AUTH = 'auth/'
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
@@ -45,10 +46,12 @@ def create_psa(args):
     }
     # request a new post-storm assessment from the api
     response = requests.post(url, data=data, headers=get_auth_headers(args['api-token']))
-    response.raise_for_status()
     nsem_data = response.json()
-    print('Successfully created PSA Id: {}'.format(nsem_data['id']))
-    print('Packaging Covered Data. This may take a few minutes')
+    if not response.ok:
+        sys.exit(nsem_data)
+    else:
+        print('Successfully created PSA Id: {}'.format(nsem_data['id']))
+        print('Packaging Covered Data. This may take a few minutes')
 
 
 def upload_psa(args):
@@ -79,11 +82,8 @@ def upload_psa(args):
     s3 = boto3.resource('s3')
     s3_bucket = s3.Bucket(bucket)
 
-    # upload the file
-    upload_path = os.path.join(
-        NSEM_UPLOAD_BASE_PATH,
-        'v{}.tgz'.format(nsem_data['id']),
-    )
+    # upload the file to the specified path
+    upload_path = nsem_data['model_output_upload_path']
     print('uploading {} to {}'.format(file, upload_path))
     s3_bucket.upload_file(file, upload_path)
     print('Successfully uploaded file')
@@ -98,8 +98,10 @@ def upload_psa(args):
         'model_output_snapshot': upload_path,
     }
     response = requests.patch(url, data=data, headers=get_auth_headers(args['api-token']))
-    response.raise_for_status()
-    print('Successfully updated PSA in CWWED')
+    if not response.ok:
+        sys.exit(response.json())
+    else:
+        print('Successfully updated PSA in CWWED')
 
 
 def fetch_psa(psa_id):
@@ -109,13 +111,13 @@ def fetch_psa(psa_id):
         psa_id,
     )
     response = requests.get(url)
-    response.raise_for_status()
-    nsem_data = response.json()
+    response_json = response.json()
+    if not response.ok:
+        sys.exit(response_json)
+    return response_json
 
-    return nsem_data
 
-
-def get_psa(args):
+def list_psa(args):
     print(json.dumps(fetch_psa(args['psa-id']), indent=2))
 
 
@@ -145,7 +147,7 @@ def download_cd(args):
             sleep(COVERED_DATA_SNAPSHOT_WAIT_SECONDS)
         else:
             # success
-            print('Success. Covered Data will begin downloading')
+            print('Covered Data found and will begin downloading...')
             break
     else:
         sys.exit('Covered Data took too long to be packaged. Please try again')
@@ -190,10 +192,13 @@ def authenticate(args):
     }
     # retrieve token from user/pass
     response = requests.post(url, data=data)
-    response.raise_for_status()
     token_response = response.json()
-    print('Token: {}'.format(token_response['token']))
+    print(token_response)
 
+
+############################
+# parse arguments
+############################
 
 parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=argparse.RawTextHelpFormatter)
 subparsers = parser.add_subparsers(title='Commands', help='Commands')
@@ -221,26 +226,22 @@ parser_psa_create.add_argument("api-token", help='API token')
 parser_psa_create.set_defaults(func=create_psa)
 
 # psa - upload
-parser_psa_upload = subparsers_psa.add_parser('upload', help='Upload a PSA')
+parser_psa_upload = subparsers_psa.add_parser('upload', help='Upload a PSA product')
 parser_psa_upload.add_argument("psa-id", help='The id of this post-storm assessment', type=int)
 parser_psa_upload.add_argument("file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload')
 parser_psa_upload.add_argument("api-token", help='API token')
 parser_psa_upload.set_defaults(func=upload_psa)
 
-# psa - get
-parser_psa_get = subparsers_psa.add_parser('get', help='Get a PSA')
-parser_psa_get.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
-parser_psa_get.set_defaults(func=get_psa)
+# psa - list
+parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
+parser_psa_list.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
+parser_psa_list.set_defaults(func=list_psa)
 
-#
-# Covered Data
-#
-
-# download
-parser_cd = subparsers.add_parser('download-cd', help='Download Covered Data')
-parser_cd.add_argument("psa-id", help='The id for the psa', type=int)
-parser_cd.add_argument("--output-dir", help='The output directory')
-parser_cd.set_defaults(func=download_cd)
+# psa - download covered data
+parser_psa_download_cd = subparsers_psa.add_parser('download-cd', help='Download Covered Data for a particular PSA')
+parser_psa_download_cd.add_argument("psa-id", help='The id for the psa', type=int)
+parser_psa_download_cd.add_argument("--output-dir", help='The output directory')
+parser_psa_download_cd.set_defaults(func=download_cd)
 
 #
 # process args
@@ -250,4 +251,5 @@ args = parser.parse_args()
 if 'func' in args:
     args.func(vars(args))
 else:
+    print(args)
     parser.print_help(sys.stderr)

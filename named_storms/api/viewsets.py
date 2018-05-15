@@ -35,6 +35,6 @@ class NSEMViewset(viewsets.ModelViewSet):
         archive_nsem_covered_data.delay(obj.id)
 
     def perform_update(self, serializer):
-        # save the instance first so we can create a task to archive the model output snapshot
+        # save the instance first so we can create a task to extract the model output snapshot
         obj = serializer.save()
         extract_nsem_model_output.delay(obj.id)

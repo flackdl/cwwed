@@ -40,6 +40,11 @@ Initial Setup
     # create "nsem" user & model permissions
     python manage.py cwwed-init
     
+    
+Collect Covered Data
+
+    python manage.py collect_covered_data
+    
 ##### Helpers
 
 Purge RabbitMQ
@@ -147,7 +152,7 @@ Create S3 bucket and configure CORS settings (prepopulated settings look ok).
 However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
 
     # collect static files to S3 (from local/dev computer since it's auth'd with aws)
-    AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic --settings=cwwed.settings_aws
+    AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic
     
 Create AWS user *cwwed-archives* and assign the following polices:
  - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.

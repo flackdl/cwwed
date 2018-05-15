@@ -168,12 +168,13 @@ def extract_nsem_model_output(nsem_id):
     # copy from "upload" directory to the versioned path
     default_storage.copy_within_storage(nsem.model_output_snapshot, storage_path)
 
-    # delete the old, uploaded copy
+    # delete the original/uploaded copy
     default_storage.delete(nsem.model_output_snapshot)
 
     with default_storage.open(storage_path, 'rb') as sd:
         file_system_path = os.path.join(
             named_storm_nsem_version_path(nsem),
+            settings.CWWED_NSEM_PSA_DIR_NAME,
             os.path.basename(nsem.model_output_snapshot),
         )
 
