@@ -1,14 +1,8 @@
-#apiVersion: batch/v1beta1
 apiVersion: batch/v1
-#kind: CronJob
 kind: Job
 metadata:
   name: cwwed-container-covered-data
 spec:
-  # once a day, early morning, east coast
-  #schedule: "8 * * * *"
-  #jobTemplate:
-  #spec:
   template:
     spec:
       volumes:
