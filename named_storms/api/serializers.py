@@ -50,16 +50,19 @@ class NSEMSerializer(serializers.ModelSerializer):
     def get_thredds_url_nsem(self, obj: NSEM):
         if not obj.model_output_snapshot_extracted:
             return None
-        return os.path.join(
-            settings.THREDDS_URL,
-            'catalog',
-            'cwwed',
-            parse.quote(obj.named_storm.name),
-            parse.quote(settings.CWWED_NSEM_DIR_NAME),
-            'v{}'.format(obj.id),
-            parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
-            'catalog.html',
-        )
+        return '{}://{}'.format(
+            self.context['request'].scheme,
+            os.path.join(
+                self.context['request'].get_host(),
+                'thredds',
+                'catalog',
+                'cwwed',
+                parse.quote(obj.named_storm.name),
+                parse.quote(settings.CWWED_NSEM_DIR_NAME),
+                'v{}'.format(obj.id),
+                parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
+                'catalog.html',
+            ))
 
     def get_covered_data_storage_url(self, obj: NSEM):
         if obj.covered_data_snapshot:
