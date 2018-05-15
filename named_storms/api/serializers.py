@@ -103,8 +103,10 @@ class NSEMSerializer(serializers.ModelSerializer):
         return self._get_model_output_upload_path()
 
     def _get_model_output_upload_path(self) -> str:
-        return default_storage.path(os.path.join(
-            settings.CWWED_NSEM_DIR_NAME,
-            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-            'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)),
-        )
+        if self.instance:
+            return default_storage.path(os.path.join(
+                settings.CWWED_NSEM_DIR_NAME,
+                settings.CWWED_NSEM_UPLOAD_DIR_NAME,
+                'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)),
+            )
+        return ''
