@@ -81,7 +81,7 @@ class NSEMSerializer(serializers.ModelSerializer):
             if obj.model_output_snapshot_extracted:
                 raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
 
-            s3_path = self._get_model_output_upload_path()
+            s3_path = self._get_model_output_upload_path(obj)
 
             # verify the path is in the expected format
             if s3_path != value:
@@ -100,13 +100,12 @@ class NSEMSerializer(serializers.ModelSerializer):
         return value
 
     def get_model_output_upload_path(self, obj: NSEM):
-        return self._get_model_output_upload_path()
+        return self._get_model_output_upload_path(obj)
 
-    def _get_model_output_upload_path(self) -> str:
-        if self.instance:
-            return default_storage.path(os.path.join(
-                settings.CWWED_NSEM_DIR_NAME,
-                settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-                'v{}.{}'.format(self.instance.id, settings.CWWED_ARCHIVE_EXTENSION)),
-            )
-        return ''
+    @staticmethod
+    def _get_model_output_upload_path(obj: NSEM) -> str:
+        return default_storage.path(os.path.join(
+            settings.CWWED_NSEM_DIR_NAME,
+            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
+            'v{}.{}'.format(obj.id, settings.CWWED_ARCHIVE_EXTENSION)),
+        )
