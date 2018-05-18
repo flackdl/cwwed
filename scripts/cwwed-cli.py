@@ -12,10 +12,14 @@ import requests
 
 API_ROOT = 'http://dev.cwwed-staging.com/api/'
 #API_ROOT = 'http://localhost:8000/api/'
+
 ENDPOINT_NSEM = 'nsem/'
 ENDPOINT_AUTH = 'auth/'
+ENDPOINT_STORMS = 'named-storms/'
+
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
 COVERED_DATA_SNAPSHOT_ATTEMPTS = 30
+
 NSEM_UPLOAD_BASE_PATH = 'NSEM/upload/'
 
 DESCRIPTION = """
@@ -197,6 +201,20 @@ def authenticate(args):
     print(token_response)
 
 
+def search_storms(args):
+    storm_name = args['storm-name']
+    url = os.path.join(API_ROOT, ENDPOINT_STORMS)
+    data = {
+        "search": storm_name,
+    }
+    response = requests.get(url, params=data)
+    search_response = response.json()
+    if not response.ok:
+        sys.exit(search_response)
+    else:
+        print(json.dumps(search_response, indent=2))
+
+
 ############################
 # parse arguments
 ############################
@@ -211,6 +229,15 @@ subparsers = parser.add_subparsers(title='Commands', help='Commands')
 # authenticate and retrieve token
 parser_cd = subparsers.add_parser('auth', help='Authenticate with username/password and receive token')
 parser_cd.set_defaults(func=authenticate)
+
+#
+# Storms
+#
+
+# authenticate and retrieve token
+parser_storm = subparsers.add_parser('search-storms', help='Search for a particular storm')
+parser_storm.add_argument("storm-name", help='The name of the storm')
+parser_storm.set_defaults(func=search_storms)
 
 #
 # Post Storm Assessment
