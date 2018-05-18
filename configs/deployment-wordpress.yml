@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress-container
+  template:
+    metadata:
+      labels:
+        app: wordpress-container
+    spec:
+      volumes:
+      - name: wp-volume-storage
+        persistentVolumeClaim:
+         claimName: efs-wp
+      containers:
+      - name: wordpress
+        image: wordpress
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/var/www/html/"
+          name: wp-volume-storage
+        env:
+          - name: WORDPRESS_DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: wp-secrets
+                key: WORDPRESS_DB_HOST
+          - name: WORDPRESS_DB_USER
+            value: cwwed
+          - name: WORDPRESS_DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: wp-secrets
+                key: WORDPRESS_DB_PASSWORD
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: efs-wp
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
