@@ -20,8 +20,6 @@ ENDPOINT_STORMS = 'named-storms/'
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
 COVERED_DATA_SNAPSHOT_ATTEMPTS = 30
 
-NSEM_UPLOAD_BASE_PATH = 'NSEM/upload/'
-
 DESCRIPTION = """
 Utility for interacting with CWWED:
     - download Covered Data for a particular storm

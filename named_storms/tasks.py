@@ -171,6 +171,7 @@ def extract_nsem_model_output(nsem_id):
     # delete the original/uploaded copy
     default_storage.delete(nsem.model_output_snapshot)
 
+    # extract to file system path
     with default_storage.open(storage_path, 'rb') as sd:
         file_system_path = os.path.join(
             named_storm_nsem_version_path(nsem),
@@ -190,6 +191,14 @@ def extract_nsem_model_output(nsem_id):
         tar = tarfile.open(file_system_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)
         tar.extractall(os.path.dirname(file_system_path))
         tar.close()
+
+        # recursively update the permissions for all extracted directories and files
+        for root, dirs, files in os.walk(os.path.dirname(file_system_path)):
+            # using octal literal notation for chmod
+            for d in dirs:
+                os.chmod(os.path.join(root, d), 0o755)
+            for f in files:
+                os.chmod(os.path.join(root, f), 0o644)
 
         # remove the tgz now that we've extracted everything
         os.remove(file_system_path)

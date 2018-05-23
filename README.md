@@ -187,6 +187,10 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     
     # force a rolling update (to repull images)
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
+    
+    # generate new api token for a user
+    CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
+    kubectl exec -it ${CWWED_POD} -- python manage.py drf_create_token -r ${API_USER}
    
 Kubernetes Dashboard
     
