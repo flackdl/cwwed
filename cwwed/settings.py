@@ -33,6 +33,7 @@ DEPLOY_STAGE = os.environ.get('DEPLOY_STAGE', DEPLOY_STAGE_LOCAL)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else False
 
+
 # TODO
 # https://docs.djangoproject.com/en/2.0/topics/security/#host-headers-virtual-hosting
 ALLOWED_HOSTS = ['*']
@@ -213,6 +214,17 @@ CORS_ALLOW_METHODS = (
     'GET',
     'OPTIONS',
 )
+
+# email via sendgrid
+# https://docs.djangoproject.com/en/2.0/topics/email/
+# https://app.sendgrid.com/guide/integrate/langs/smtp
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_PORT = 25
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+# don't send emails if DEBUG is enabled, instead just print the email to the console
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 
 #
 # CWWED

@@ -1,19 +1,26 @@
 from __future__ import absolute_import, unicode_literals
+import json
 from datetime import datetime
+from django.contrib.auth.models import User
 from django.core.files import File
 from django.core.files.storage import default_storage
 import os
 import tarfile
 import requests
 from django.conf import settings
+from django.core.mail import send_mail
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.urls import reverse
+
 from cwwed.celery import app
+from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    create_directory)
+    create_directory,
+)
 
 RETRY_ARGS = dict(
     autoretry_for=(Exception,),
@@ -139,7 +146,7 @@ def archive_nsem_covered_data(nsem_id):
     nsem.covered_data_snapshot = storage_path
     nsem.save()
 
-    return default_storage.url(storage_path)
+    return NSEMSerializer(instance=nsem).data
 
 
 @app.task(**RETRY_ARGS)
@@ -210,3 +217,38 @@ def extract_nsem_model_output(nsem_id):
     nsem.save()
 
     return default_storage.url(storage_path)
+
+
+@app.task(**RETRY_ARGS)
+def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
+    """
+    Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
+    :param nsem_data serialized NSEM instance
+    :param base_url the scheme & domain that this request arrived
+    """
+    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+
+    body = """
+    {}
+    
+    {}
+    """.format(
+        # link to api endpoint for this nsem instance
+        '{}{}'.format(base_url, reverse('nsem-detail', args=[nsem.id])),
+        # raw json dump
+        json.dumps(nsem_data, indent=2),
+    )
+
+    # include the "nsem" user and also super users
+    recipients = [u.email for u in User.objects.filter(is_superuser=True) if u.email]
+    if nsem_user.email:
+        recipients.append(nsem_user.email)
+
+    send_mail(
+        subject='PSA v{}: Covered Data is ready for download'.format(nsem.id),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+    )
+    return nsem_data

@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from named_storms.tasks import archive_nsem_covered_data, extract_nsem_model_output
+from named_storms.tasks import archive_nsem_covered_data, extract_nsem_model_output, email_nsem_covered_data_complete_task
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 
@@ -32,7 +32,17 @@ class NSEMViewset(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # save the instance first so we can create a task to archive the covered data snapshot
         obj = serializer.save()
-        archive_nsem_covered_data.delay(obj.id)
+
+        base_url = '{}://{}'.format(
+            self.request.scheme,
+            self.request.get_host(),
+        )
+
+        archive_nsem_covered_data.apply_async(
+            (obj.id,),
+            # also send an email to the "nsem" user when the archival is complete
+            link=email_nsem_covered_data_complete_task.s(base_url),
+        )
 
     def perform_update(self, serializer):
         # save the instance first so we can create a task to extract the model output snapshot

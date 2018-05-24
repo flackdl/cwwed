@@ -10,6 +10,7 @@ def restart_celery():
     cmd = 'pkill celery'
     subprocess.call(shlex.split(cmd))
 
+    # include the current environment
     env = os.environ.copy()
 
     # start celery
