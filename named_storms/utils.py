@@ -1,11 +1,13 @@
 import os
 import errno
 import shutil
-from cwwed import slack
+
+from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import default_storage
 
+from cwwed import slack
 from named_storms.models import (
     PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM, CoveredData,
 )
@@ -119,3 +121,7 @@ def copy_path_to_default_storage(source_path: str, destination_path: str):
 
 def slack_error(message: str, channel='#errors'):
     slack.chat.post_message(channel, message)
+
+
+def get_superuser_emails():
+    return [u.email for u in User.objects.filter(is_superuser=True) if u.email]

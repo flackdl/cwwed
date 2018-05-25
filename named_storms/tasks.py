@@ -19,8 +19,7 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    create_directory, slack_error,
-)
+    create_directory, slack_error, get_superuser_emails)
 
 
 class TaskBase(app.Task):
@@ -159,43 +158,72 @@ def archive_nsem_covered_data_task(nsem_id):
     return NSEMSerializer(instance=nsem).data
 
 
-@app.task(**TASK_ARGS)
+class ExtractNSEMTaskBase(TaskBase):
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        """
+        On Failure, this posts to slack and emails the "nsem" user (and super users).
+        The first value in `args` is expected to be the nsem_id that failed to extract the uploaded PSA.
+        """
+        super().on_failure(exc, task_id, args, kwargs, einfo)
+
+        # the first arg should be the nsem
+        if args:
+            nsem = NSEM.objects.filter(pk=args[0])
+            if nsem.exists():
+                nsem = nsem.get()
+                nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+                # include the "nsem" user and all super users
+                recipients = get_superuser_emails()
+                if nsem_user.email:
+                    recipients.append(nsem_user.email)
+                send_mail(
+                    subject='Failed extracting PSA v{}'.format(nsem.id),
+                    message=str(exc),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=recipients,
+                )
+
+
+EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()
+EXTRACT_NSEM_TASK_ARGS.update({
+    'base': ExtractNSEMTaskBase,
+})
+
+
+@app.task(**EXTRACT_NSEM_TASK_ARGS)
 def extract_nsem_model_output_task(nsem_id):
     """
     Downloads the model product output from object storage and puts it in file storage
     """
 
-    # TODO - email "nsem" user for any error (can't extract file, i.e not a "tar gzip")
-
     nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    uploaded_file_path = nsem.model_output_snapshot
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.model_output_snapshot_extracted:
         return None
     # verify the uploaded output exists in storage
-    elif not default_storage.exists(nsem.model_output_snapshot):
-        raise Http404("{} doesn't exist in storage".format(nsem.model_output_snapshot))
+    elif not default_storage.exists(uploaded_file_path):
+        raise Http404("{} doesn't exist in storage".format(uploaded_file_path))
 
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
         nsem.named_storm.name,
         'v{}'.format(nsem.id),
         settings.CWWED_NSEM_PSA_DIR_NAME,
-        os.path.basename(nsem.model_output_snapshot),
+        os.path.basename(uploaded_file_path),
     )
 
     # copy from "upload" directory to the versioned path
-    default_storage.copy_within_storage(nsem.model_output_snapshot, storage_path)
-
-    # delete the original/uploaded copy
-    default_storage.delete(nsem.model_output_snapshot)
+    default_storage.copy_within_storage(uploaded_file_path, storage_path)
 
     # extract to file system path
     with default_storage.open(storage_path, 'rb') as sd:
         file_system_path = os.path.join(
             named_storm_nsem_version_path(nsem),
             settings.CWWED_NSEM_PSA_DIR_NAME,
-            os.path.basename(nsem.model_output_snapshot),
+            os.path.basename(uploaded_file_path),
         )
 
         # create the versioned path
@@ -228,6 +256,9 @@ def extract_nsem_model_output_task(nsem_id):
     nsem.date_returned = datetime.utcnow()
     nsem.save()
 
+    # delete the original/uploaded copy
+    default_storage.delete(uploaded_file_path)
+
     return default_storage.url(storage_path)
 
 
@@ -253,7 +284,7 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
     )
 
     # include the "nsem" user and all super users
-    recipients = [u.email for u in User.objects.filter(is_superuser=True) if u.email]
+    recipients = get_superuser_emails()
     if nsem_user.email:
         recipients.append(nsem_user.email)
 
