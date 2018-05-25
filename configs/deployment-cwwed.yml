@@ -71,3 +71,8 @@ spec:
               secretKeyRef:
                 name: cwwed-secrets
                 key: CWWED_ARCHIVES_SECRET_ACCESS_KEY
+          - name: EMAIL_HOST_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: cwwed-secrets
+                key: EMAIL_HOST_PASSWORD

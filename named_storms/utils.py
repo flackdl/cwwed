@@ -1,6 +1,7 @@
 import os
 import errno
 import shutil
+from cwwed import slack
 from django.conf import settings
 from django.core.files import File
 from django.core.files.storage import default_storage
@@ -114,3 +115,7 @@ def copy_path_to_default_storage(source_path: str, destination_path: str):
         default_storage.save(destination_path, fd)
 
     return destination_path
+
+
+def slack_error(message: str, channel='#errors'):
+    slack.chat.post_message(channel, message)

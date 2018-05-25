@@ -19,17 +19,27 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    create_directory,
+    create_directory, slack_error,
 )
 
-RETRY_ARGS = dict(
+
+class TaskBase(app.Task):
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        msg = '{0!r} failed: {1!r}'.format(task_id, exc)
+        print(msg)
+        slack_error(msg)
+
+
+TASK_ARGS = dict(
+    base=TaskBase,
     autoretry_for=(Exception,),
     default_retry_delay=5,
     max_retries=10,
 )
 
 
-@app.task(**RETRY_ARGS)
+@app.task(**TASK_ARGS)
 def fetch_url_task(url, verify=True, write_to_path=None):
     """
     :param url: URL to fetch
@@ -51,7 +61,7 @@ def fetch_url_task(url, verify=True, write_to_path=None):
     return response.content.decode()  # must return bytes for serialization
 
 
-@app.task(**RETRY_ARGS)
+@app.task(**TASK_ARGS)
 def process_dataset_task(data: list):
     """
     Run the dataset processor
@@ -71,8 +81,8 @@ def process_dataset_task(data: list):
     return processor.to_dict()
 
 
-@app.task(**RETRY_ARGS)
-def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
+@app.task(**TASK_ARGS)
+def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_id):
     """
     :param named_storm_id: id for a NamedStorm record
     :param covered_data_id: id for a CoveredData record
@@ -112,8 +122,8 @@ def archive_named_storm_covered_data(named_storm_id, covered_data_id, log_id):
     return log.snapshot
 
 
-@app.task(**RETRY_ARGS)
-def archive_nsem_covered_data(nsem_id):
+@app.task(**TASK_ARGS)
+def archive_nsem_covered_data_task(nsem_id):
     """
     Creates a single archive from all the covered data archives to pass off to the external NSEM
     """
@@ -149,15 +159,17 @@ def archive_nsem_covered_data(nsem_id):
     return NSEMSerializer(instance=nsem).data
 
 
-@app.task(**RETRY_ARGS)
-def extract_nsem_model_output(nsem_id):
+@app.task(**TASK_ARGS)
+def extract_nsem_model_output_task(nsem_id):
     """
     Downloads the model product output from object storage and puts it in file storage
     """
 
+    # TODO - email "nsem" user for any error (can't extract file, i.e not a "tar gzip")
+
     nsem = get_object_or_404(NSEM, pk=int(nsem_id))
 
-    # verify this instance needs it's model output to be extracted (don't raise an exception, though)
+    # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.model_output_snapshot_extracted:
         return None
     # verify the uploaded output exists in storage
@@ -219,7 +231,7 @@ def extract_nsem_model_output(nsem_id):
     return default_storage.url(storage_path)
 
 
-@app.task(**RETRY_ARGS)
+@app.task(**TASK_ARGS)
 def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
     """
     Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
@@ -230,23 +242,23 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
 
     body = """
-    {}
-    
-    {}
-    """.format(
+        {}
+        
+        {}
+        """.format(
         # link to api endpoint for this nsem instance
         '{}{}'.format(base_url, reverse('nsem-detail', args=[nsem.id])),
         # raw json dump
         json.dumps(nsem_data, indent=2),
     )
 
-    # include the "nsem" user and also super users
+    # include the "nsem" user and all super users
     recipients = [u.email for u in User.objects.filter(is_superuser=True) if u.email]
     if nsem_user.email:
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='PSA v{}: Covered Data is ready for download'.format(nsem.id),
+        subject='Covered Data is ready for download (PSA v{})'.format(nsem.id),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,

@@ -6,7 +6,7 @@ from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, US
 from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS, NamedStormCoveredDataLog
 from django.core.management.base import BaseCommand
 from cwwed import slack
-from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data
+from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import (
     named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory,
     remove_directory)
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                         shutil.move(os.path.join(incomplete_path, data.name), complete_path)
 
                         # create a task to archive the data
-                        archive_named_storm_covered_data.delay(
+                        archive_named_storm_covered_data_task.delay(
                             named_storm_id=storm.id,
                             covered_data_id=data.id,
                             log_id=log.id,
