@@ -8,8 +8,7 @@ from django.core.management.base import BaseCommand
 from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import (
-    named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory,
-    remove_directory)
+    named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory)
 
 
 class Command(BaseCommand):
@@ -89,9 +88,10 @@ class Command(BaseCommand):
 
                     if covered_data_success:
 
-                        # move the covered data outputs from the incomplete/staging directory to the complete directory
-                        # first remove any previous version in the complete path
-                        remove_directory(os.path.join(complete_path, data.name))
+                        # remove any previous version in the complete path
+                        shutil.rmtree(os.path.join(complete_path, data.name), ignore_errors=True)
+
+                        # then move the covered data outputs from the incomplete/staging directory to the complete directory
                         shutil.move(os.path.join(incomplete_path, data.name), complete_path)
 
                         # create a task to archive the data

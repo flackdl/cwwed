@@ -13,16 +13,9 @@ from named_storms.models import (
 )
 
 
-def remove_directory(path):
-    try:
-        shutil.rmtree(path)
-    except FileNotFoundError:
-        pass
-
-
 def create_directory(path, remove_if_exists=False):
     if remove_if_exists:
-        remove_directory(path)
+        shutil.rmtree(path, ignore_errors=True)
     try:
         os.makedirs(path)
     except OSError as exception:
