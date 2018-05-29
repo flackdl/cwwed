@@ -3,13 +3,15 @@ kind: Job
 metadata:
   name: cwwed-container-covered-data
 spec:
+  backoffLimit: 2  # number of retries
   template:
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
          claimName: efs
-      restartPolicy: OnFailure
+      # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+      restartPolicy: Never  # don't restart the container if the entire process fails
       containers:
       - name: cwwed-container-covered-data
         image: flackdl/cwwed
