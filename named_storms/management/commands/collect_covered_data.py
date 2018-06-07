@@ -2,13 +2,15 @@ import logging
 import os
 import shutil
 import celery
-from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory
-from named_storms.models import NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS, NamedStormCoveredDataLog
 from django.core.management.base import BaseCommand
+from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory, JPLQSCATL1CProcessorFactory
+from named_storms.models import (
+    NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS, NamedStormCoveredDataLog,
+    PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C,
+)
 from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
-from named_storms.utils import (
-    named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory)
+from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory
 
 
 class Command(BaseCommand):
@@ -33,7 +35,14 @@ class Command(BaseCommand):
 
                 covered_data_success = False
 
-                for provider in data.covereddataprovider_set.filter(active=True):
+                providers = data.covereddataprovider_set.filter(active=True)
+
+                if not providers.exists():
+                    # no need to continue if there aren't any active providers for this covered data
+                    self.stdout.write(self.style.WARNING('\t\tNo providers available.  Skipping this covered data'))
+                    continue
+
+                for provider in providers:
 
                     log = NamedStormCoveredDataLog(
                         named_storm=storm,
@@ -48,6 +57,8 @@ class Command(BaseCommand):
                         factory = NDBCProcessorFactory(storm, provider)
                     elif provider.processor == PROCESSOR_DATA_SOURCE_USGS:
                         factory = USGSProcessorFactory(storm, provider)
+                    elif provider.processor == PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C:
+                        factory = JPLQSCATL1CProcessorFactory(storm, provider)
                     else:
                         factory = ProcessorFactory(storm, provider)
 
@@ -64,7 +75,11 @@ class Command(BaseCommand):
                         log.save()
                         continue
 
-                    # fetch data in parallel but wait for all tasks to complete and captures results
+                    if not processors_data:
+                        self.stdout.write(self.style.WARNING('\t\tNo data provided.  Skipping provider'))
+                        continue
+
+                    # fetch data in parallel but wait for all tasks to complete and capture results
                     task_group = celery.group([process_dataset_task.s(data) for data in processors_data])
                     group_result = task_group()
 

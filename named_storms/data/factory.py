@@ -37,6 +37,13 @@ class ProcessorFactory:
             )
         ]
 
+    @staticmethod
+    def generic_filter(records: list):
+        # if DEBUG return a small subset of records
+        if settings.DEBUG:
+            return records[:10]
+        return records
+
 
 class USGSProcessorFactory(ProcessorFactory):
     """
@@ -78,12 +85,12 @@ class USGSProcessorFactory(ProcessorFactory):
         )
         files_req.raise_for_status()
         files_json = files_req.json()
-        # filter files
+
+        # filter unique files
         files_json = self._filter_unique_files(files_json)
 
-        # TODO
-        if settings.DEBUG:
-            files_json = files_json[:10]
+        # filter
+        files_json = self.generic_filter(files_json)
 
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
@@ -179,7 +186,178 @@ class USGSProcessorFactory(ProcessorFactory):
         raise Exception('Could not find deployment type for instrument_id {}'.format(instrument_id))
 
 
-class NDBCProcessorFactory(ProcessorFactory):
+class THREDDSCatalogFactory(ProcessorFactory):
+
+    namespaces = {
+        'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
+        'xlink': 'http://www.w3.org/1999/xlink',
+    }
+
+    def _catalog_ref_title(self, catalog_ref: etree.Element) -> str:
+        """
+        :return: title value for a particular catalogRef element
+        """
+        title_key = '{{{}}}title'.format(self.namespaces['xlink'])
+        return catalog_ref.get(title_key)
+
+    def _catalog_ref_href(self, catalog_ref: etree.Element) -> str:
+        """
+        :return: absolute value from "href" attribute for a particular catalogRef element
+        """
+        dir_path = os.path.dirname(self._provider.url)
+        href_key = '{{{}}}href'.format(self.namespaces['xlink'])
+        catalog_path = catalog_ref.get(href_key)
+        return os.path.join(
+            dir_path,
+            parse.urlparse(catalog_path).path,
+        )
+
+    def _is_using_catalog(self, title: str) -> bool:
+        return True
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        return True
+
+    def _catalog_ref_elements(self, catalog_url: str) -> List[etree.ElementTree]:
+        """
+        Fetches a catalog and returns all catalogRef elements from a catalog url
+        """
+
+        # fetch and parse the main catalog
+        catalog_response = requests.get(catalog_url, verify=self._verify_ssl, timeout=10)
+        catalog_response.raise_for_status()
+        catalog = etree.parse(BytesIO(catalog_response.content))
+
+        # return all catalogRef elements
+        return catalog.xpath('//catalog:catalogRef', namespaces=self.namespaces)
+
+    def _catalog_documents(self, catalog_urls) -> List[etree.ElementTree]:
+        """
+        Fetches the catalog urls in parallel via tasks.
+        :param catalog_urls: list of catalog urls
+        :return: list of lxml catalog elements
+        """
+        task_group = celery.group([tasks.fetch_url_task.s(url, self._verify_ssl) for url in catalog_urls])
+        task_promise = task_group()
+        catalogs = task_promise.get()
+        catalogs = [etree.parse(BytesIO(s.encode())) for s in catalogs]
+        return catalogs
+
+
+class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
+    """
+    JPL Quikscat L1C
+    Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
+    https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=ProcessingLevel:Platform&values=*1*:QUIKSCAT
+
+    The datasets are two levels deep in the catalog:
+        - year (i.e "2018")
+        - day of year (i.e "123" for the 123rd day of the year)
+    """
+
+    def _catalog_ref_url(self, catalog_ref: etree.Element) -> str:
+        """
+        :return: absolute catalog url for a particular catalogRef element
+        """
+        return '{}://{}{}'.format(
+            self._provider_url_parsed.scheme,
+            self._provider_url_parsed.hostname,
+            os.path.join(
+                catalog_ref.get('ID'),
+                'catalog.xml',
+            )
+        )
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        return dataset.endswith('.dat')
+
+    def _filter_catalog_refs_by_year(self, catalog_refs: etree.ElementTree) -> List[etree.ElementTree]:
+        """
+        Filters a list of top level (i.e titled by "year") catalogRef's
+        """
+        results = []
+        for ref in catalog_refs:
+            # the "title" will be the year, i.e "2018"
+            year = int(self._catalog_ref_title(ref))
+            if year in [self._named_storm_covered_data.date_start.year, self._named_storm_covered_data.date_end.year]:
+                results.append(ref)
+        return results
+
+    def _filter_catalog_refs_by_day(self, year: int, catalog_refs: etree.ElementTree) -> List[etree.ElementTree]:
+        """
+        Filters a list of 2nd level catalogRef's, titled by "day of year" (i.e "123" is the 123rd day of the year)
+        :param year YYYY
+        """
+        results = []
+        year_start_date = datetime(year, 1, 1).replace(tzinfo=pytz.utc)
+        for ref in catalog_refs:
+            # the "title" will be the day of the year, i.e "123"
+            day_of_year = int(self._catalog_ref_title(ref))
+            data_days_since_year_start_date = (self._named_storm_covered_data.date_start - year_start_date).days + 1
+            data_days_since_year_end_date = (self._named_storm_covered_data.date_end - year_start_date).days + 1
+            if data_days_since_year_end_date >= day_of_year >= data_days_since_year_start_date:
+                results.append(ref)
+        return results
+
+    def processors_data(self) -> List[ProcessorData]:
+        dataset_paths = []
+        processors_data = []
+
+        # fetch and build first level catalog refs (i.e designated by year)
+        catalog_ref_elements_year = self._catalog_ref_elements(self._provider.url)
+        catalog_ref_elements_year = self._filter_catalog_refs_by_year(catalog_ref_elements_year)
+
+        # fetch and build second level catalogs (ie. for day of the year)
+        catalog_refs = []
+        for ref_year in catalog_ref_elements_year:
+            year = int(self._catalog_ref_title(ref_year))
+            url = self._catalog_ref_url(ref_year)
+
+            catalog_documents_day = self._catalog_documents([url])
+
+            catalog_ref_elements_day = []
+            for catalog in catalog_documents_day:
+                catalog_ref_elements_day += catalog.xpath('//catalog:catalogRef', namespaces=self.namespaces)
+            catalog_ref_elements_day = self._filter_catalog_refs_by_day(year, catalog_ref_elements_day)
+
+            catalog_refs += catalog_ref_elements_day
+
+        # build a list of actual URLs for each yearly catalog
+        catalog_ref_urls_day = []
+        for ref in catalog_refs:
+            catalog_ref_urls_day.append(self._catalog_ref_url(ref))
+
+        # filter
+        catalog_ref_urls_day = self.generic_filter(catalog_ref_urls_day)
+
+        # build a list of relevant datasets for each catalog
+        catalog_documents = self._catalog_documents(catalog_ref_urls_day)
+        for catalog_document in catalog_documents:
+            for dataset in catalog_document.xpath('//catalog:dataset', namespaces=self.namespaces):
+                if self._is_using_dataset(dataset.get('name')):
+                    dataset_paths.append(dataset.get('ID'))
+
+        # build a list of processors for all the relevant datasets
+        for dataset_path in dataset_paths:
+            label = os.path.basename(dataset_path)
+            url = '{}://{}/{}'.format(
+                self._provider_url_parsed.scheme,
+                self._provider_url_parsed.hostname,
+                dataset_path,
+            )
+            folder = os.path.basename(os.path.dirname(url))
+            processors_data.append(ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=url,
+                label=label,
+                group=folder,
+            ))
+
+        return processors_data
+
+
+class NDBCProcessorFactory(THREDDSCatalogFactory):
     """
     https://dods.ndbc.noaa.gov/
     The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
@@ -197,38 +375,19 @@ class NDBCProcessorFactory(ProcessorFactory):
     _verify_ssl = False
 
     def processors_data(self) -> List[ProcessorData]:
-        station_urls = []
         dataset_paths = []
         processors_data = []
 
-        namespaces = {
-            'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
-            'xlink': 'http://www.w3.org/1999/xlink',
-        }
+        # TODO - need to refactor!!!!!!!
+        station_urls = self._catalog_ref_elements(self._provider.url)
 
-        # parse the main catalog and iterate through the individual buoy stations
-        catalog_response = requests.get(self._provider.url, verify=self._verify_ssl, timeout=10)
-        catalog_response.raise_for_status()
-        catalog = etree.parse(BytesIO(catalog_response.content))
-
-        # build a list of all station catalog urls
-        for catalog_ref in catalog.xpath('//catalog:catalogRef', namespaces=namespaces):
-            dir_path = os.path.dirname(self._provider.url)
-            href_key = '{{{}}}href'.format(namespaces['xlink'])
-            station_path = catalog_ref.get(href_key)
-            station_urls.append('{}/{}'.format(
-                dir_path,
-                parse.urlparse(station_path).path),
-            )
-
-        # TODO
-        if settings.DEBUG:
-            station_urls = station_urls[:10]
+        # filter
+        station_urls = self.generic_filter(station_urls)
 
         # build a list of relevant datasets for each station
-        stations = self._station_catalogs(station_urls)
+        stations = self._catalog_documents(station_urls)
         for station in stations:
-            for dataset in station.xpath('//catalog:dataset', namespaces=namespaces):
+            for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))
 
@@ -249,18 +408,6 @@ class NDBCProcessorFactory(ProcessorFactory):
             ))
 
         return processors_data
-
-    def _station_catalogs(self, station_urls) -> List[etree.ElementTree]:
-        """
-        Fetches the station urls in parallel via tasks.
-        :param station_urls: list of station catalog urls
-        :return: list of lxml station elements
-        """
-        task_group = celery.group([tasks.fetch_url_task.s(url, self._verify_ssl) for url in station_urls])
-        task_promise = task_group()
-        stations = task_promise.get()
-        stations = [etree.parse(BytesIO(s.encode())) for s in stations]
-        return stations
 
     def _is_using_dataset(self, dataset: str) -> bool:
         """
