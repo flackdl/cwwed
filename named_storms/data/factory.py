@@ -352,6 +352,15 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
                 url=url,
                 label=label,
                 group=folder,
+                kwargs={
+                    'headers': [
+                        ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
+                        ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
+                        ('inc', 'f4'), ('azi', 'f4'), ('atten', 'f4'), ('beam', 'u1'),
+                        ('land', 'u1'), ('espd', 'f4'), ('edir', 'f4'), ('rspd', 'f4'),
+                        ('rdir', 'f4'),
+                    ]
+                },
             ))
 
         return processors_data

@@ -18,6 +18,7 @@ class ProcessorData(NamedTuple):
     url: str
     label: str = None
     group: str = None
+    kwargs: dict = dict()
 
 
 DEFAULT_DIMENSION_TIME = 'time'
@@ -43,13 +44,15 @@ class BaseProcessor:
     _label: str = None
     _group: str = None
     _data_extension: str = None
+    _kwargs: dict = dict()
 
-    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label=None, group=None):
+    def __init__(self, named_storm: NamedStorm, provider: CoveredDataProvider, url: str, label=None, group=None, kwargs=None):
         self._named_storm = named_storm
         self._provider = provider
         self.url = url
         self._label = label or DEFAULT_LABEL
         self._group = group
+        self._kwargs = kwargs or {}
         self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(
             covered_data=self._provider.covered_data)
         self._toggle_verify_ssl(enable=self._verify_ssl())
@@ -126,6 +129,9 @@ class BaseProcessor:
 
 class GenericFileProcessor(BaseProcessor):
 
+    def _post_process(self):
+        return None
+
     def _fetch(self):
 
         # fetch the actual file
@@ -136,9 +142,24 @@ class GenericFileProcessor(BaseProcessor):
         with open(tmp_file, 'wb') as f:
             for chunk in file_req.iter_content(chunk_size=1024):
                 f.write(chunk)
-        # set file permissions
-        os.chmod(tmp_file, 0o644)  # -rw-r--r-- (using octal literal notation)
+        # set file permissions -rw-r--r-- (using octal literal notation)
+        os.chmod(tmp_file, 0o644)
         shutil.move(tmp_file, self.output_path)
+
+        self._post_process()
+
+
+class BinaryFileProcessor(GenericFileProcessor):
+    """
+    TODO - document and actually implement...
+    """
+
+    def _post_process(self):
+        import logging
+        logging.info('=========================')
+        logging.info(self._kwargs)
+        logging.info('=========================')
+        return None
 
 
 class OpenDapProcessor(BaseProcessor):
@@ -224,7 +245,7 @@ class OpenDapProcessor(BaseProcessor):
         values = self._dataset[dimension].values.tolist()  # convert numpy array to list
 
         # find the the index range
-        # fallback start/end index to 0/None if it's not in range, respectively
+        # fallback start/end index to 0/None, respectively, if it's not in range
         idx_start = next((idx for idx, v in enumerate(values) if v >= start), 0)
         idx_end = next((idx for idx, v in enumerate(values) if v >= end), None)
 
@@ -234,7 +255,7 @@ class OpenDapProcessor(BaseProcessor):
         # extent/boundaries of covered data
         # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
         extent = self._named_storm_covered_data.geo.extent
-        # TODO - we can't assume it's always in "degrees_east"... read metadata
+        # TODO - we can't assume it's always in "degrees_east"... must read metadata
         # however, we need to convert lng to "degrees_east" format (i.e 0-360)
         # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
         extent = (
@@ -259,13 +280,13 @@ class OpenDapProcessor(BaseProcessor):
         return session
 
 
-class GridProcessor(OpenDapProcessor):
+class GridOpenDapProcessor(OpenDapProcessor):
 
     def _all_variables(self) -> list:
         return list(self._dataset.variables.keys())
 
 
-class SequenceProcessor(OpenDapProcessor):
+class SequenceOpenDapProcessor(OpenDapProcessor):
 
     def _all_variables(self) -> list:
         # TODO - this is a poor assumption on how the sequence data is structured

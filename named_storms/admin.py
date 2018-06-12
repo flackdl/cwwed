@@ -39,7 +39,7 @@ class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
 
 @admin.register(CoveredDataProvider)
 class CoveredDataProviderAdmin(admin.GeoModelAdmin):
-    list_display = ('name', 'active', 'url',)
+    list_display = ('name', 'active', 'url', 'processor_factory', 'processor_source',)
     list_filter = ('active',)
 
 

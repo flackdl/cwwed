@@ -1,24 +1,30 @@
 from django.contrib.gis.db import models
-from django.conf import settings
 
-PROCESSOR_DATA_TYPE_SEQUENCE = 'sequence'
-PROCESSOR_DATA_TYPE_GRID = 'grid'
 
-PROCESSOR_DATA_TYPE_CHOICES = (
-    PROCESSOR_DATA_TYPE_SEQUENCE,
-    PROCESSOR_DATA_TYPE_GRID,
+# data factories
+PROCESSOR_DATA_FACTORY_ERDDAP = 'ERDDAP'  # factory for any ERDDAP provider
+PROCESSOR_DATA_FACTORY_NDBC = 'NDBC'  # National Data Buoy Center - https://dods.ndbc.noaa.gov/
+PROCESSOR_DATA_FACTORY_USGS = 'USGS'  # USGS - https://stn.wim.usgs.gov/STNServices/Documentation/home
+PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C = 'JPL_QSCAT_L1C'  # JPL - https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1
+
+# data factory choices
+PROCESSOR_DATA_FACTORY_CHOICES = (
+    PROCESSOR_DATA_FACTORY_ERDDAP,
+    PROCESSOR_DATA_FACTORY_NDBC,
+    PROCESSOR_DATA_FACTORY_USGS,
+    PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C,
 )
 
-PROCESSOR_DATA_SOURCE_DAP = 'dap'
-PROCESSOR_DATA_SOURCE_NDBC = 'ndbc'  # National Data Buoy Center - https://dods.ndbc.noaa.gov/
-PROCESSOR_DATA_SOURCE_USGS = 'usgs'  # USGS - https://stn.wim.usgs.gov/STNServices/Documentation/home
-PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C = 'JPL_QSCAT_L1C'  # JPL - https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1
+# data sources
+PROCESSOR_DATA_SOURCE_FILE_GENERIC = 'FILE-GENERIC'
+PROCESSOR_DATA_SOURCE_FILE_BINARY = 'FILE-BINARY'
+PROCESSOR_DATA_SOURCE_DAP = 'DAP'
 
+# data source choices
 PROCESSOR_DATA_SOURCE_CHOICES = (
+    PROCESSOR_DATA_SOURCE_FILE_GENERIC,
+    PROCESSOR_DATA_SOURCE_FILE_BINARY,
     PROCESSOR_DATA_SOURCE_DAP,
-    PROCESSOR_DATA_SOURCE_NDBC,
-    PROCESSOR_DATA_SOURCE_USGS,
-    PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C,
 )
 
 
@@ -48,10 +54,10 @@ class CoveredData(models.Model):
 
 class CoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    processor = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
+    processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES))
+    processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
     url = models.CharField(max_length=500)
-    data_type = models.CharField(max_length=200, choices=zip(PROCESSOR_DATA_TYPE_CHOICES, PROCESSOR_DATA_TYPE_CHOICES), blank=True)
     active = models.BooleanField(default=True)
 
     def __str__(self):

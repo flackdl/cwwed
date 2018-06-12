@@ -75,6 +75,7 @@ def process_dataset_task(data: list):
         url=processor_data.url,
         label=processor_data.label,
         group=processor_data.group,
+        kwargs=processor_data.kwargs,
     )
     processor.fetch()
     return processor.to_dict()

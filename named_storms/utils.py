@@ -9,7 +9,7 @@ from django.core.files.storage import default_storage
 
 from cwwed import slack
 from named_storms.models import (
-    PROCESSOR_DATA_TYPE_GRID, PROCESSOR_DATA_TYPE_SEQUENCE, CoveredDataProvider, NamedStorm, NSEM, CoveredData,
+    CoveredDataProvider, NamedStorm, NSEM, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
 )
 
 
@@ -26,15 +26,18 @@ def create_directory(path, remove_if_exists=False):
 
 def processor_class(provider: CoveredDataProvider):
     """
-    Returns a processor class for a provider
+    Returns a processor class from a provider instance
     """
-    from named_storms.data.processors import GridProcessor, SequenceProcessor, GenericFileProcessor
-    if provider.data_type == PROCESSOR_DATA_TYPE_GRID:
-        return GridProcessor
-    elif provider.data_type == PROCESSOR_DATA_TYPE_SEQUENCE:
-        return SequenceProcessor
-    else:
-        return GenericFileProcessor
+    from named_storms.data.processors import GridOpenDapProcessor, GenericFileProcessor, BinaryFileProcessor
+    sources = {
+        PROCESSOR_DATA_SOURCE_FILE_BINARY: BinaryFileProcessor,
+        PROCESSOR_DATA_SOURCE_FILE_GENERIC: GenericFileProcessor,
+        PROCESSOR_DATA_SOURCE_DAP: GridOpenDapProcessor,
+    }
+    match = sources.get(provider.processor_source)
+    if match is None:
+        raise Exception('Unknown processor source')
+    return match
 
 
 def named_storm_path(named_storm: NamedStorm) -> str:

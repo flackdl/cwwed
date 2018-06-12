@@ -3,8 +3,8 @@ from datetime import datetime
 import numpy
 
 DATE_EPOCH = datetime(2000, 1, 1)
-#DATE_CMP = datetime(2019, 1, 1)
-#DATE_CMP_TIMESTAMP = DATE_CMP.timestamp() - DATE_EPOCH.timestamp()
+DATE_CMP = datetime(2018, 1, 1)
+DATE_CMP_TIMESTAMP = DATE_CMP.timestamp() - DATE_EPOCH.timestamp()
 BASE_DIR = '/home/danny/Desktop/v1/'
 
 # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
@@ -36,10 +36,10 @@ for file in os.listdir(BASE_DIR):
         print('File Min Date: {}'.format(file_min_date.isoformat()))
         print('File Max Date: {}'.format(file_max_date.isoformat()))
 
+        print('\tRows total: {}'.format(len(data)))
+        print('\tRows filtered: {}'.format(len(data[data['time'] >= DATE_CMP_TIMESTAMP])))
+
 print('=====================')
 
 print('Min Date: {}'.format(min_date.isoformat()))
 print('Max Date: {}'.format(max_date.isoformat()))
-
-#print('Rows total: {}'.format(len(data)))
-#print('Rows filtered: {}'.format(len(data[data['time'] >= DATE_CMP_TIMESTAMP])))

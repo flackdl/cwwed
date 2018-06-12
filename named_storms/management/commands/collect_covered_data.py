@@ -5,8 +5,8 @@ import celery
 from django.core.management.base import BaseCommand
 from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory, JPLQSCATL1CProcessorFactory
 from named_storms.models import (
-    NamedStorm, PROCESSOR_DATA_SOURCE_NDBC, PROCESSOR_DATA_SOURCE_USGS, NamedStormCoveredDataLog,
-    PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C,
+    NamedStorm, PROCESSOR_DATA_FACTORY_USGS, NamedStormCoveredDataLog,
+    PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C, PROCESSOR_DATA_FACTORY_NDBC,
 )
 from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
@@ -53,11 +53,11 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
                     # instantiate the right processor factory
-                    if provider.processor == PROCESSOR_DATA_SOURCE_NDBC:
+                    if provider.processor_factory == PROCESSOR_DATA_FACTORY_NDBC:
                         factory = NDBCProcessorFactory(storm, provider)
-                    elif provider.processor == PROCESSOR_DATA_SOURCE_USGS:
+                    elif provider.processor_factory == PROCESSOR_DATA_FACTORY_USGS:
                         factory = USGSProcessorFactory(storm, provider)
-                    elif provider.processor == PROCESSOR_DATA_SOURCE_JPL_QSCAT_L1C:
+                    elif provider.processor_factory == PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C:
                         factory = JPLQSCATL1CProcessorFactory(storm, provider)
                     else:
                         factory = ProcessorFactory(storm, provider)
