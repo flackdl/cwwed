@@ -53,12 +53,12 @@ class USGSProcessorFactory(ProcessorFactory):
     REST API which allows you to select an "event" (hurricane) and crawl through various sensors and
     retrieve associated datasets.
 
-
     The usgs "event id" is stored in NamedStormCoveredDataProvider.external_storm_id
     """
     FILE_TYPE_DATA = 2
     # some non-data files end up being tagged as "data" files so try and exclude the known offenders
     EXCLUDED_EXTENSIONS = ['PNG', 'png', 'MOV', 'JPG', 'jpg', 'jpeg', 'pdf']
+
     deployment_types = []
     sensors = []
 
@@ -254,6 +254,14 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
         - year (i.e "2018")
         - day of year (i.e "123" for the 123rd day of the year)
     """
+    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
+    DATA_TYPE = [
+        ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
+        ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
+        ('inc', 'f4'), ('azi', 'f4'), ('atten', 'f4'), ('beam', 'u1'),
+        ('land', 'u1'), ('espd', 'f4'), ('edir', 'f4'), ('rspd', 'f4'),
+        ('rdir', 'f4'),
+    ]
 
     def _catalog_ref_url(self, catalog_ref: etree.Element) -> str:
         """
@@ -353,13 +361,10 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
                 label=label,
                 group=folder,
                 kwargs={
-                    'headers': [
-                        ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
-                        ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
-                        ('inc', 'f4'), ('azi', 'f4'), ('atten', 'f4'), ('beam', 'u1'),
-                        ('land', 'u1'), ('espd', 'f4'), ('edir', 'f4'), ('rspd', 'f4'),
-                        ('rdir', 'f4'),
-                    ]
+                    # the "epoch" they used starts at 1/1/2000
+                    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
+                    'epoch_stamp': datetime(2000, 1, 1).timestamp(),
+                    'data_type': self.DATA_TYPE,
                 },
             ))
 
@@ -387,15 +392,16 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
         dataset_paths = []
         processors_data = []
 
-        # TODO - need to refactor!!!!!!!
-        station_urls = self._catalog_ref_elements(self._provider.url)
+        # build catalogRefs and filter
+        catalog_refs = self._catalog_ref_elements(self._provider.url)
+        catalog_refs = self.generic_filter(catalog_refs)
 
-        # filter
-        station_urls = self.generic_filter(station_urls)
+        # build list of catalog urls
+        catalog_urls = [self._catalog_ref_href(ref) for ref in catalog_refs]
 
         # build a list of relevant datasets for each station
-        stations = self._catalog_documents(station_urls)
-        for station in stations:
+        catalogs = self._catalog_documents(catalog_urls)
+        for station in catalogs:
             for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('urlPath'))

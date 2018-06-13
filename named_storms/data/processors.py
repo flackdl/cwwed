@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import ssl
 import logging
+import numpy
 from typing import List, NamedTuple
 import requests
 import xarray.backends
@@ -112,6 +113,21 @@ class BaseProcessor:
 
         return os.path.join(*paths)
 
+    def _covered_data_extent(self) -> tuple:
+        # extent/boundaries of covered data
+        # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
+        # TODO - we can't assume it's always in "degrees_east"... must read metadata
+        extent = self._named_storm_covered_data.geo.extent
+        # we need to convert lng to "degrees_east" format (i.e 0-360)
+        # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
+        extent = (
+            extent[0] if extent[0] > 0 else 360 + extent[0],  # lng
+            extent[1],                                        # lat
+            extent[2] if extent[2] > 0 else 360 + extent[2],  # lng
+            extent[3],                                        # lat
+        )
+        return extent
+
     @staticmethod
     def _toggle_verify_ssl(enable=True):
         """
@@ -151,15 +167,56 @@ class GenericFileProcessor(BaseProcessor):
 
 class BinaryFileProcessor(GenericFileProcessor):
     """
-    TODO - document and actually implement...
+    Parses binary file via numpy.  Expects the `dtype` to be passed in via `kwargs`
     """
+    DATA_TYPE_TIME_KEY = 'time'
+    DATA_TYPE_LAT_KEY = 'lat'
+    DATA_TYPE_LON_KEY = 'lon'
+    DATA_TYPE_KWARG_KEY = 'data_type'
+    DATE_EPOCH_STAMP_KEY = 'epoch_stamp'
 
-    def _post_process(self):
-        import logging
-        logging.info('=========================')
-        logging.info(self._kwargs)
-        logging.info('=========================')
-        return None
+    _ndarray: numpy.ndarray = None
+
+    def _fetch(self):
+        # download/filter the file
+        super()._fetch()
+        # skip and remove file if it's an empty dataset
+        if len(self._ndarray) == 0:
+            logging.info('Skipping dataset with no values')
+            os.remove(self.output_path)
+
+    def _post_process(self) -> None:
+        # the numpy dtype needs to be a list of tuples so convert it first because celery sends it as a list of lists
+        data_type = [(t[0], t[1]) for t in self._kwargs[self.DATA_TYPE_KWARG_KEY]]
+        data_type = numpy.dtype(data_type)
+
+        # create the numpy data array from the file using the supplied dtype
+        self._ndarray = numpy.fromfile(self.output_path, dtype=data_type)
+
+        # some datasets have their times using non-unix epochs so allow them to define it themselves
+        epoch_stamp = self._kwargs.get(self.DATE_EPOCH_STAMP_KEY) or 0
+
+        # filter the data down using the storm dates
+        cmp_start_stamp = self._named_storm_covered_data.date_start.timestamp() - epoch_stamp
+        cmp_end_stamp = self._named_storm_covered_data.date_end.timestamp() - epoch_stamp
+
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_TIME_KEY] >= cmp_start_stamp]
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_TIME_KEY] <= cmp_end_stamp]
+
+        # filter the data down using lat/lon
+        storm_extent = self._covered_data_extent()
+        lat_start = storm_extent[1]
+        lat_end = storm_extent[3]
+        lon_start = storm_extent[0]
+        lon_end = storm_extent[2]
+
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_LAT_KEY] >= lat_start]
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_LAT_KEY] <= lat_end]
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_LON_KEY] >= lon_start]
+        self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_LON_KEY] <= lon_end]
+
+        # save the file with the filtered data
+        self._ndarray.tofile(self.output_path)
 
 
 class OpenDapProcessor(BaseProcessor):
@@ -250,21 +307,6 @@ class OpenDapProcessor(BaseProcessor):
         idx_end = next((idx for idx, v in enumerate(values) if v >= end), None)
 
         return idx_start, idx_end
-
-    def _covered_data_extent(self) -> tuple:
-        # extent/boundaries of covered data
-        # i.e (-97.55859375, 28.23486328125, -91.0107421875, 33.28857421875)
-        extent = self._named_storm_covered_data.geo.extent
-        # TODO - we can't assume it's always in "degrees_east"... must read metadata
-        # however, we need to convert lng to "degrees_east" format (i.e 0-360)
-        # i.e (262.44, 28.23486328125, 268.98, 33.28857421875)
-        extent = (
-            extent[0] if extent[0] > 0 else 360 + extent[0],  # lng
-            extent[1],                                        # lat
-            extent[2] if extent[2] > 0 else 360 + extent[2],  # lng
-            extent[3],                                        # lat
-        )
-        return extent
 
     @staticmethod
     def _verify_dimensions(variables):
