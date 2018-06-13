@@ -49,14 +49,23 @@
   }
 },
 {
+  "model": "named_storms.covereddata",
+  "pk": 4,
+  "fields": {
+    "name": "JPL PODAAC - QuikSCAT Level 1C",
+    "description": "",
+    "active": true
+  }
+},
+{
   "model": "named_storms.covereddataprovider",
   "pk": 1,
   "fields": {
     "covered_data": 1,
-    "processor": "ndbc",
+    "processor_factory": "NDBC",
+    "processor_source": "DAP",
     "name": "NDBC",
     "url": "https://dods.ndbc.noaa.gov/thredds/catalog/data/stdmet/catalog.xml",
-    "data_type": "grid",
     "active": true
   }
 },
@@ -65,10 +74,10 @@
   "pk": 2,
   "fields": {
     "covered_data": 2,
-    "processor": "dap",
-    "name": "NOAA/NCEP",
+    "processor_factory": "ERDDAP",
+    "processor_source": "DAP",
+    "name": "NOAA/NCEP GFS",
     "url": "http://coastwatch.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
-    "data_type": "grid",
     "active": true
   }
 },
@@ -77,10 +86,22 @@
   "pk": 3,
   "fields": {
     "covered_data": 3,
-    "processor": "usgs",
+    "processor_factory": "USGS",
+    "processor_source": "FILE-GENERIC",
     "name": "USGS",
     "url": "https://stn.wim.usgs.gov/STNServices/Documentation/home",
-    "data_type": "",
+    "active": true
+  }
+},
+{
+  "model": "named_storms.covereddataprovider",
+  "pk": 4,
+  "fields": {
+    "covered_data": 4,
+    "processor_factory": "JPL_QSCAT_L1C",
+    "processor_source": "FILE-BINARY",
+    "name": "JPL PODAAC - QuikSCAT Level 1C",
+    "url": "https://opendap.jpl.nasa.gov/opendap/allData/quikscat/L1C/v2/catalog.xml",
     "active": true
   }
 },
@@ -133,166 +154,833 @@
   }
 },
 {
-  "model": "named_storms.nsem",
-  "pk": 44,
-  "fields": {
-    "named_storm": 1,
-    "date_requested": "2018-04-04T16:21:58.431Z",
-    "date_returned": null,
-    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v44/input.tar",
-    "model_output_snapshot": ""
-  }
-},
-{
-  "model": "named_storms.nsem",
-  "pk": 45,
-  "fields": {
-    "named_storm": 1,
-    "date_requested": "2018-04-04T16:24:41.561Z",
-    "date_returned": "2018-04-04T16:34:37.378Z",
-    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v45/covered-data.tar",
-    "model_output_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v45/output.tgz"
-  }
-},
-{
-  "model": "named_storms.nsem",
-  "pk": 46,
-  "fields": {
-    "named_storm": 1,
-    "date_requested": "2018-04-04T16:33:15.759Z",
-    "date_returned": "2018-04-04T16:35:22.016Z",
-    "covered_data_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v46/covered-data.tar",
-    "model_output_snapshot": "/media/bucket/cwwed/Harvey/NSEM/v46/output.tgz"
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
-  "pk": 1,
-  "fields": {
-    "named_storm": 1,
-    "covered_data": 3,
-    "provider": 3,
-    "date": "2018-04-04T16:00:58.340Z",
-    "success": true,
-    "snapshot": "",
-    "exception": ""
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
-  "pk": 2,
-  "fields": {
-    "named_storm": 1,
-    "covered_data": 1,
-    "provider": 1,
-    "date": "2018-04-04T16:01:59.292Z",
-    "success": false,
-    "snapshot": "",
-    "exception": "__init__() got an unexpected keyword argument 'group'"
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
-  "pk": 3,
-  "fields": {
-    "named_storm": 1,
-    "covered_data": 2,
-    "provider": 2,
-    "date": "2018-04-04T16:02:59.358Z",
-    "success": false,
-    "snapshot": "",
-    "exception": "__init__() got an unexpected keyword argument 'group'"
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
-  "pk": 4,
-  "fields": {
-    "named_storm": 1,
-    "covered_data": 3,
-    "provider": 3,
-    "date": "2018-04-04T16:12:16.280Z",
-    "success": true,
-    "snapshot": "",
-    "exception": ""
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
-  "pk": 5,
-  "fields": {
-    "named_storm": 1,
-    "covered_data": 3,
-    "provider": 3,
-    "date": "2018-04-04T16:15:56.386Z",
-    "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/USGS Short-Term Network.tar.gz",
-    "exception": ""
-  }
-},
-{
-  "model": "named_storms.namedstormcovereddatalog",
+  "model": "named_storms.namedstormcovereddata",
   "pk": 6,
   "fields": {
     "named_storm": 1,
-    "covered_data": 1,
-    "provider": 1,
-    "date": "2018-04-04T16:16:14.908Z",
-    "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/NDBC - Standard Meteorological data.tar.gz",
-    "exception": ""
+    "covered_data": 4,
+    "date_start": "2017-02-17T20:21:52Z",
+    "date_end": "2017-09-02T20:21:53Z",
+    "geo": "SRID=4326;POLYGON ((-97.646484375 26.982421875, -92.900390625 28.564453125, -87.802734375 29.00390625, -82.529296875 26.982421875, -83.14453125 31.640625, -96.85546875 32.16796875, -96.50390625 30.234375, -97.646484375 26.982421875))",
+    "external_storm_id": ""
   }
 },
 {
   "model": "named_storms.namedstormcovereddatalog",
-  "pk": 7,
+  "pk": 73,
   "fields": {
     "named_storm": 1,
-    "covered_data": 2,
-    "provider": 2,
-    "date": "2018-04-04T16:17:35.947Z",
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-05-15T13:14:54.307Z",
     "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/Global Forecast System.tar.gz",
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
     "exception": ""
   }
 },
 {
   "model": "named_storms.namedstormcovereddatalog",
-  "pk": 8,
+  "pk": 74,
   "fields": {
     "named_storm": 1,
     "covered_data": 3,
     "provider": 3,
-    "date": "2018-04-04T16:31:15.939Z",
+    "date": "2018-05-15T13:15:17.549Z",
     "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/USGS Short-Term Network.tar.gz",
+    "snapshot": "Covered Data Archive/Harvey/USGS Short-Term Network.tgz",
     "exception": ""
   }
 },
 {
   "model": "named_storms.namedstormcovereddatalog",
-  "pk": 9,
+  "pk": 75,
   "fields": {
     "named_storm": 1,
     "covered_data": 1,
     "provider": 1,
-    "date": "2018-04-04T16:31:35.073Z",
+    "date": "2018-05-25T15:02:27.383Z",
     "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/NDBC - Standard Meteorological data.tar.gz",
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
     "exception": ""
   }
 },
 {
   "model": "named_storms.namedstormcovereddatalog",
-  "pk": 10,
+  "pk": 76,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-05-25T15:02:51.376Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/USGS Short-Term Network.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 77,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-05-29T13:14:32.654Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 78,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-05-29T13:14:57.744Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/USGS Short-Term Network.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 79,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-05-29T13:27:03.718Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 80,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-05-29T13:27:29.368Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/USGS Short-Term Network.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 81,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-06T13:46:31.327Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 82,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-06T13:47:47.954Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 83,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-06T13:50:55.051Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 84,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-06T13:55:16.055Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 85,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-06T13:58:26.637Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 86,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-06T15:58:56.008Z",
+    "success": true,
+    "snapshot": "",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 87,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T17:07:58.176Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "'list' object has no attribute 'get'"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 88,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T17:30:36.807Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "can't subtract offset-naive and offset-aware datetimes"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 89,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T18:26:44.700Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "'str' object cannot be interpreted as an integer"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 90,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T18:33:09.065Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Invalid URL 'https:///opendap/hyrax/allData/quikscat/L1C/v2/2017/catalog.xml': No host supplied"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 91,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T18:41:10.053Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Worker exited prematurely: signal 15 (SIGTERM)."
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 92,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T19:04:59.177Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 93,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T19:22:04.206Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Worker exited prematurely: signal 15 (SIGTERM)."
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 94,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-07T19:25:41.924Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 95,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-12T20:29:46.323Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 96,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T13:39:47.749Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Worker exited prematurely: signal 15 (SIGTERM)."
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 97,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T13:45:16.867Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Worker exited prematurely: signal 15 (SIGTERM)."
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 98,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T14:40:28.151Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 99,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T14:53:07.012Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Worker exited prematurely: exitcode 0."
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 100,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T14:55:02.706Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 101,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T16:32:41.346Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 102,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T16:51:09.487Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 103,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T18:30:44.212Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 104,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T18:33:59.834Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 105,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 3,
+    "provider": 3,
+    "date": "2018-06-13T18:39:28.731Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/USGS Short-Term Network.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 106,
   "fields": {
     "named_storm": 1,
     "covered_data": 2,
     "provider": 2,
-    "date": "2018-04-04T16:32:26.150Z",
+    "date": "2018-06-13T18:41:06.169Z",
     "success": true,
-    "snapshot": "/media/bucket/cwwed/Harvey/Covered Data/Global Forecast System.tar.gz",
+    "snapshot": "Covered Data Archive/Harvey/Global Forecast System.tgz",
     "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 107,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-13T18:41:07.497Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Object of type '_Element' is not JSON serializable"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 108,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-13T18:41:52.245Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL PODAAC - QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 109,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-13T18:49:22.170Z",
+    "success": false,
+    "snapshot": "",
+    "exception": "Object of type '_Element' is not JSON serializable"
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 110,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-13T18:54:25.216Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 87,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-16T13:56:58.911Z",
+    "date_returned": "2018-05-16T13:56:53Z",
+    "covered_data_snapshot": "blah",
+    "model_output_snapshot": "blah",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 88,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-23T13:26:05.015Z",
+    "date_returned": "2018-05-23T13:27:05.259Z",
+    "covered_data_snapshot": "NSEM/Harvey/v88/Covered Data",
+    "model_output_snapshot": "NSEM/Harvey/v88/Post Storm Assessment/v88.tgz",
+    "model_output_snapshot_extracted": true
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 89,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T16:45:43.647Z",
+    "date_returned": null,
+    "covered_data_snapshot": "",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 90,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T16:46:36.689Z",
+    "date_returned": null,
+    "covered_data_snapshot": "",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 91,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T16:47:03.942Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v91/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 92,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T17:28:58.711Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v92/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 93,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T17:34:32.512Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v93/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 94,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T17:35:22.149Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v94/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 95,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T17:37:10.205Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v95/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 96,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:01:21.276Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v96/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 97,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:01:49.234Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v97/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 98,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:03:23.673Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v98/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 99,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:04:52.967Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v99/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 100,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:05:57.617Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v100/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 101,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:07:10.936Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v101/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 102,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:10:17.276Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v102/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 103,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:28:07.995Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v103/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 104,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:29:25.965Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v104/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 105,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:30:40.589Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v105/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 106,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:33:33.869Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v106/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 107,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-24T18:37:16.797Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v107/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 108,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T15:07:42.427Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v108/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 109,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T15:08:44.806Z",
+    "date_returned": null,
+    "covered_data_snapshot": "",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 110,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T15:58:28.599Z",
+    "date_returned": "2018-05-25T16:05:23.362Z",
+    "covered_data_snapshot": "NSEM/Harvey/v110/Covered Data",
+    "model_output_snapshot": "NSEM/Harvey/v110/Post Storm Assessment/v110.tgz",
+    "model_output_snapshot_extracted": true
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 111,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T16:02:50.193Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v111/Covered Data",
+    "model_output_snapshot": "",
+    "model_output_snapshot_extracted": false
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 112,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T16:05:34.825Z",
+    "date_returned": "2018-05-25T16:05:45.119Z",
+    "covered_data_snapshot": "NSEM/Harvey/v112/Covered Data",
+    "model_output_snapshot": "NSEM/Harvey/v112/Post Storm Assessment/v112.tgz",
+    "model_output_snapshot_extracted": true
+  }
+},
+{
+  "model": "named_storms.nsem",
+  "pk": 113,
+  "fields": {
+    "named_storm": 1,
+    "date_requested": "2018-05-25T16:06:03.751Z",
+    "date_returned": null,
+    "covered_data_snapshot": "NSEM/Harvey/v113/Covered Data",
+    "model_output_snapshot": "NSEM/upload/v113.tgz",
+    "model_output_snapshot_extracted": false
   }
 }
 ]
