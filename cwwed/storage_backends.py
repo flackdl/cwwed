@@ -10,7 +10,7 @@ class S3ObjectStorage(S3Boto3Storage):
     """
 
     def __init__(self, *args, **kwargs):
-        self.location = self._get_location()  # ie. "local", "dev", "prod" etc
+        self.location = self._get_location()  # ie. "local", "dev" or "" when in production
         self.default_acl = 'private'
         self.access_key = settings.CWWED_ARCHIVES_ACCESS_KEY_ID
         self.secret_key = settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY

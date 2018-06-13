@@ -53,7 +53,7 @@ Purge RabbitMQ
     
 Purge Celery
 
-    celery -A cwwed purge
+    celery -A cwwed purge -f
     
     
 ### Running via Kubernetes
@@ -161,7 +161,7 @@ Create AWS user *cwwed-archives* and assign the following polices:
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
     # create cluster (dev)
-    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.micro --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.medium --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
     # (if necessary) configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state

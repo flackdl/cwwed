@@ -31,13 +31,20 @@ class NamedStormInlineAdmin(admin.GeoModelAdmin):
 
 @admin.register(CoveredData)
 class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
+    list_display = ('name', 'active', )
     inlines = (
         NamedStormCoveredDataProviderInline,
     )
 
 
-@admin.register(CoveredDataProvider, NamedStormCoveredData)
-class NamedStormAdmin(admin.GeoModelAdmin):
+@admin.register(CoveredDataProvider)
+class CoveredDataProviderAdmin(admin.GeoModelAdmin):
+    list_display = ('name', 'active', 'url', 'processor_factory', 'processor_source',)
+    list_filter = ('active',)
+
+
+@admin.register(NamedStormCoveredData)
+class NamedStormCoveredDataAdmin(admin.GeoModelAdmin):
     pass
 
 
