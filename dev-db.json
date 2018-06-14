@@ -53,7 +53,7 @@
   "pk": 4,
   "fields": {
     "name": "JPL PODAAC - QuikSCAT Level 1C",
-    "description": "",
+    "description": "This dataset contains geo-located and averaged Level 1B Sigma-0 measurements and wind retrievals from the SeaWinds on QuikSCAT platform, initiated in the months following the failure of the rotating antenna motor on 22 November 2009, using the various incidence angles at which QuikSCAT was pointed during the time period from November 2009 until present. Incidence angles were varied in order to cross-calibrate the Oceansat-2 and RapidScat scatterometers and to extend the known Ku-band geophysical model function. The averaging of the L1B input data combined with the wind vector processing results are both contained in this product referred to hereafter as Level 1C (L1C). The fixed and repointed beam processing is relative to either the one corresponding to the vertically polarized \"outer\" beam or the other corresponding to the horizontally polarized \"inner\" beam. The Sigma-0 values from the fixed operating beam for each frame are averaged to a single value representing approximately 50 samples. The data points are land flagged, collocated with ECMWF surface winds, and have climatological nadir attenuations provided for the location and time of the data (not applied to the sigma0). For orbits prior to 87727 the RapidSCAT geophysical model function (GMF) has been used to compute wind speed and direction, which is provided at each discrete sampling point corresponding to the averaged Sigma-0 locations. From orbit 87727 to present, a newer GMF designed specifically to determine wind speed from QuikSCAT backscatter and ECMWF wind direction was employed. The wind speed were computed from QuikSCAT Sigma0 values by assuming the ECMWF wind direction as a first step and then refining those directions slightly to minimize differences between ECMWF and QuikSCAT wind vectors. Retrieved wind directions, thus obtained, were reported but are only slightly different from ECMWF values and should not be considered an independent measurement of wind direction. Retrieved wind speeds do not depend significantly on ECMWF speeds as evidenced by the fact that they agree closely with WindSAT polarimetric radiometer speeds whenever WindSAT and ECMWF disagree. The Sigma0 values have also been corrected for scan loss (due to the fact that the antenna does not scan) and for X-factor changes due to repointing. At a later date, the historical L1C data will be reprocessed to utilize the newer GMF.",
     "active": true
   }
 },
@@ -654,6 +654,19 @@
     "covered_data": 1,
     "provider": 1,
     "date": "2018-06-13T18:54:25.216Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 111,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 1,
+    "provider": 1,
+    "date": "2018-06-14T14:09:53.668Z",
     "success": true,
     "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
     "exception": ""
