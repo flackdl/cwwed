@@ -26,41 +26,7 @@ spec:
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
-          # secrets
-          - name: DATABASE_URL
-            # minikube
-            #value: postgis://postgres@postgis-service:5432/postgres
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: DATABASE_URL
-          - name: SLACK_BOT_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SLACK_BOT_TOKEN
-          - name: SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SECRET_KEY
-          - name: CWWED_ARCHIVES_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_ACCESS_KEY_ID
-          - name: CWWED_ARCHIVES_SECRET_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_SECRET_ACCESS_KEY
-          - name: CELERY_FLOWER_USER
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CELERY_FLOWER_USER
-          - name: CELERY_FLOWER_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CELERY_FLOWER_PASSWORD
+        # secrets
+        envFrom:
+          - secretRef:
+              name: cwwed-secrets

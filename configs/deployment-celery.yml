@@ -39,36 +39,7 @@ spec:
             value: rabbitmq-service
           - name: CELERY_BACKEND
             value: rabbitmq-service
-          # secrets
-          - name: DATABASE_URL
-            # minikube
-            #value: postgis://postgres@postgis-service:5432/postgres
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: DATABASE_URL
-          - name: SLACK_BOT_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SLACK_BOT_TOKEN
-          - name: SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SECRET_KEY
-          - name: CWWED_ARCHIVES_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_ACCESS_KEY_ID
-          - name: CWWED_ARCHIVES_SECRET_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_SECRET_ACCESS_KEY
-          - name: EMAIL_HOST_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: EMAIL_HOST_PASSWORD
+        # secrets
+        envFrom:
+          - secretRef:
+              name: cwwed-secrets

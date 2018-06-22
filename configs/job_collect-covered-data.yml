@@ -25,35 +25,11 @@ spec:
             value: cwwed.settings
           - name: DEPLOY_STAGE
             value: prod
-          - name: AWS_STORAGE_BUCKET_NAME
-            value: cwwed-static-assets
           - name: CELERY_BROKER
             value: rabbitmq-service
           - name: CELERY_BACKEND
             value: rabbitmq-service
-          # secrets
-          - name: DATABASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: DATABASE_URL
-          - name: SLACK_BOT_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SLACK_BOT_TOKEN
-          - name: SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: SECRET_KEY
-          - name: CWWED_ARCHIVES_ACCESS_KEY_ID
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_ACCESS_KEY_ID
-          - name: CWWED_ARCHIVES_SECRET_ACCESS_KEY
-            valueFrom:
-              secretKeyRef:
-                name: cwwed-secrets
-                key: CWWED_ARCHIVES_SECRET_ACCESS_KEY
+        # secrets
+        envFrom:
+          - secretRef:
+              name: cwwed-secrets
