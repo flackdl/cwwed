@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import ssl
 import logging
+import h5py
 import numpy
 from typing import List, NamedTuple
 import requests
@@ -146,7 +147,7 @@ class BaseProcessor:
 class GenericFileProcessor(BaseProcessor):
 
     def _post_process(self):
-        return None
+        pass
 
     def _fetch(self):
 
@@ -163,6 +164,20 @@ class GenericFileProcessor(BaseProcessor):
         shutil.move(tmp_file, self.output_path)
 
         self._post_process()
+
+
+class HierarchicalDataFormatProcessor(GenericFileProcessor):
+    """
+    Hierarchical Data Format
+    https://en.wikipedia.org/wiki/Hierarchical_Data_Format
+    """
+    _dataset: h5py.File = None
+
+    def _post_process(self) -> None:
+        # open dataset for reading & writing
+        self._dataset = h5py.File(self.output_path, 'r+')
+        # TODO - subset and save
+        self._dataset.close()
 
 
 class BinaryFileProcessor(GenericFileProcessor):
@@ -203,8 +218,9 @@ class BinaryFileProcessor(GenericFileProcessor):
         self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_TIME_KEY] >= cmp_start_stamp]
         self._ndarray = self._ndarray[self._ndarray[self.DATA_TYPE_TIME_KEY] <= cmp_end_stamp]
 
-        # filter the data down using lat/lon
+        # filter the data down using lat/lon from the storm's extent
         storm_extent = self._covered_data_extent()
+
         lat_start = storm_extent[1]
         lat_end = storm_extent[3]
         lon_start = storm_extent[0]

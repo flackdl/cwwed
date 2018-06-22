@@ -3,21 +3,31 @@ import os
 import shutil
 import celery
 from django.core.management.base import BaseCommand
-from named_storms.data.factory import NDBCProcessorFactory, ProcessorFactory, USGSProcessorFactory, JPLQSCATL1CProcessorFactory
-from named_storms.models import (
-    NamedStorm, PROCESSOR_DATA_FACTORY_USGS, NamedStormCoveredDataLog,
-    PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C, PROCESSOR_DATA_FACTORY_NDBC,
-)
+from named_storms.data.factory import ProcessorFactory
+from named_storms.models import NamedStorm, NamedStormCoveredDataLog
 from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory
+from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class
 
 
 class Command(BaseCommand):
     help = 'Collect Covered Data Snapshots'
 
+    def add_arguments(self, parser):
+        parser.add_argument('--storm_id', type=int)
+        parser.add_argument('--covered_data_id', type=int)
+
     def handle(self, *args, **options):
-        for storm in NamedStorm.objects.filter(active=True):
+        storm_filter_args = {'active': True}
+        covered_data_filter_args = {'active': True}
+
+        # optional arguments
+        if options.get('storm_id'):
+            storm_filter_args.update(id=options['storm_id'])
+        if options.get('covered_data_id'):
+            covered_data_filter_args.update(id=options['covered_data_id'])
+
+        for storm in NamedStorm.objects.filter(**storm_filter_args):
 
             self.stdout.write(self.style.SUCCESS('Named Storm: %s' % storm))
 
@@ -27,7 +37,7 @@ class Command(BaseCommand):
             create_directory(complete_path)
             create_directory(incomplete_path, remove_if_exists=True)
 
-            for data in storm.covered_data.filter(active=True):
+            for data in storm.covered_data.filter(**covered_data_filter_args):
 
                 # TODO - each covered data collection should be in it's own task
 
@@ -52,15 +62,8 @@ class Command(BaseCommand):
 
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
-                    # instantiate the right processor factory
-                    if provider.processor_factory == PROCESSOR_DATA_FACTORY_NDBC:
-                        factory = NDBCProcessorFactory(storm, provider)
-                    elif provider.processor_factory == PROCESSOR_DATA_FACTORY_USGS:
-                        factory = USGSProcessorFactory(storm, provider)
-                    elif provider.processor_factory == PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C:
-                        factory = JPLQSCATL1CProcessorFactory(storm, provider)
-                    else:
-                        factory = ProcessorFactory(storm, provider)
+                    factory_cls = processor_factory_class(provider)
+                    factory = factory_cls(storm, provider)  # type: ProcessorFactory
 
                     # fetch all the processors data
                     try:

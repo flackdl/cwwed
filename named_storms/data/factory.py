@@ -212,9 +212,6 @@ class THREDDSCatalogFactory(ProcessorFactory):
             parse.urlparse(catalog_path).path,
         )
 
-    def _is_using_catalog(self, title: str) -> bool:
-        return True
-
     def _is_using_dataset(self, dataset: str) -> bool:
         return True
 
@@ -244,24 +241,19 @@ class THREDDSCatalogFactory(ProcessorFactory):
         return catalogs
 
 
-class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
+class JPLProcessorFactoryBase(THREDDSCatalogFactory):
     """
-    JPL Quikscat L1C
-    Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
-    https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=ProcessingLevel:Platform&values=*1*:QUIKSCAT
+    JPL Factory (BASE)
 
     The datasets are two levels deep in the catalog:
         - year (i.e "2018")
         - day of year (i.e "123" for the 123rd day of the year)
     """
-    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
-    DATA_TYPE = [
-        ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
-        ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
-        ('inc', 'f4'), ('azi', 'f4'), ('atten', 'f4'), ('beam', 'u1'),
-        ('land', 'u1'), ('espd', 'f4'), ('edir', 'f4'), ('rspd', 'f4'),
-        ('rdir', 'f4'),
-    ]
+    # the "epoch" for the datasets start at different times (not necessarily the unix epoch)
+    UNIX_EPOCH_STAMP = 0
+
+    def _processor_kwargs(self):
+        return {}
 
     def _catalog_ref_url(self, catalog_ref: etree.Element) -> str:
         """
@@ -275,9 +267,6 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
                 'catalog.xml',
             )
         )
-
-    def _is_using_dataset(self, dataset: str) -> bool:
-        return dataset.endswith('.dat')
 
     def _filter_catalog_refs_by_year(self, catalog_refs: etree.ElementTree) -> List[etree.ElementTree]:
         """
@@ -315,7 +304,7 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
         catalog_ref_elements_year = self._catalog_ref_elements(self._provider.url)
         catalog_ref_elements_year = self._filter_catalog_refs_by_year(catalog_ref_elements_year)
 
-        # fetch and build second level catalogs (ie. for day of the year)
+        # fetch and build second level catalogs (i.e for day of the year)
         catalog_refs = []
         for ref_year in catalog_ref_elements_year:
             year = int(self._catalog_ref_title(ref_year))
@@ -360,15 +349,56 @@ class JPLQSCATL1CProcessorFactory(THREDDSCatalogFactory):
                 url=url,
                 label=label,
                 group=folder,
-                kwargs={
-                    # the "epoch" they used starts at 1/1/2000
-                    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
-                    'epoch_stamp': datetime(2000, 1, 1).timestamp(),
-                    'data_type': self.DATA_TYPE,
-                },
+                kwargs=self._processor_kwargs(),
             ))
 
         return processors_data
+
+
+class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
+    """
+    JPL SMAP Level 2B CAP Sea Surface Salinity
+    https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
+    """
+    # the "epoch" they used starts at 2015-01-01
+    # ftp://podaac-ftp.jpl.nasa.gov/allData/smap/docs/JPL-CAP_V4/JPL_SMAP-SSS-UsersGuide_V4.pdf
+    UNIX_EPOCH_STAMP = datetime(2015, 1, 1).timestamp()
+
+    def _processor_kwargs(self):
+        return {
+            'epoch_stamp': self.UNIX_EPOCH_STAMP,
+        }
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        return dataset.endswith('.h5')
+
+
+class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
+    """
+    JPL Quikscat L1C
+    Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
+    https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=ProcessingLevel:Platform&values=*1*:QUIKSCAT
+    """
+    # the "epoch" they used starts at 2000-01-01
+    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
+    UNIX_EPOCH_STAMP = datetime(2000, 1, 1).timestamp()
+    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
+    DATA_TYPE = [
+        ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
+        ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
+        ('inc', 'f4'), ('azi', 'f4'), ('atten', 'f4'), ('beam', 'u1'),
+        ('land', 'u1'), ('espd', 'f4'), ('edir', 'f4'), ('rspd', 'f4'),
+        ('rdir', 'f4'),
+    ]
+
+    def _processor_kwargs(self):
+        return {
+            'epoch_stamp': self.UNIX_EPOCH_STAMP,
+            'data_type': self.DATA_TYPE,
+        }
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        return dataset.endswith('.dat')
 
 
 class NDBCProcessorFactory(THREDDSCatalogFactory):

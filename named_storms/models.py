@@ -2,10 +2,11 @@ from django.contrib.gis.db import models
 
 
 # data factories
-PROCESSOR_DATA_FACTORY_ERDDAP = 'ERDDAP'  # factory for any ERDDAP provider
+PROCESSOR_DATA_FACTORY_ERDDAP = 'ERDDAP'  # any ERDDAP provider
 PROCESSOR_DATA_FACTORY_NDBC = 'NDBC'  # National Data Buoy Center - https://dods.ndbc.noaa.gov/
 PROCESSOR_DATA_FACTORY_USGS = 'USGS'  # USGS - https://stn.wim.usgs.gov/STNServices/Documentation/home
 PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C = 'JPL_QSCAT_L1C'  # JPL - https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1
+PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B = 'JPL_SMAP_L2B'  # JPL - https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
 
 # data factory choices
 PROCESSOR_DATA_FACTORY_CHOICES = (
@@ -13,18 +14,21 @@ PROCESSOR_DATA_FACTORY_CHOICES = (
     PROCESSOR_DATA_FACTORY_NDBC,
     PROCESSOR_DATA_FACTORY_USGS,
     PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C,
+    PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B,
 )
 
 # data sources
 PROCESSOR_DATA_SOURCE_FILE_GENERIC = 'FILE-GENERIC'
 PROCESSOR_DATA_SOURCE_FILE_BINARY = 'FILE-BINARY'
 PROCESSOR_DATA_SOURCE_DAP = 'DAP'
+PROCESSOR_DATA_SOURCE_FILE_HDF = 'HDF'
 
 # data source choices
 PROCESSOR_DATA_SOURCE_CHOICES = (
     PROCESSOR_DATA_SOURCE_FILE_GENERIC,
     PROCESSOR_DATA_SOURCE_FILE_BINARY,
     PROCESSOR_DATA_SOURCE_DAP,
+    PROCESSOR_DATA_SOURCE_FILE_HDF,
 )
 
 
@@ -73,7 +77,7 @@ class NamedStormCoveredData(models.Model):
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
 
     def __str__(self):
-        return '{} // {}'.format(self.named_storm, self.covered_data)
+        return str(self.covered_data)
 
 
 class NamedStormCoveredDataLog(models.Model):

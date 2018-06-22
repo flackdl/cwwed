@@ -30,8 +30,8 @@ class NamedStormInlineAdmin(admin.GeoModelAdmin):
 
 
 @admin.register(CoveredData)
-class NamedStormCoveredDataInlineAdmin(admin.GeoModelAdmin):
-    list_display = ('name', 'active', )
+class CoveredDataAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'name', 'active', )
     inlines = (
         NamedStormCoveredDataProviderInline,
     )
@@ -45,7 +45,8 @@ class CoveredDataProviderAdmin(admin.GeoModelAdmin):
 
 @admin.register(NamedStormCoveredData)
 class NamedStormCoveredDataAdmin(admin.GeoModelAdmin):
-    pass
+    list_display = ('named_storm', 'covered_data', 'date_start', 'date_end')
+    list_filter = ('named_storm', 'covered_data', 'date_start', 'date_end')
 
 
 @admin.register(NSEM)
