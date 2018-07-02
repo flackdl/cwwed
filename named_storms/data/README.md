@@ -23,3 +23,9 @@ We're actually using version 2 even though version 1 is displayed on the main da
 
 The data is in [Hierarchical Data Format](https://en.wikipedia.org/wiki/Hierarchical_Data_Format).
 We're not filtering the dataset down via time/lon/lat because the data structure is in an unconventional grid and the sizes of the whole bundle isn't that large (<1GB).
+
+## USGS
+
+[source](https://stn.wim.usgs.gov/STNServices/Documentation/home)
+
+The STN Web Services provides a rest api to discover datasets.  There are many file types included in the output and therefore no filtering is done.
