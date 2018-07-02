@@ -356,6 +356,8 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
 
 
 class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
+    # TODO - this isn't doing any filtering yet (it's sending the epoch stamp but the processor isn't using it)
+
     """
     JPL SMAP Level 2B CAP Sea Surface Salinity
     https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*

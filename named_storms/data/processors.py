@@ -167,22 +167,24 @@ class GenericFileProcessor(BaseProcessor):
 
 
 class HierarchicalDataFormatProcessor(GenericFileProcessor):
+    # TODO - this isn't doing any filtering yet
+
     """
     Hierarchical Data Format
     https://en.wikipedia.org/wiki/Hierarchical_Data_Format
     """
-    _dataset: h5py.File = None
+    _dataset_file: h5py.File = None
 
     def _filter_dataset(self):
         pass
 
     def _post_process(self) -> None:
         # open dataset for reading & writing
-        self._dataset = h5py.File(self.output_path, 'r+')
+        self._dataset_file = h5py.File(self.output_path, 'r+')
         # filter
         self._filter_dataset()
         # close
-        self._dataset.close()
+        self._dataset_file.close()
 
 
 class BinaryFileProcessor(GenericFileProcessor):
