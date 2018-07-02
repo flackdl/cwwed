@@ -379,10 +379,9 @@ class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
     Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
     https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=ProcessingLevel:Platform&values=*1*:QUIKSCAT
     """
-    # the "epoch" they used starts at 2000-01-01
+    # the "epoch" they used starts at 2000-01-01 and the numpy `dtype` is defined in this example script they provided
     # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
     UNIX_EPOCH_STAMP = datetime(2000, 1, 1).timestamp()
-    # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
     DATA_TYPE = [
         ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
         ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),

@@ -173,10 +173,15 @@ class HierarchicalDataFormatProcessor(GenericFileProcessor):
     """
     _dataset: h5py.File = None
 
+    def _filter_dataset(self):
+        pass
+
     def _post_process(self) -> None:
         # open dataset for reading & writing
         self._dataset = h5py.File(self.output_path, 'r+')
-        # TODO - subset and save
+        # filter
+        self._filter_dataset()
+        # close
         self._dataset.close()
 
 
