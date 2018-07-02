@@ -25,7 +25,7 @@
   "model": "named_storms.covereddata",
   "pk": 1,
   "fields": {
-    "name": "NDBC - Standard Meteorological data",
+    "name": "NDBC Standard Meteorological data",
     "description": "The National Data Buoy Center is a part of the National Oceanic and Atmospheric Administration's National Weather Service. NDBC designs, develops, operates, and maintains a network of data collecting buoys and coastal stations",
     "active": true
   }
@@ -52,8 +52,17 @@
   "model": "named_storms.covereddata",
   "pk": 4,
   "fields": {
-    "name": "JPL PODAAC - QuikSCAT Level 1C",
+    "name": "JPL QuikSCAT Level 1C",
     "description": "This dataset contains geo-located and averaged Level 1B Sigma-0 measurements and wind retrievals from the SeaWinds on QuikSCAT platform, initiated in the months following the failure of the rotating antenna motor on 22 November 2009, using the various incidence angles at which QuikSCAT was pointed during the time period from November 2009 until present. Incidence angles were varied in order to cross-calibrate the Oceansat-2 and RapidScat scatterometers and to extend the known Ku-band geophysical model function. The averaging of the L1B input data combined with the wind vector processing results are both contained in this product referred to hereafter as Level 1C (L1C). The fixed and repointed beam processing is relative to either the one corresponding to the vertically polarized \"outer\" beam or the other corresponding to the horizontally polarized \"inner\" beam. The Sigma-0 values from the fixed operating beam for each frame are averaged to a single value representing approximately 50 samples. The data points are land flagged, collocated with ECMWF surface winds, and have climatological nadir attenuations provided for the location and time of the data (not applied to the sigma0). For orbits prior to 87727 the RapidSCAT geophysical model function (GMF) has been used to compute wind speed and direction, which is provided at each discrete sampling point corresponding to the averaged Sigma-0 locations. From orbit 87727 to present, a newer GMF designed specifically to determine wind speed from QuikSCAT backscatter and ECMWF wind direction was employed. The wind speed were computed from QuikSCAT Sigma0 values by assuming the ECMWF wind direction as a first step and then refining those directions slightly to minimize differences between ECMWF and QuikSCAT wind vectors. Retrieved wind directions, thus obtained, were reported but are only slightly different from ECMWF values and should not be considered an independent measurement of wind direction. Retrieved wind speeds do not depend significantly on ECMWF speeds as evidenced by the fact that they agree closely with WindSAT polarimetric radiometer speeds whenever WindSAT and ECMWF disagree. The Sigma0 values have also been corrected for scan loss (due to the fact that the antenna does not scan) and for X-factor changes due to repointing. At a later date, the historical L1C data will be reprocessed to utilize the newer GMF.",
+    "active": true
+  }
+},
+{
+  "model": "named_storms.covereddata",
+  "pk": 5,
+  "fields": {
+    "name": "JPL SMAP Level 2B",
+    "description": "This is the PI-produced JPL SMAP-SSS V4.0, level 2B CAP, validated sea surface salinity and extreme winds orbital/swath product from the NASA Soil Moisture Active Passive (SMAP) observatory. It is based on the Combined Active-Passive (CAP) retrieval algorithm developed at JPL originally in the context of Aquarius/SAC-D and now extended to SMAP. The JPL SMAP-SSS L2B CAP product includes data for a range of parameters: derived SMAP sea surface salinity (SSS) and wind speed/direction data for extreme winds, brightness temperatures for each radiometer polarization, ancillary reference surface salinity, wind and wave height data, quality flags, and navigation data. Each data file covers one 98-minute orbit (15 files per day). Data begins on April 1,2015 and is ongoing, with a 3 day latency in processing and availability. Observations are global in extent and provided at 25km swath grid with an approximate spatial resolution of 60 km. Improvements with this V4.0 dataset include: addition of estimated SSS uncertainty, improvement of TB correction for high latitudes, modification of the land correction range to 1000 km from coast, change of the ancillary wind source from NCEP GDAS to NCEP GFS resulting in signifcant improvements in SSS retrievals near storms, extension of the range of SSS retrievals to 45 PSU, and SSS retrievals also for large inland seas. The SMAP satellite is in a near-polar orbit at an inclination of 98 degrees and an altitude of 685 km. It has an ascending node time of 6 pm and is sun-synchronous. With its 1000km swath, SMAP achieves global coverage in approximately 3 days, but has an exact orbit repeat cycle of 8 days. On board Instruments include a highly sensitive L-band radiometer operating at 1.41GHz and an L-band 1.26GHz radar sensor providing complementary active and passive sensing capabilities. Malfunction of the SMAP scatterometer on 7 July, 2015, has necessitated the use of collocated wind speed for the surface roughness correction required for the surface salinity retrieval.",
     "active": true
   }
 },
@@ -102,6 +111,18 @@
     "processor_source": "FILE-BINARY",
     "name": "JPL PODAAC - QuikSCAT Level 1C",
     "url": "https://opendap.jpl.nasa.gov/opendap/allData/quikscat/L1C/v2/catalog.xml",
+    "active": true
+  }
+},
+{
+  "model": "named_storms.covereddataprovider",
+  "pk": 5,
+  "fields": {
+    "covered_data": 5,
+    "processor_factory": "JPL_SMAP_L2B",
+    "processor_source": "HDF",
+    "name": "JPL PODAAC - SMAP L2B",
+    "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/smap/L2/JPL/V4/catalog.xml",
     "active": true
   }
 },
@@ -162,6 +183,18 @@
     "date_start": "2017-02-17T20:21:52Z",
     "date_end": "2017-09-02T20:21:53Z",
     "geo": "SRID=4326;POLYGON ((-97.646484375 26.982421875, -92.900390625 28.564453125, -87.802734375 29.00390625, -82.529296875 26.982421875, -83.14453125 31.640625, -96.85546875 32.16796875, -96.50390625 30.234375, -97.646484375 26.982421875))",
+    "external_storm_id": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 7,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 5,
+    "date_start": "2017-08-17T14:22:54Z",
+    "date_end": "2017-09-02T14:22:54Z",
+    "geo": "SRID=4326;POLYGON ((-96.328125 26.455078125, -91.58203125 29.091796875, -82.880859375 26.630859375, -82.44140625 31.376953125, -93.33984375 31.9921875, -98.876953125 29.8828125, -96.328125 26.455078125))",
     "external_storm_id": ""
   }
 },
@@ -669,6 +702,32 @@
     "date": "2018-06-14T14:09:53.668Z",
     "success": true,
     "snapshot": "Covered Data Archive/Harvey/NDBC - Standard Meteorological data.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 112,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 4,
+    "provider": 4,
+    "date": "2018-06-22T17:50:47.908Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL QuikSCAT Level 1C.tgz",
+    "exception": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddatalog",
+  "pk": 113,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 5,
+    "provider": 5,
+    "date": "2018-07-02T17:42:30.952Z",
+    "success": true,
+    "snapshot": "Covered Data Archive/Harvey/JPL SMAP Level 2B.tgz",
     "exception": ""
   }
 },
