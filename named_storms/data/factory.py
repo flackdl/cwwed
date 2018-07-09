@@ -34,6 +34,7 @@ class ProcessorFactory:
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
                 url=self._provider.url,
+                kwargs=self._processor_kwargs(),
             )
         ]
 
@@ -43,6 +44,9 @@ class ProcessorFactory:
         if settings.DEBUG:
             return records[:10]
         return records
+
+    def _processor_kwargs(self):
+        return {}
 
 
 class USGSProcessorFactory(ProcessorFactory):
@@ -115,6 +119,7 @@ class USGSProcessorFactory(ProcessorFactory):
                 url=file_url,
                 label=file['name'],
                 group=self._sensor_deployment_type(file['instrument_id']),
+                kwargs=self._processor_kwargs(),
             ))
 
         return processors_data
@@ -249,11 +254,6 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
         - year (i.e "2018")
         - day of year (i.e "123" for the 123rd day of the year)
     """
-    # the "epoch" for the datasets start at different times (not necessarily the unix epoch)
-    UNIX_EPOCH_STAMP = 0
-
-    def _processor_kwargs(self):
-        return {}
 
     def _catalog_ref_url(self, catalog_ref: etree.Element) -> str:
         """
@@ -355,21 +355,30 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
         return processors_data
 
 
-class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
-    # TODO - this isn't doing any filtering yet (it's sending the epoch stamp but the processor isn't using it)
+class JPLMetOpAASCATL2ProcessorFactory(JPLProcessorFactoryBase):
+    """
+    JPL MetOp-A ASCAT Level 2
+    https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
+    http://projects.knmi.nl/scatterometer/publications/pdf/ASCAT_Product_Manual.pdf
+    """
 
+    def _processor_kwargs(self):
+        # override the default latitude/longitude keys using processor kwargs
+        return {
+            'dimension_longitude': 'lon',
+            'dimension_latitude': 'lat',
+        }
+
+    def _is_using_dataset(self, dataset: str) -> bool:
+        # the files have the .gz extension but they're returned as regular netcdf files
+        return dataset.endswith('.nc.gz')
+
+
+class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
     """
     JPL SMAP Level 2B CAP Sea Surface Salinity
     https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
     """
-    # the "epoch" they used starts at 2015-01-01
-    # ftp://podaac-ftp.jpl.nasa.gov/allData/smap/docs/JPL-CAP_V4/JPL_SMAP-SSS-UsersGuide_V4.pdf
-    UNIX_EPOCH_STAMP = datetime(2015, 1, 1).timestamp()
-
-    def _processor_kwargs(self):
-        return {
-            'epoch_stamp': self.UNIX_EPOCH_STAMP,
-        }
 
     def _is_using_dataset(self, dataset: str) -> bool:
         return dataset.endswith('.h5')
@@ -381,9 +390,8 @@ class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
     Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
     https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=ProcessingLevel:Platform&values=*1*:QUIKSCAT
     """
-    # the "epoch" they used starts at 2000-01-01 and the numpy `dtype` is defined in this example script they provided
+    # the numpy `dtype` is defined in the following example script:
     # ftp://podaac.jpl.nasa.gov/allData/quikscat/L1C/sw/Python/quikscat_l1c.py
-    UNIX_EPOCH_STAMP = datetime(2000, 1, 1).timestamp()
     DATA_TYPE = [
         ('timestr', 'S21'), ('time', 'f8'), ('lon', 'f4'), ('lat', 'f4'),
         ('fp_start', 'i4'), ('fp_end', 'i4'), ('npts', 'i4'), ('s0', 'f4'),
@@ -394,7 +402,6 @@ class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
 
     def _processor_kwargs(self):
         return {
-            'epoch_stamp': self.UNIX_EPOCH_STAMP,
             'data_type': self.DATA_TYPE,
         }
 
@@ -451,6 +458,7 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
                 provider_id=self._provider.id,
                 url=url,
                 label=label,
+                kwargs=self._processor_kwargs(),
             ))
 
         return processors_data
