@@ -355,10 +355,12 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
         return processors_data
 
 
-class JPLMetOpAASCATL2ProcessorFactory(JPLProcessorFactoryBase):
+class JPLMetOpASCATL2ProcessorFactory(JPLProcessorFactoryBase):
     """
-    JPL MetOp-A ASCAT Level 2
+    JPL MetOp-A/B ASCAT Level 2
+    [Meteorological Operational (MetOp)]
     https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
+    https://podaac.jpl.nasa.gov/dataset/ASCATB-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
     http://projects.knmi.nl/scatterometer/publications/pdf/ASCAT_Product_Manual.pdf
     """
 

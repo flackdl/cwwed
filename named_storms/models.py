@@ -9,7 +9,9 @@ PROCESSOR_DATA_FACTORY_NDBC = 'NDBC'  # National Data Buoy Center - https://dods
 PROCESSOR_DATA_FACTORY_USGS = 'USGS'  # USGS - https://stn.wim.usgs.gov/STNServices/Documentation/home
 PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C = 'JPL_QSCAT_L1C'  # JPL - https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1
 PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B = 'JPL_SMAP_L2B'  # JPL - https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
-PROCESSOR_DATA_FACTORY_JPL_MET_OP_A_ASCAT_L2 = 'JPL_MET_OP_A_ASCAT_L2'  # JPL - https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
+# https://podaac.jpl.nasa.gov/dataset/ASCATB-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
+# https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
+PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2 = 'JPL_MET_OP_ASCAT_L2'
 
 
 # data factory choices
@@ -19,7 +21,7 @@ PROCESSOR_DATA_FACTORY_CHOICES = (
     PROCESSOR_DATA_FACTORY_USGS,
     PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C,
     PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B,
-    PROCESSOR_DATA_FACTORY_JPL_MET_OP_A_ASCAT_L2,
+    PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2,
 )
 
 # data sources

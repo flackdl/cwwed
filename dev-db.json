@@ -76,6 +76,15 @@
   }
 },
 {
+  "model": "named_storms.covereddata",
+  "pk": 7,
+  "fields": {
+    "name": "JPL MetOp-B ASCAT Level 2",
+    "description": "This dataset contains operational near-real-time Level 2 coastal ocean surface wind vector retrievals from the Advanced Scatterometer (ASCAT) on MetOp-B at 12.5 km sampling resolution (note: the effective resolution is 25 km). It is a product of the European Organization for the Exploitation of Meteorological Satellites (EUMETSAT) Ocean and Sea Ice Satellite Application Facility (OSI SAF) provided through the Royal Netherlands Meteorological Institute (KNMI). This coastal dataset differs from the standard 12.5 and 25 km datasets in that it utilizes a spatial box filter (rather than the Hamming filter) to generate a spatial average of the Sigma-0 retrievals from the Level 1B dataset; all full resolution Sigma-0 retrievals within a 15 km radius of the wind vector cell centroid are used in the averaging. Since the full resolution L1B Sigma-0 retrievals are used, all non-sea retrievals are discarded prior to the Sigma-0 averaging. Each box average Sigma-0 is then used to compute the wind vector cell using the same CMOD5.n geophysical model function as in the standard OSI SAF ASCAT wind vector datasets. With this enhanced coastal retrieval, winds can be computed as close to ~15 km from the coast, as compared to the static ~35 km land mask in the standard 12.5 km dataset. Each file is provided in netCDF version 3 format, and contains one full orbit derived from 3-minute orbit granules. Latency is approximately 2 hours from the latest measurement. The beginning of the orbit is defined by the first wind vector cell measurement within the first 3-minute orbit granule that starts north of the Equator in the ascending node. ASCAT is a C-band dual swath fan beam radar scatterometer providing two independent swaths of backscatter retrievals in sun-synchronous polar orbit aboard the MetOp-B platform. For more information on the MetOp-B mission, please visit: http://podaac.jpl.nasa.gov/OceanWind/MetOp . For more timely announcements, users are encouraged to register with the KNMI scatterometer email list: scat@knmi.nl. Users are also highly advised to check the dataset user guide periodically for updates and new information on known problems and issues. All intellectual property rights of the OSI SAF products belong to EUMETSAT. The use of these products is granted to every interested user, free of charge. If you wish to use these products, EUMETSAT's copyright credit must be shown by displaying the words \"copyright (year) EUMETSAT\" on each of the products used.",
+    "active": true
+  }
+},
+{
   "model": "named_storms.covereddataprovider",
   "pk": 1,
   "fields": {
@@ -145,10 +154,23 @@
   "pk": 6,
   "fields": {
     "covered_data": 6,
-    "processor_factory": "JPL_MET_OP_A_ASCAT_L2",
+    "processor_factory": "JPL_MET_OP_ASCAT_L2",
     "processor_source": "DAP",
     "name": "JPL PODAAC MetOp-A ASCAT L2",
     "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/ascat/preview/L2/metop_a/coastal_opt/catalog.xml",
+    "active": true,
+    "epoch_datetime": "1990-01-01T00:00:00Z"
+  }
+},
+{
+  "model": "named_storms.covereddataprovider",
+  "pk": 7,
+  "fields": {
+    "covered_data": 7,
+    "processor_factory": "JPL_MET_OP_ASCAT_L2",
+    "processor_source": "DAP",
+    "name": "JPL PODAAC MetOp-B ASCAT L2",
+    "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/ascat/preview/L2/metop_b/coastal_opt/catalog.xml",
     "active": true,
     "epoch_datetime": "1990-01-01T00:00:00Z"
   }
@@ -234,6 +256,18 @@
     "date_start": "2017-08-17T14:46:47Z",
     "date_end": "2017-09-02T14:46:54Z",
     "geo": "SRID=4326;POLYGON ((-96.591796875 25.83984375, -89.82421875 28.564453125, -83.408203125 28.30078125, -83.935546875 31.11328125, -95.09765625 31.201171875, -98.26171875 28.30078125, -97.646484375 27.861328125, -96.591796875 25.83984375))",
+    "external_storm_id": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 9,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 7,
+    "date_start": "2017-08-17T14:14:04Z",
+    "date_end": "2017-09-02T14:14:05Z",
+    "geo": "SRID=4326;POLYGON ((-96.240234375 25.48828125, -93.515625 28.4765625, -86.748046875 29.619140625, -82.705078125 27.509765625, -83.232421875 31.46484375, -89.12109375 32.34375, -99.4921875 28.65234375, -96.240234375 25.48828125))",
     "external_storm_id": ""
   }
 }

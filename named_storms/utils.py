@@ -11,7 +11,7 @@ from cwwed import slack
 from named_storms.models import (
     CoveredDataProvider, NamedStorm, NSEM, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
     PROCESSOR_DATA_FACTORY_NDBC, PROCESSOR_DATA_FACTORY_USGS, PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C, PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B,
-    PROCESSOR_DATA_SOURCE_FILE_HDF, PROCESSOR_DATA_FACTORY_JPL_MET_OP_A_ASCAT_L2)
+    PROCESSOR_DATA_SOURCE_FILE_HDF, PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2)
 
 
 def create_directory(path, remove_if_exists=False):
@@ -48,7 +48,7 @@ def processor_factory_class(provider: CoveredDataProvider):
     """
     from named_storms.data.factory import (
         NDBCProcessorFactory, USGSProcessorFactory, JPLQSCATL1CProcessorFactory, ProcessorFactory, JPLSMAPL2BProcessorFactory,
-        JPLMetOpAASCATL2ProcessorFactory,
+        JPLMetOpASCATL2ProcessorFactory,
     )
 
     sources = {
@@ -56,7 +56,7 @@ def processor_factory_class(provider: CoveredDataProvider):
         PROCESSOR_DATA_FACTORY_USGS: USGSProcessorFactory,
         PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C: JPLQSCATL1CProcessorFactory,
         PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B: JPLSMAPL2BProcessorFactory,
-        PROCESSOR_DATA_FACTORY_JPL_MET_OP_A_ASCAT_L2: JPLMetOpAASCATL2ProcessorFactory,
+        PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2: JPLMetOpASCATL2ProcessorFactory,
     }
     return sources.get(provider.processor_factory, ProcessorFactory)
 
