@@ -8,33 +8,38 @@ import geojsoncontour
 from geojson import MultiPolygon, Polygon
 
 
-def circum_r(pa, pb, pc):
+# make these values less arbitrary by analyzing the input data density and spatial coverage
+GRID_SIZE = 1000
+MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
+
+
+def circum_radius(pa, pb, pc):
     """
-    returns circum-circle radii of triangles
+    returns circum-circle radius of triangle
+    https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
+    https://en.wikipedia.org/wiki/Circumscribed_circle#/media/File:Circumcenter_Construction.svg
     """
-    # Lengths of sides of triangle
+    # lengths of sides of triangle
     a = math.sqrt((pa[0]-pb[0])**2 + (pa[1]-pb[1])**2)
     b = math.sqrt((pb[0]-pc[0])**2 + (pb[1]-pc[1])**2)
     c = math.sqrt((pc[0]-pa[0])**2 + (pc[1]-pa[1])**2)
 
-    # Semiperimeter of triangle
+    # semiperimeter of triangle
     s = (a + b + c)/2.0
 
-    # Area of triangle by Heron's formula
+    # area of triangle by Heron's formula
     area = math.sqrt(s*(s-a)*(s-b)*(s-c))
 
     return a*b*c/(4.0*area)
 
 
-GRID_SIZE = 1000  # make this less arbitrary
-MAX_CIRCUM_RADIUS = .02
-
+# open the dataset for reading
 dataset = xarray.open_dataset('/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc')
 
 # data from a single point in time
 depths = dataset['mesh2d_waterdepth'][0]
 
-#z = depths[::20]  # make the point data less dense
+# z = depths[::20]  # make the point data less dense
 z = depths
 x = z.mesh2d_face_x
 y = z.mesh2d_face_y
@@ -57,7 +62,7 @@ for i in range(len(triang.triangles)):
     tri_coords.append(tuple(zip(x[triang.triangles[i]], y[triang.triangles[i]])))
 
 # filter out triangles (WIP)
-bad_triangles = [i for i, t in enumerate(tri_coords) if circum_r(*t) > MAX_CIRCUM_RADIUS]
+bad_triangles = [i for i, t in enumerate(tri_coords) if circum_radius(*t) > MAX_CIRCUM_RADIUS]
 mask = [i in bad_triangles for i, _ in enumerate(triang.triangles)]
 triang.set_mask(mask)
 
@@ -81,7 +86,7 @@ plt.savefig('/tmp/a.png')
 gjson = geojsoncontour.contourf_to_geojson(
     contourf=contourf,
     min_angle_deg=3.0,
-    ndigits=3,
+    ndigits=5,
     stroke_width=2,
     fill_opacity=0.5,
     geojson_filepath='/tmp/a.json',
