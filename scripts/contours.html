@@ -65,16 +65,19 @@
 	}).addTo(map);
 
 	$.getJSON('https://s3.amazonaws.com/cwwed-static-assets-frontend/contours.geojson', function(data) {
-
 		L.geoJSON([data], {
 			onEachFeature: function (feature, layer) {
 				layer.bindPopup("Water Depth: " + feature.properties.title + "'");
 			},
 			style: function (feature) {
-				return {color: feature.properties.fill};
+				return {
+					color: feature.properties.fill,
+					fillOpacity: .8
+				};
 			}
 		}).addTo(map);
 	});
+
 
 </script>
 
