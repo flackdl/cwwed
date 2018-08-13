@@ -12,3 +12,7 @@ The `/var/www/html` directory is mounted to EFS so all file system changes (i.e 
     
     # create deployment
     kubectl apply -f configs/deployment-wordpress.yml
+    
+    # alter php settings by modifying the `.htaccess` file in the mounted `/var/www/html` directory
+    php_value upload_max_filesize 64M
+    php_value post_max_size 64M

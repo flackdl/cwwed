@@ -58,6 +58,7 @@ class CoveredData(models.Model):
     name = models.CharField(max_length=500, unique=True)  # i.e "Global Forecast System"
     description = models.TextField(blank=True)
     active = models.BooleanField(default=True)
+    url = models.CharField(max_length=5000, blank=True)
 
     def __str__(self):
         return self.name
@@ -68,9 +69,9 @@ class CoveredDataProvider(models.Model):
     processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES))
     processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
-    url = models.CharField(max_length=500)
+    url = models.CharField(max_length=5000)
     active = models.BooleanField(default=True)
-    # some datasets define their time stamps using non-unix epochs so allow them to define it themselves
+    # some datasets define their time stamp epochs using non-unix epochs so allow them to define it themselves
     epoch_datetime = models.DateTimeField(default=datetime(1970, 1, 1, tzinfo=timezone.utc))
 
     def __str__(self):

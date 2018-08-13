@@ -1,5 +1,5 @@
 dj-database-url==0.4.2
-Django==2.0.1
+Django==2.0.5
 gunicorn==19.7.1
 psycopg2==2.7.3.2
 pytz==2017.3
@@ -12,7 +12,7 @@ git+https://github.com/pydap/pydap.git@84e85db948012de7368da610a63376c1e2f273ef
 requests==2.18.4
 django-allauth==0.35.0
 django-crispy-forms==1.7.0
-django-revproxy==0.9.14
+django-revproxy==0.9.15
 djangorestframework==3.7.7
 django-filter==1.1.0
 lxml==4.1.1
