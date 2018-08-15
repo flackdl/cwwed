@@ -192,6 +192,18 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     # generate new api token for a user
     CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
     kubectl exec -it ${CWWED_POD} -- python manage.py drf_create_token -r ${API_USER}
+    
+### Celery dashboard (Flower)
+
+    The celery flower dashboard is setup as a kubernetes `NodePort` which means it's not load balanced and is only accessible on the node itself.
+    
+    Do the following to access the dashboard:
+    
+    - Describe the kubernetes service to find the dynamic port it was assigned on the node
+    - Locate the node that the container is running on to get the ip address
+    - Make sure the node's aws security group permits that port for your ip address
+    - Use the user/password saved in the secrets file
+
    
 Kubernetes Dashboard
     
