@@ -2,6 +2,7 @@ import os
 import boto3
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage
+from named_storms.utils import create_directory
 
 
 class S3ObjectStorage(S3Boto3Storage):
@@ -29,6 +30,21 @@ class S3ObjectStorage(S3Boto3Storage):
             return ''
         return settings.DEPLOY_STAGE
 
+    @staticmethod
+    def _get_s3_client():
+        # create s3 client
+        return boto3.resource(
+            's3',
+            aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+        )
+
+    def download_file(self, obj_path, file_system_path):
+        # create directory then download to file system path
+        create_directory(os.path.dirname(file_system_path))
+        s3 = self._get_s3_client()
+        s3.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).download_file(obj_path, file_system_path)
+
     def copy_within_storage(self, source: str, destination: str):
         """
         Copies an S3 object to another location within the same bucket
@@ -42,12 +58,7 @@ class S3ObjectStorage(S3Boto3Storage):
         source_absolute = self.path(source)
         destination_absolute = self.path(destination)
 
-        # create s3 client
-        s3 = boto3.resource(
-            's3',
-            aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
-        )
+        s3 = self._get_s3_client()
         copy_source = {
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
             'Key': source_absolute,

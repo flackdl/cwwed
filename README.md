@@ -184,7 +184,7 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     
     # collect covered data via job
-    kubectl apply -f configs/job_collect-covered-data.yml
+    kubectl apply -f configs/job-collect-covered-data.yml
     
     # force a rolling update (to repull images)
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"

@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 import json
 from datetime import datetime
 from django.contrib.auth.models import User
-from django.core.files import File
 from django.core.files.storage import default_storage
 import os
 import tarfile
@@ -19,7 +18,8 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    create_directory, slack_error, get_superuser_emails)
+    slack_error, get_superuser_emails,
+)
 
 
 class TaskBase(app.Task):
@@ -204,6 +204,8 @@ def extract_nsem_model_output_task(nsem_id):
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.model_output_snapshot_extracted:
         return None
+    elif not uploaded_file_path:
+        raise Http404("Missing model output snapshot")
     # verify the uploaded output exists in storage
     elif not default_storage.exists(uploaded_file_path):
         raise Http404("{} doesn't exist in storage".format(uploaded_file_path))
@@ -219,37 +221,30 @@ def extract_nsem_model_output_task(nsem_id):
     # copy from "upload" directory to the versioned path
     default_storage.copy_within_storage(uploaded_file_path, storage_path)
 
-    # extract to file system path
-    with default_storage.open(storage_path, 'rb') as sd:
-        file_system_path = os.path.join(
-            named_storm_nsem_version_path(nsem),
-            settings.CWWED_NSEM_PSA_DIR_NAME,
-            os.path.basename(uploaded_file_path),
-        )
+    file_system_path = os.path.join(
+        named_storm_nsem_version_path(nsem),
+        settings.CWWED_NSEM_PSA_DIR_NAME,
+        os.path.basename(uploaded_file_path),
+    )
 
-        # create the versioned path
-        create_directory(os.path.dirname(file_system_path))
+    # download to the file system
+    default_storage.download_file(storage_path, file_system_path)
 
-        # write to file system path
-        with File(open(file_system_path, 'wb')) as dd:
-            for chunk in sd.chunks():
-                dd.write(chunk)
+    # extract the tgz
+    tar = tarfile.open(file_system_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)
+    tar.extractall(os.path.dirname(file_system_path))
+    tar.close()
 
-        # extract the tgz to file storage
-        tar = tarfile.open(file_system_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)
-        tar.extractall(os.path.dirname(file_system_path))
-        tar.close()
+    # recursively update the permissions for all extracted directories and files
+    for root, dirs, files in os.walk(os.path.dirname(file_system_path)):
+        # using octal literal notation for chmod
+        for d in dirs:
+            os.chmod(os.path.join(root, d), 0o755)
+        for f in files:
+            os.chmod(os.path.join(root, f), 0o644)
 
-        # recursively update the permissions for all extracted directories and files
-        for root, dirs, files in os.walk(os.path.dirname(file_system_path)):
-            # using octal literal notation for chmod
-            for d in dirs:
-                os.chmod(os.path.join(root, d), 0o755)
-            for f in files:
-                os.chmod(os.path.join(root, f), 0o644)
-
-        # remove the tgz now that we've extracted everything
-        os.remove(file_system_path)
+    # remove the tgz now that we've extracted everything
+    os.remove(file_system_path)
 
     # update output path to the copied path, flag success and set the date returned
     nsem.model_output_snapshot = storage_path
