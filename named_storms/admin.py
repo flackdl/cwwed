@@ -1,7 +1,8 @@
 from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NSEM,
-    NamedStormCoveredDataLog)
+    NamedStormCoveredDataLog,
+)
 
 
 class CoveredDataInline(admin.TabularInline):
@@ -31,7 +32,7 @@ class NamedStormInlineAdmin(admin.GeoModelAdmin):
 
 @admin.register(CoveredData)
 class CoveredDataAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'name', 'active', )
+    list_display = ('id', 'name', 'active', 'url',)
     inlines = (
         NamedStormCoveredDataProviderInline,
     )
