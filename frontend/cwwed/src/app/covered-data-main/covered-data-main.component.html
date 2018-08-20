@@ -1,0 +1,23 @@
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-sm-2">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link" [class.active]="!coveredDataId" [routerLink]="['/covered-data/']">
+            <strong>Covered Data</strong>
+          </a>
+        </li>
+        <li *ngFor="let data of cwwedService.coveredDataList" class="nav-item">
+          <a class="nav-link" [class.active]="coveredDataId === data.id" [routerLink]="['/covered-data/', data.id]">{{ data.name }}</a>
+        </li>
+      </ul>
+    </div>
+    <div class="col-sm" *ngIf="coveredDataId">
+      <app-covered-data-detail [data]="activeCoveredData()"></app-covered-data-detail>
+    </div>
+    <div class="col-sm" *ngIf="!coveredDataId">
+      <h1>Welcome</h1>
+      Please choose a Covered Data
+    </div>
+  </div>
+</div>

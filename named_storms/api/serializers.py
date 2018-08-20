@@ -3,7 +3,7 @@ from urllib import parse
 from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework import serializers
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -21,8 +21,21 @@ class NamedStormDetailSerializer(NamedStormSerializer):
 
 
 class CoveredDataSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = CoveredData
+        fields = '__all__'
+
+    providers = serializers.SerializerMethodField()
+
+    def get_providers(self, covered_data: CoveredData):
+        return CoveredDataProviderSerializer(covered_data.covereddataprovider_set.all(), many=True).data
+
+
+class CoveredDataProviderSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CoveredDataProvider
         fields = '__all__'
 
 
