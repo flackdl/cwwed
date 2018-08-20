@@ -22,6 +22,10 @@ class ThreddsProxy(ProxyView):
         headers['HOST'] = request.get_host()
         return headers
 
+    def get_encoded_query_params(self):
+        # return the raw query string since opendap supports a wider format, i.e ?time[0:1:1],lat[0:1:1]
+        return self.request.META['QUERY_STRING']
+
     def get_quoted_path(self, path):
         # overridden to use quote vs quote_plus because THREDDS chokes on the plus characters
         return quote(path.encode('utf8'), QUOTE_SAFE)
