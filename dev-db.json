@@ -27,7 +27,8 @@
   "fields": {
     "name": "NDBC Standard Meteorological data",
     "description": "The National Data Buoy Center is a part of the National Oceanic and Atmospheric Administration's National Weather Service. NDBC designs, develops, operates, and maintains a network of data collecting buoys and coastal stations",
-    "active": true
+    "active": true,
+    "url": "https://dods.ndbc.noaa.gov/"
   }
 },
 {
@@ -36,7 +37,8 @@
   "fields": {
     "name": "Global Forecast System",
     "description": "The Global Forecast System (GFS) is a weather forecast model produced by the National Centers for Environmental Prediction (NCEP). Dozens of atmospheric and land-soil variables are available through this dataset, from temperatures, winds, and precipitation to soil moisture and atmospheric ozone concentration. The entire globe is covered by the GFS at a base horizontal resolution of 18 miles (28 kilometers) between grid points, which is used by the operational forecasters who predict weather out to 16 days in the future. Horizontal resolution drops to 44 miles (70 kilometers) between grid point for forecasts between one week and two weeks.",
-    "active": true
+    "active": true,
+    "url": "https://www.ncdc.noaa.gov/data-access/model-data/model-datasets/global-forcast-system-gfs"
   }
 },
 {
@@ -45,7 +47,8 @@
   "fields": {
     "name": "USGS Short-Term Network",
     "description": "The USGS Short-Term Network (STN) is a national-scale application and database designed to support USGS event-based sensor deployments and High-Water Mark (HWM) data collection efforts. The STN database is designed to encourage, but not require, repeated visits to temporary sensor deployment (wave or water level) or HWM locations. By developing a system that encourages repeated, as-needed deployments in the same locations, it facilitates the development of longer-term datasets of storm events than would be feasible by relying on field personnel's memories of previous deployments or interpretations of paper records alone. Such efficient responses have become a cornerstone of the USGS Hazards Response.",
-    "active": true
+    "active": true,
+    "url": "https://stn.wim.usgs.gov/STNServices/Documentation/home"
   }
 },
 {
@@ -54,7 +57,8 @@
   "fields": {
     "name": "JPL QuikSCAT Level 1C",
     "description": "This dataset contains geo-located and averaged Level 1B Sigma-0 measurements and wind retrievals from the SeaWinds on QuikSCAT platform, initiated in the months following the failure of the rotating antenna motor on 22 November 2009, using the various incidence angles at which QuikSCAT was pointed during the time period from November 2009 until present. Incidence angles were varied in order to cross-calibrate the Oceansat-2 and RapidScat scatterometers and to extend the known Ku-band geophysical model function. The averaging of the L1B input data combined with the wind vector processing results are both contained in this product referred to hereafter as Level 1C (L1C). The fixed and repointed beam processing is relative to either the one corresponding to the vertically polarized \"outer\" beam or the other corresponding to the horizontally polarized \"inner\" beam. The Sigma-0 values from the fixed operating beam for each frame are averaged to a single value representing approximately 50 samples. The data points are land flagged, collocated with ECMWF surface winds, and have climatological nadir attenuations provided for the location and time of the data (not applied to the sigma0). For orbits prior to 87727 the RapidSCAT geophysical model function (GMF) has been used to compute wind speed and direction, which is provided at each discrete sampling point corresponding to the averaged Sigma-0 locations. From orbit 87727 to present, a newer GMF designed specifically to determine wind speed from QuikSCAT backscatter and ECMWF wind direction was employed. The wind speed were computed from QuikSCAT Sigma0 values by assuming the ECMWF wind direction as a first step and then refining those directions slightly to minimize differences between ECMWF and QuikSCAT wind vectors. Retrieved wind directions, thus obtained, were reported but are only slightly different from ECMWF values and should not be considered an independent measurement of wind direction. Retrieved wind speeds do not depend significantly on ECMWF speeds as evidenced by the fact that they agree closely with WindSAT polarimetric radiometer speeds whenever WindSAT and ECMWF disagree. The Sigma0 values have also been corrected for scan loss (due to the fact that the antenna does not scan) and for X-factor changes due to repointing. At a later date, the historical L1C data will be reprocessed to utilize the newer GMF.",
-    "active": true
+    "active": true,
+    "url": "https://podaac.jpl.nasa.gov/dataset/QSCAT_L1C_NONSPINNING_SIGMA0_WINDS_V1?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*1*"
   }
 },
 {
@@ -63,7 +67,8 @@
   "fields": {
     "name": "JPL SMAP Level 2B",
     "description": "This is the PI-produced JPL SMAP-SSS V4.0, level 2B CAP, validated sea surface salinity and extreme winds orbital/swath product from the NASA Soil Moisture Active Passive (SMAP) observatory. It is based on the Combined Active-Passive (CAP) retrieval algorithm developed at JPL originally in the context of Aquarius/SAC-D and now extended to SMAP. The JPL SMAP-SSS L2B CAP product includes data for a range of parameters: derived SMAP sea surface salinity (SSS) and wind speed/direction data for extreme winds, brightness temperatures for each radiometer polarization, ancillary reference surface salinity, wind and wave height data, quality flags, and navigation data. Each data file covers one 98-minute orbit (15 files per day). Data begins on April 1,2015 and is ongoing, with a 3 day latency in processing and availability. Observations are global in extent and provided at 25km swath grid with an approximate spatial resolution of 60 km. Improvements with this V4.0 dataset include: addition of estimated SSS uncertainty, improvement of TB correction for high latitudes, modification of the land correction range to 1000 km from coast, change of the ancillary wind source from NCEP GDAS to NCEP GFS resulting in signifcant improvements in SSS retrievals near storms, extension of the range of SSS retrievals to 45 PSU, and SSS retrievals also for large inland seas. The SMAP satellite is in a near-polar orbit at an inclination of 98 degrees and an altitude of 685 km. It has an ascending node time of 6 pm and is sun-synchronous. With its 1000km swath, SMAP achieves global coverage in approximately 3 days, but has an exact orbit repeat cycle of 8 days. On board Instruments include a highly sensitive L-band radiometer operating at 1.41GHz and an L-band 1.26GHz radar sensor providing complementary active and passive sensing capabilities. Malfunction of the SMAP scatterometer on 7 July, 2015, has necessitated the use of collocated wind speed for the surface roughness correction required for the surface salinity retrieval.",
-    "active": true
+    "active": true,
+    "url": "https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*"
   }
 },
 {
@@ -72,7 +77,8 @@
   "fields": {
     "name": "JPL MetOp-A ASCAT Level 2",
     "description": "This dataset contains operational near-real-time Level 2 coastal ocean surface wind vector retrievals from the Advanced Scatterometer (ASCAT) on MetOp-A at 12.5 km sampling resolution (note: the effective resolution is 25 km). It is a product of the European Organization for the Exploitation of Meteorological Satellites (EUMETSAT) Ocean and Sea Ice Satellite Application Facility (OSI SAF) provided through the Royal Netherlands Meteorological Institute (KNMI). This coastal dataset differs from the standard 25 km datasets in that it utilizes a spatial box filter (rather than the Hamming filter) to generate a spatial average of the Sigma-0 retrievals from the Level 1B dataset; all full resolution Sigma-0 retrievals within a 15 km radius of the wind vector cell centroid are used in the averaging. Since the full resolution L1B Sigma-0 retrievals are used, all non-sea retrievals are discarded prior to the Sigma-0 averaging. Each box average Sigma-0 is then used to compute the wind vector cell using the same CMOD7.n geophysical model function as in the standard OSI SAF ASCAT wind vector datasets. With this enhanced coastal retrieval, winds can be computed as close to ~15 km from the coast, as compared to the static ~35 km land mask in the standard 12.5 km dataset. Each file is provided in netCDF version 3 format, and contains one full orbit derived from 3-minute orbit granules. Latency is approximately 2 hours from the latest measurement. The beginning of the orbit is defined by the first wind vector cell measurement within the first 3-minute orbit granule that starts north of the Equator in the ascending node. ASCAT is a C-band dual fan beam radar scatterometer providing two independent swaths of backscatter retrievals in sun-synchronous polar orbit aboard the MetOp-A platform. For more information on the MetOp mission, please visit: http://podaac.jpl.nasa.gov/OceanWind/MetOp . For more timely announcements, users are encouraged to register with the KNMI scatterometer email list: scat@knmi.nl. Users are also highly advised to check the dataset user guide periodically for updates and new information on known problems and issues. All intellectual property rights of the OSI SAF products belong to EUMETSAT. The use of these products is granted to every interested user, free of charge. If you wish to use these products, EUMETSAT's copyright credit must be shown by displaying the words \"copyright (year) EUMETSAT\" on each of the products used.",
-    "active": true
+    "active": true,
+    "url": "https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT"
   }
 },
 {
@@ -81,7 +87,8 @@
   "fields": {
     "name": "JPL MetOp-B ASCAT Level 2",
     "description": "This dataset contains operational near-real-time Level 2 coastal ocean surface wind vector retrievals from the Advanced Scatterometer (ASCAT) on MetOp-B at 12.5 km sampling resolution (note: the effective resolution is 25 km). It is a product of the European Organization for the Exploitation of Meteorological Satellites (EUMETSAT) Ocean and Sea Ice Satellite Application Facility (OSI SAF) provided through the Royal Netherlands Meteorological Institute (KNMI). This coastal dataset differs from the standard 12.5 and 25 km datasets in that it utilizes a spatial box filter (rather than the Hamming filter) to generate a spatial average of the Sigma-0 retrievals from the Level 1B dataset; all full resolution Sigma-0 retrievals within a 15 km radius of the wind vector cell centroid are used in the averaging. Since the full resolution L1B Sigma-0 retrievals are used, all non-sea retrievals are discarded prior to the Sigma-0 averaging. Each box average Sigma-0 is then used to compute the wind vector cell using the same CMOD5.n geophysical model function as in the standard OSI SAF ASCAT wind vector datasets. With this enhanced coastal retrieval, winds can be computed as close to ~15 km from the coast, as compared to the static ~35 km land mask in the standard 12.5 km dataset. Each file is provided in netCDF version 3 format, and contains one full orbit derived from 3-minute orbit granules. Latency is approximately 2 hours from the latest measurement. The beginning of the orbit is defined by the first wind vector cell measurement within the first 3-minute orbit granule that starts north of the Equator in the ascending node. ASCAT is a C-band dual swath fan beam radar scatterometer providing two independent swaths of backscatter retrievals in sun-synchronous polar orbit aboard the MetOp-B platform. For more information on the MetOp-B mission, please visit: http://podaac.jpl.nasa.gov/OceanWind/MetOp . For more timely announcements, users are encouraged to register with the KNMI scatterometer email list: scat@knmi.nl. Users are also highly advised to check the dataset user guide periodically for updates and new information on known problems and issues. All intellectual property rights of the OSI SAF products belong to EUMETSAT. The use of these products is granted to every interested user, free of charge. If you wish to use these products, EUMETSAT's copyright credit must be shown by displaying the words \"copyright (year) EUMETSAT\" on each of the products used.",
-    "active": true
+    "active": true,
+    "url": "https://podaac.jpl.nasa.gov/dataset/ASCATB-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT"
   }
 },
 {
