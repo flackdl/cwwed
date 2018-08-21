@@ -122,6 +122,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
     kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
     
+    # alternatively exectute commands from local environment using production settings
+    DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) DEPLOY_STAGE=prod python manage.py dbshell
+    
     # collect covered data
     kubectl exec -it $CWWED_POD python manage.py collect_covered_data
     

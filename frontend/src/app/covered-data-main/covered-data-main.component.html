@@ -7,7 +7,7 @@
             <strong>Covered Data</strong>
           </a>
         </li>
-        <li *ngFor="let data of cwwedService.coveredDataList" class="nav-item">
+        <li *ngFor="let data of coveredDataList" class="nav-item">
           <a class="nav-link" [class.active]="coveredDataId === data.id" [routerLink]="['/covered-data/', data.id]">{{ data.name }}</a>
         </li>
       </ul>

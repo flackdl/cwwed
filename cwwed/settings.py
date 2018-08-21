@@ -162,6 +162,9 @@ USE_TZ = True
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'cwwed-static-assets')
 STATIC_URL = "https://%s.s3.amazonaws.com/" % AWS_STORAGE_BUCKET_NAME
 STATICFILES_STORAGE = 'cwwed.storage_backends.S3StaticStorage'
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
 
 # custom file storage
 DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.S3ObjectStorage'

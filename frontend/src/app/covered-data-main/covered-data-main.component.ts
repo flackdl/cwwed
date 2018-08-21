@@ -10,6 +10,7 @@ import * as _ from 'lodash';
 })
 export class CoveredDataMainComponent implements OnInit {
   coveredDataId: number;
+  coveredDataList: any = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -23,9 +24,13 @@ export class CoveredDataMainComponent implements OnInit {
    }
 
   ngOnInit() {
-    // load covered data if it hasn't already
+    // load covered data
     if (!this.cwwedService.coveredDataList.length) {
-      this.cwwedService.fetchCoveredData();
+      this.cwwedService.fetchCoveredData().subscribe((data) => {
+        this.coveredDataList = data;
+      });
+    } else {
+      this.coveredDataList = this.cwwedService.coveredDataList;
     }
 
     this.route.params.subscribe((data) => {

@@ -26,6 +26,11 @@ class CoveredDataSerializer(serializers.ModelSerializer):
         model = CoveredData
         fields = '__all__'
 
+    providers = serializers.SerializerMethodField()
+
+    def get_providers(self, covered_data: CoveredData):
+        return CoveredDataProviderSerializer(covered_data.covereddataprovider_set.all(), many=True).data
+
 
 class CoveredDataProviderSerializer(serializers.ModelSerializer):
 
