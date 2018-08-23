@@ -324,15 +324,15 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
         for ref in catalog_refs:
             catalog_ref_urls_day.append(self._catalog_ref_url(ref))
 
-        # filter
-        catalog_ref_urls_day = self.generic_filter(catalog_ref_urls_day)
-
         # build a list of relevant datasets for each catalog
         catalog_documents = self._catalog_documents(catalog_ref_urls_day)
         for catalog_document in catalog_documents:
             for dataset in catalog_document.xpath('//catalog:dataset', namespaces=self.namespaces):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('ID'))
+
+        # filter datasets
+        dataset_paths = self.generic_filter(dataset_paths)
 
         # build a list of processors for all the relevant datasets
         for dataset_path in dataset_paths:

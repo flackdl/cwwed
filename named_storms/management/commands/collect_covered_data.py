@@ -107,7 +107,7 @@ class Command(BaseCommand):
                     if covered_data_success:
 
                         # remove any previous version in the complete path
-                        shutil.rmtree(os.path.join(complete_path, data.name), ignore_errors=True)
+                        shutil.rmtree(os.path.join(complete_path, data.name))
 
                         # then move the covered data outputs from the incomplete/staging directory to the complete directory
                         shutil.move(os.path.join(incomplete_path, data.name), complete_path)
