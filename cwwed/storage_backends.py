@@ -40,10 +40,11 @@ class S3ObjectStorage(S3Boto3Storage):
         )
 
     def download_file(self, obj_path, file_system_path):
+        absolute_path = self.path(obj_path)
         # create directory then download to file system path
         create_directory(os.path.dirname(file_system_path))
         s3 = self._get_s3_client()
-        s3.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).download_file(obj_path, file_system_path)
+        s3.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).download_file(absolute_path, file_system_path)
 
     def copy_within_storage(self, source: str, destination: str):
         """
@@ -67,7 +68,7 @@ class S3ObjectStorage(S3Boto3Storage):
 
     def path(self, path):
         """
-        Include the default_storage "location" (prefix)
+        Include the default_storage "location" (prefix), i.e "local", "dev", "test" etc.  Will be empty when in production
         """
         return os.path.join(self.location, path)
 

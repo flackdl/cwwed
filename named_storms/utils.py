@@ -1,7 +1,8 @@
 import os
 import errno
 import shutil
-
+from urllib import parse
+from django.http.request import HttpRequest
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.files import File
@@ -142,3 +143,39 @@ def slack_error(message: str, channel='#errors'):
 
 def get_superuser_emails():
     return [u.email for u in User.objects.filter(is_superuser=True) if u.email]
+
+
+def get_thredds_root_url(request: HttpRequest) -> str:
+    return '{}://{}'.format(
+        request.scheme,
+        os.path.join(
+            request.get_host(),
+            'thredds',
+            'catalog',
+            'cwwed',
+        ))
+
+
+def get_thredds_url_named_storm_root(request: HttpRequest, named_storm: NamedStorm) -> str:
+    return os.path.join(
+        get_thredds_root_url(request),
+        parse.quote(named_storm.name),
+    )
+
+
+def get_thredds_url_nsem(request: HttpRequest, nsem: NSEM) -> str:
+    return os.path.join(
+        get_thredds_url_named_storm_root(request, nsem.named_storm),
+        parse.quote(settings.CWWED_NSEM_DIR_NAME),
+        'v{}'.format(nsem.id),
+        parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
+        'catalog.html',
+    )
+
+
+def get_thredds_url_covered_data(request: HttpRequest, named_storm: NamedStorm) -> str:
+    return os.path.join(
+        get_thredds_url_named_storm_root(request, named_storm),
+        parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
+        'catalog.html',
+    )

@@ -1,9 +1,9 @@
 import os
-from urllib import parse
 from django.conf import settings
 from django.core.files.storage import default_storage
 from rest_framework import serializers
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider
+from named_storms.utils import get_thredds_url_nsem, get_thredds_url_covered_data
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -59,23 +59,17 @@ class NSEMSerializer(serializers.ModelSerializer):
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     thredds_url_nsem = serializers.SerializerMethodField()
+    thredds_url_covered_data = serializers.SerializerMethodField()
+
+    def get_thredds_url_covered_data(self, obj: NSEM):
+        if not all([obj.model_output_snapshot_extracted, obj.covered_data_snapshot]):
+            return None
+        return get_thredds_url_covered_data(self.context['request'], obj.named_storm)
 
     def get_thredds_url_nsem(self, obj: NSEM):
         if not obj.model_output_snapshot_extracted:
             return None
-        return '{}://{}'.format(
-            self.context['request'].scheme,
-            os.path.join(
-                self.context['request'].get_host(),
-                'thredds',
-                'catalog',
-                'cwwed',
-                parse.quote(obj.named_storm.name),
-                parse.quote(settings.CWWED_NSEM_DIR_NAME),
-                'v{}'.format(obj.id),
-                parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
-                'catalog.html',
-            ))
+        return get_thredds_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NSEM):
         if obj.covered_data_snapshot:
@@ -112,7 +106,7 @@ class NSEMSerializer(serializers.ModelSerializer):
             return s3_path
         return value
 
-    def get_model_output_upload_path(self, obj: NSEM):
+    def get_model_output_upload_path(self, obj: NSEM) -> str:
         return self._get_model_output_upload_path(obj)
 
     @staticmethod
