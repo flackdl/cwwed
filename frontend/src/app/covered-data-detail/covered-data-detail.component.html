@@ -1,8 +1,6 @@
 <div *ngIf="data">
   <div class="card">
-    <h5 class="card-header">{{ data.name }}</h5>
-    <div class="card-body">
-      <p class="card-text">{{ data.description }}</p>
+    <h5 class="card-header">
       <div class="row">
         <div class="col-sm">
           <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
@@ -34,6 +32,13 @@
           </div>
         </div>
       </div>
+    </h5>
+    <div class="card-body">
+      <h5 class="card-title">
+        {{ data.name }}
+      </h5>
+      <p class="card-text">
+        {{ data.description }}</p>
     </div>
   </div>
 </div>

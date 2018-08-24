@@ -10,7 +10,7 @@ import boto3
 import sys
 import requests
 
-API_ROOT = 'http://dev.cwwed-staging.com/api/'
+API_ROOT = 'https://dev.cwwed-staging.com/api/'
 #API_ROOT = 'http://localhost:8000/api/'
 
 ENDPOINT_NSEM = 'nsem/'

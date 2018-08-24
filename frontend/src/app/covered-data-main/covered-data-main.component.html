@@ -1,6 +1,6 @@
-<div class="container-fluid">
+<div class="container-fluid" *ngIf="coveredDataList">
   <div class="row">
-    <div class="col-sm-2">
+    <div class="col-sm-4">
       <div class="list-group">
         <a class="list-group-item list-group-item-action list-group-item-secondary d-flex justify-content-between align-items-center" [routerLink]="['/covered-data/']" [class.active]="!coveredDataId">
           <strong>Covered Data</strong>
