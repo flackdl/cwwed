@@ -12,7 +12,6 @@ export class CoveredDataDetailComponent implements OnInit {
   @Input() data: any;
   public namedStorms: any;
   public nsemList: any;
-  public stormNSEM: any = {};
 
   constructor(
     private cwwedService: CwwedService,
@@ -21,20 +20,12 @@ export class CoveredDataDetailComponent implements OnInit {
   ngOnInit() {
     this.namedStorms = this.cwwedService.namedStorms;
     this.nsemList = this.cwwedService.nsemList;
-    _.each(this.namedStorms, (storm) => {
-      let nsem = _.find(this.nsemList, (nsem) => {
-        return nsem.named_storm === storm.id;
-      });
-      if (nsem) {
-        this.stormNSEM[storm.id] = nsem;
-      }
-    });
   }
 
   public stormCoveredDataUrl(storm) {
-    if (storm.id in this.stormNSEM) {
-      return this.stormNSEM[storm.id].thredds_url_covered_data;
-    }
-    return '';
+    let foundNsem = _.find(this.nsemList, (nsem) => {
+      return nsem.named_storm === storm.id;
+    });
+    return foundNsem ? foundNsem.thredds_url_covered_data : '';
   }
 }

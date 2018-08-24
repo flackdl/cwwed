@@ -3,14 +3,22 @@ import { NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
+import { NgxSpinnerModule } from 'ngx-spinner';
 
 import { AppComponent } from './app.component';
 import { CoveredDataDetailComponent } from './covered-data-detail/covered-data-detail.component';
 import { CoveredDataMainComponent } from './covered-data-main/covered-data-main.component';
+import { PsaComponent } from './psa/psa.component';
+import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
 
 const appRoutes: Routes = [
+  { path: '', component: CoveredDataMainComponent },
+  { path: 'covered-data', component: CoveredDataMainComponent },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
-  { path: '**', component: CoveredDataMainComponent }
+  { path: 'post-storm-assessment', component: PsaComponent },
+  { path: 'post-storm-assessment/:id', component: PsaComponent },
+  { path: 'page-not-found', component: PageNotFoundComponent },
+  { path: '**', component: PageNotFoundComponent }
 ];
 
 
@@ -18,7 +26,9 @@ const appRoutes: Routes = [
   declarations: [
     AppComponent,
     CoveredDataDetailComponent,
-    CoveredDataMainComponent
+    CoveredDataMainComponent,
+    PsaComponent,
+    PageNotFoundComponent
   ],
   imports: [
     RouterModule.forRoot(
@@ -30,6 +40,7 @@ const appRoutes: Routes = [
     BrowserModule,
     NgbModule,
     HttpClientModule,
+    NgxSpinnerModule,
   ],
   providers: [],
   bootstrap: [AppComponent]

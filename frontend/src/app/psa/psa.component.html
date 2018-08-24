@@ -1,0 +1,20 @@
+<div class="card">
+  <h5 class="card-header">
+    Post Storm Assessment
+    <div ngbDropdown class="d-inline-block">
+      <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Select a Storm</button>
+      <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+        <button *ngFor="let storm of namedStorms" class="dropdown-item">
+          {{ storm.name }}
+        </button>
+      </div>
+    </div>
+  </h5>
+  <div class="card-body">
+    <h5 class="card-title">
+      title
+    </h5>
+    <p class="card-text">
+    text
+  </div>
+</div>

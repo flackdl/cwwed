@@ -25,14 +25,7 @@ export class CoveredDataMainComponent implements OnInit {
    }
 
   ngOnInit() {
-    forkJoin(
-      this.cwwedService.fetchCoveredData(),
-      this.cwwedService.fetchNamedStorms(),
-      this.cwwedService.fetchNSEMPerStorm(),
-    ).subscribe((data) => {
-      this.coveredDataList = data[0];
-    });
-
+    this.coveredDataList = this.cwwedService.coveredDataList;
 
     this.route.params.subscribe((data) => {
       if (data.id) {

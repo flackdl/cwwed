@@ -138,6 +138,14 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     minikube delete
     
     
+### S3 static hosting
+
+    ng build --prod --base-href=/cwwed-static-assets-frontend/
+    aws s3 cp --acl=public-read --recursive dist/cwwed s3://cwwed-static-assets-frontend/
+    
+https://s3.amazonaws.com/cwwed-static-assets-frontend/index.html
+    
+    
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
 
