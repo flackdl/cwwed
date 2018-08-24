@@ -1,18 +1,17 @@
 <div class="container-fluid">
   <div class="row">
     <div class="col-sm-2">
-      <ul class="nav flex-column">
-        <li class="nav-item">
-          <a class="nav-link" [class.active]="!coveredDataId" [routerLink]="['/covered-data/']">
-            <strong>Covered Data</strong>
-          </a>
-        </li>
-        <li *ngFor="let data of coveredDataList" class="nav-item">
-          <a class="nav-link" [class.active]="coveredDataId === data.id" [routerLink]="['/covered-data/', data.id]">{{ data.name }}</a>
-        </li>
-      </ul>
+      <div class="list-group">
+        <a class="list-group-item list-group-item-action list-group-item-secondary d-flex justify-content-between align-items-center" [routerLink]="['/covered-data/']" [class.active]="!coveredDataId">
+          <strong>Covered Data</strong>
+          <span class="badge badge-primary badge-pill">{{ coveredDataList.length }}</span>
+        </a>
+        <a *ngFor="let data of coveredDataList" class="list-group-item list-group-item-action" [class.active]="coveredDataId === data.id" [routerLink]="['/covered-data/', data.id]">
+          {{ data.name }}
+        </a>
+      </div>
     </div>
-    <div class="col-sm" *ngIf="coveredDataId">
+    <div class="col-sm" *ngIf="coveredDataId && coveredDataList">
       <app-covered-data-detail [data]="activeCoveredData()"></app-covered-data-detail>
     </div>
     <div class="col-sm" *ngIf="!coveredDataId">

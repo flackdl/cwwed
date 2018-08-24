@@ -1,3 +1,4 @@
+import { forkJoin } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from "@angular/router";
 import { CwwedService } from "../cwwed.service";
@@ -10,7 +11,7 @@ import * as _ from 'lodash';
 })
 export class CoveredDataMainComponent implements OnInit {
   coveredDataId: number;
-  coveredDataList: any = [];
+  coveredDataList: any;
 
   constructor(
     private route: ActivatedRoute,
@@ -24,14 +25,14 @@ export class CoveredDataMainComponent implements OnInit {
    }
 
   ngOnInit() {
-    // load covered data
-    if (!this.cwwedService.coveredDataList.length) {
-      this.cwwedService.fetchCoveredData().subscribe((data) => {
-        this.coveredDataList = data;
-      });
-    } else {
-      this.coveredDataList = this.cwwedService.coveredDataList;
-    }
+    forkJoin(
+      this.cwwedService.fetchCoveredData(),
+      this.cwwedService.fetchNamedStorms(),
+      this.cwwedService.fetchNSEMPerStorm(),
+    ).subscribe((data) => {
+      this.coveredDataList = data[0];
+    });
+
 
     this.route.params.subscribe((data) => {
       if (data.id) {

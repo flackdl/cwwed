@@ -1,4 +1,7 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from named_storms.tasks import archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task
 from named_storms.models import NamedStorm, CoveredData, NSEM
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
@@ -28,6 +31,14 @@ class NSEMViewset(viewsets.ModelViewSet):
     """
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
+    filter_fields = ('named_storm__id', 'model_output_snapshot_extracted')
+
+    @action(methods=['get'], detail=False, url_path='per-storm')
+    def per_storm(self, request):
+        # return the most recent/distinct NSEM records per storm
+        return Response(NSEMSerializer(
+            self.queryset.filter(model_output_snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
+            many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
         # save the instance first so we can create a task to archive the covered data snapshot

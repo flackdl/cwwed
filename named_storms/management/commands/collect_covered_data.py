@@ -106,11 +106,15 @@ class Command(BaseCommand):
 
                     if covered_data_success:
 
+                        data_path = os.path.join(complete_path, data.name)
+                        data_path_incomplete = os.path.join(incomplete_path, data.name)
+
                         # remove any previous version in the complete path
-                        shutil.rmtree(os.path.join(complete_path, data.name))
+                        if os.path.exists(data_path):
+                            shutil.rmtree(data_path)
 
                         # then move the covered data outputs from the incomplete/staging directory to the complete directory
-                        shutil.move(os.path.join(incomplete_path, data.name), complete_path)
+                        shutil.move(data_path_incomplete, complete_path)
 
                         # create a task to archive the data
                         archive_named_storm_covered_data_task.delay(

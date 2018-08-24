@@ -1,6 +1,6 @@
 import { TestBed, inject } from '@angular/core/testing';
 
-import { CwwedService } from './cwwed-service.service';
+import { CwwedService } from './cwwed.service';
 
 describe('CwwedService', () => {
   beforeEach(() => {

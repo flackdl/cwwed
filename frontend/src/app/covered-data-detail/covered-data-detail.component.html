@@ -1,38 +1,39 @@
 <div *ngIf="data">
-  <h1>{{ data.name }}</h1>
-  <p class="p-1"><em>{{ data.description }}</em></p>
-  <h3>Data Access</h3>
-  <table class="table table-striped">
-    <thead>
-			<tr>
-				<th scope="col">Source</th>
-				<th scope="col">Current Data Access</th>
-        <th scope="col">Storm Specific Data Access</th>
-			</tr>
-    </thead>
-    <tbody>
-			<tr>
-				<td scope="row">
-          <a [href]="data.url" target="_blank"><span class="oi oi-document"></span></a>
-        </td>
-				<td>
+  <div class="card">
+    <h5 class="card-header">{{ data.name }}</h5>
+    <div class="card-body">
+      <p class="card-text">{{ data.description }}</p>
+      <div class="row">
+        <div class="col-sm">
+          <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
+        </div>
+        <div class="col-sm">
           <ul>
             <div *ngFor="let provider of data.providers">
-              <a [href]="provider.url" target="_blank"><span class="oi oi-cloud-download"></span></a>
+              <a [href]="provider.url" target="_blank">
+                <span class="oi oi-external-link"></span> Latest Data
+              </a>
             </div>
           </ul>
-        </td>
-        <td>
+        </div>
+        <div class="col-sm">
           <div ngbDropdown class="d-inline-block">
-            <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm</button>
+            <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
             <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-              <button class="dropdown-item">Harvey</button>
-              <button class="dropdown-item">Irma</button>
-              <button class="dropdown-item">Matthew</button>
+              <button *ngFor="let storm of namedStorms" class="dropdown-item">
+                <a [href]="stormCoveredDataUrl(storm)" target="_blank" *ngIf="stormCoveredDataUrl(storm)">
+                  <span class="oi oi-cloud-download"></span>
+                  <span class="pl-2">{{ storm.name }}</span>
+                </a>
+                <span class="muted" *ngIf="!stormCoveredDataUrl(storm)">
+                  <span class="oi oi-warning"></span>
+                  {{ storm.name }}
+                </span>
+              </button>
             </div>
           </div>
-        </td>
-			</tr>
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
