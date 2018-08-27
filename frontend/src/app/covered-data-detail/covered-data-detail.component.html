@@ -18,7 +18,7 @@
           <div ngbDropdown class="d-inline-block">
             <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
             <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-              <button *ngFor="let storm of namedStorms" class="dropdown-item">
+              <div *ngFor="let storm of namedStorms" class="dropdown-item">
                 <a [href]="stormCoveredDataUrl(storm)" target="_blank" *ngIf="stormCoveredDataUrl(storm)">
                   <span class="oi oi-cloud-download"></span>
                   <span class="pl-2">{{ storm.name }}</span>
@@ -27,7 +27,7 @@
                   <span class="oi oi-warning"></span>
                   {{ storm.name }}
                 </span>
-              </button>
+              </div>
             </div>
           </div>
         </div>
