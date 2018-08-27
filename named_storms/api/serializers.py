@@ -62,11 +62,15 @@ class NSEMSerializer(serializers.ModelSerializer):
     thredds_url_covered_data = serializers.SerializerMethodField()
 
     def get_thredds_url_covered_data(self, obj: NSEM):
+        if 'request' not in self.context:
+            return None
         if not obj.covered_data_snapshot:
             return None
         return dict((cd.id, get_thredds_url_covered_data(self.context['request'], obj.named_storm, cd)) for cd in obj.named_storm.covered_data.all())
 
     def get_thredds_url_nsem(self, obj: NSEM):
+        if 'request' not in self.context:
+            return None
         if not obj.model_output_snapshot_extracted:
             return None
         return get_thredds_url_nsem(self.context['request'], obj)
