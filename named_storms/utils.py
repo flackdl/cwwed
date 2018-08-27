@@ -173,9 +173,16 @@ def get_thredds_url_nsem(request: HttpRequest, nsem: NSEM) -> str:
     )
 
 
-def get_thredds_url_covered_data(request: HttpRequest, named_storm: NamedStorm) -> str:
+def get_thredds_url_covered_data_root(request: HttpRequest, named_storm: NamedStorm) -> str:
     return os.path.join(
         get_thredds_url_named_storm_root(request, named_storm),
         parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
+    )
+
+
+def get_thredds_url_covered_data(request: HttpRequest, named_storm: NamedStorm, covered_data: CoveredData) -> str:
+    return os.path.join(
+        get_thredds_url_covered_data_root(request, named_storm),
+        parse.quote(covered_data.name),
         'catalog.html',
     )

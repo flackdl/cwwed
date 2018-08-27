@@ -140,7 +140,7 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
 ### S3 static hosting
 
-    ng build --prod --base-href=/cwwed-static-assets-frontend/
+    ng build --prod --base-href=/cwwed-static-assets-frontend/index.html
     aws s3 cp --acl=public-read --recursive dist/cwwed s3://cwwed-static-assets-frontend/
     
 https://s3.amazonaws.com/cwwed-static-assets-frontend/index.html

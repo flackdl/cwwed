@@ -64,7 +64,7 @@ class NSEMSerializer(serializers.ModelSerializer):
     def get_thredds_url_covered_data(self, obj: NSEM):
         if not obj.covered_data_snapshot:
             return None
-        return get_thredds_url_covered_data(self.context['request'], obj.named_storm)
+        return dict((cd.id, get_thredds_url_covered_data(self.context['request'], obj.named_storm, cd)) for cd in obj.named_storm.covered_data.all())
 
     def get_thredds_url_nsem(self, obj: NSEM):
         if not obj.model_output_snapshot_extracted:
