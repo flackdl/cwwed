@@ -54,7 +54,7 @@ def create_psa(args):
         sys.exit(nsem_data)
     else:
         print('Successfully created PSA Id: {}'.format(nsem_data['id']))
-        print('Packaging Covered Data. This may take a few minutes')
+        print('Packaging Covered Data. This may take a few minutes.  The email address associated with this account will be emailed when it is complete.')
 
 
 def upload_psa(args):
