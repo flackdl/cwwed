@@ -39,8 +39,6 @@ class Command(BaseCommand):
 
             for data in storm.covered_data.filter(**covered_data_filter_args):
 
-                # TODO - each covered data collection should be in it's own task
-
                 self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data))
 
                 covered_data_success = False
