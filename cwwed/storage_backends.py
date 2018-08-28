@@ -40,7 +40,7 @@ class S3ObjectStorage(S3Boto3Storage):
 
     def download_directory(self, obj_directory_path, file_system_path):
         # create the s3 instance
-        s3 = boto3.resource('s3')
+        s3 = self._get_s3_client()
         s3_bucket = s3.Bucket(self.bucket_name)
 
         # create directory output directory on file system
