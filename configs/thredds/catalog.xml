@@ -28,7 +28,7 @@
         </metadata>
 
         <filter>
-            <include wildcard="*.nc"/>
+            <!--<include wildcard="*.nc"/>-->
             <exclude wildcard=".incomplete" atomic="false" collection="true"/>
         </filter>
 

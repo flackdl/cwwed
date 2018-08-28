@@ -84,6 +84,7 @@ def process_dataset_task(data: list):
 @app.task(**TASK_ARGS)
 def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_id):
     """
+    Archives a covered data collection and sends it to object storage
     :param named_storm_id: id for a NamedStorm record
     :param covered_data_id: id for a CoveredData record
     :param log_id: id for a NamedStormCoveredDataLog
@@ -109,7 +110,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
         os.path.basename(tar_path),
     )
 
-    # copy tar to default storage
+    # copy tar to object storage
     snapshot_path = copy_path_to_default_storage(tar_path, storage_path)
 
     # remove local tar
@@ -125,7 +126,8 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 @app.task(**TASK_ARGS)
 def archive_nsem_covered_data_task(nsem_id):
     """
-    Creates a single archive from all the covered data archives to pass off to the external NSEM
+    - Copies all covered data archives to a versioned NSEM location in object storage so users can download them directly
+    :param nsem_id: id of NSEM record
     """
 
     # retrieve all the successful covered data by querying the logs
@@ -156,6 +158,33 @@ def archive_nsem_covered_data_task(nsem_id):
     nsem.covered_data_snapshot = storage_path
     nsem.save()
 
+    return NSEMSerializer(instance=nsem).data
+
+
+@app.task(**TASK_ARGS)
+def extract_nsem_covered_data_task(nsem_id):
+    """
+    Downloads and extracts nsem covered data into file storage
+    :param nsem_id: id of NSEM record
+    """
+    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    file_system_path = os.path.join(
+        named_storm_nsem_version_path(nsem),
+        settings.CWWED_COVERED_DATA_DIR_NAME,
+    )
+    # download all the archives
+    default_storage.download_directory(
+        default_storage.path(nsem.covered_data_snapshot), file_system_path)
+
+    # extract the archives
+    for file in os.listdir(file_system_path):
+        if file.endswith(settings.CWWED_ARCHIVE_EXTENSION):
+            file_path = os.path.join(file_system_path, file)
+            tar = tarfile.open(file_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)
+            tar.extractall(file_system_path)
+            tar.close()
+            # remove the original archive now that it's extracted
+            os.remove(file_path)
     return NSEMSerializer(instance=nsem).data
 
 
@@ -228,7 +257,7 @@ def extract_nsem_model_output_task(nsem_id):
     )
 
     # download to the file system
-    default_storage.download_file(storage_path, file_system_path)
+    default_storage.download_file(default_storage.path(storage_path), file_system_path)
 
     # extract the tgz
     tar = tarfile.open(file_system_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)

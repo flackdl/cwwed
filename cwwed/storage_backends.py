@@ -30,21 +30,32 @@ class S3ObjectStorage(S3Boto3Storage):
             return ''
         return settings.DEPLOY_STAGE
 
-    @staticmethod
-    def _get_s3_client():
+    def _get_s3_client(self):
         # create s3 client
         return boto3.resource(
             's3',
-            aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
         )
 
+    def download_directory(self, obj_directory_path, file_system_path):
+        # create the s3 instance
+        s3 = boto3.resource('s3')
+        s3_bucket = s3.Bucket(self.bucket_name)
+
+        # create directory output directory on file system
+        create_directory(file_system_path)
+
+        # download each object that matches the `obj_directory_path` prefix
+        for obj in s3_bucket.objects.all():
+            if obj.key.startswith(obj_directory_path):
+                self.download_file(obj.key, os.path.join(file_system_path, os.path.basename(obj.key)))
+
     def download_file(self, obj_path, file_system_path):
-        absolute_path = self.path(obj_path)
         # create directory then download to file system path
         create_directory(os.path.dirname(file_system_path))
         s3 = self._get_s3_client()
-        s3.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).download_file(absolute_path, file_system_path)
+        s3.Bucket(self.bucket_name).download_file(obj_path, file_system_path)
 
     def copy_within_storage(self, source: str, destination: str):
         """
@@ -64,7 +75,7 @@ class S3ObjectStorage(S3Boto3Storage):
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
             'Key': source_absolute,
         }
-        s3.meta.client.copy(copy_source, settings.AWS_ARCHIVE_BUCKET_NAME, destination_absolute)
+        s3.meta.client.copy(copy_source, self.bucket_name, destination_absolute)
 
     def path(self, path):
         """
