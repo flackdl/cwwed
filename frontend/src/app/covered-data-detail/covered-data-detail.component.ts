@@ -26,6 +26,9 @@ export class CoveredDataDetailComponent implements OnInit {
     let foundNsem = _.find(this.nsemList, (nsem) => {
       return nsem.named_storm === storm.id;
     });
-    return (foundNsem && this.data.id in foundNsem.thredds_url_covered_data) ? foundNsem.thredds_url_covered_data[this.data.id] : '';
+    if (foundNsem && (this.data.id in foundNsem.thredds_url_covered_data)) {
+      return foundNsem.thredds_url_covered_data[this.data.id];
+    }
+    return '';
   }
 }

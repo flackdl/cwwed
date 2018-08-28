@@ -1,20 +1,39 @@
 <div class="card">
-  <h5 class="card-header">
+  <h5 class="card-header form-inline">
     Post Storm Assessment
-    <div ngbDropdown class="d-inline-block">
-      <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Select a Storm</button>
-      <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-        <button *ngFor="let storm of namedStorms" class="dropdown-item">
-          {{ storm.name }}
-        </button>
-      </div>
-    </div>
+    <select class="form-control form-control-lg m-3">
+      <option>Select a storm</option>
+      <option *ngFor="let storm of namedStorms">{{ storm.name }}</option>
+    </select>
   </h5>
   <div class="card-body">
-    <h5 class="card-title">
-      title
-    </h5>
-    <p class="card-text">
-    text
+    <div class="row">
+      <div class="col-sm-4">
+        <div class="list-group">
+          <div class="list-group-item list-group-item-secondary">
+            <strong>Products</strong>
+          </div>
+          <a class="list-group-item list-group-item-action">
+            ...
+          </a>
+          <a class="list-group-item list-group-item-action active" href="#">
+            Delaware Bay
+          </a>
+          <a class="list-group-item list-group-item-action">
+            ...
+          </a>
+          <a class="list-group-item list-group-item-action">
+            ...
+          </a>
+        </div>
+      </div>
+      <div class="col-sm">
+        <h5 class="card-text">
+          This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
+          the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
+        </h5>
+        <div style="height: 600px;" *ngIf="isLoaded" leaflet [leafletOptions]="mapOptions"></div>
+      </div>
+    </div>
   </div>
 </div>

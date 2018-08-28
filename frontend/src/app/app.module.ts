@@ -4,6 +4,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
 import { NgxSpinnerModule } from 'ngx-spinner';
+import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 
 import { AppComponent } from './app.component';
 import { CoveredDataDetailComponent } from './covered-data-detail/covered-data-detail.component';
@@ -28,7 +29,7 @@ const appRoutes: Routes = [
     CoveredDataDetailComponent,
     CoveredDataMainComponent,
     PsaComponent,
-    PageNotFoundComponent
+    PageNotFoundComponent,
   ],
   imports: [
     RouterModule.forRoot(
@@ -42,6 +43,7 @@ const appRoutes: Routes = [
     NgbModule,
     HttpClientModule,
     NgxSpinnerModule,
+    LeafletModule,
   ],
   providers: [],
   bootstrap: [AppComponent]
