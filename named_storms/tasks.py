@@ -162,12 +162,12 @@ def archive_nsem_covered_data_task(nsem_id):
 
 
 @app.task(**TASK_ARGS)
-def extract_nsem_covered_data_task(nsem_id):
+def extract_nsem_covered_data_task(nsem_data: dict):
     """
     Downloads and extracts nsem covered data into file storage
-    :param nsem_id: id of NSEM record
+    :param nsem_data: dictionary of NSEM record
     """
-    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
         settings.CWWED_COVERED_DATA_DIR_NAME,

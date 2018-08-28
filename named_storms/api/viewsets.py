@@ -47,6 +47,7 @@ class NSEMViewset(viewsets.ModelViewSet):
         # save the instance first so we can create a task to archive the covered data snapshot
         obj = serializer.save()
 
+        # base url for email
         base_url = '{}://{}'.format(
             self.request.scheme,
             self.request.get_host(),
@@ -55,12 +56,13 @@ class NSEMViewset(viewsets.ModelViewSet):
         # create an archive in object storage for the nsem users to download directly
         archive_nsem_covered_data_task.apply_async(
             (obj.id,),
-            # also send an email to the "nsem" user when the archival is complete
-            link=email_nsem_covered_data_complete_task.s(base_url),
+            link=[
+                # send an email to the "nsem" user when the archival is complete
+                email_nsem_covered_data_complete_task.s(base_url),
+                # download and extract archives into file storage so they're available for discovery (i.e thredds)
+                extract_nsem_covered_data_task.s()
+            ],
         )
-
-        # download and extract archives into file storage so they're available for discovery (i.e thredds)
-        extract_nsem_covered_data_task.delay(obj.id)
 
     def perform_update(self, serializer):
         # save the instance first so we can create a task to extract the model output snapshot
