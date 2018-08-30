@@ -140,11 +140,27 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
 ### S3 static hosting
 
-    ng build --prod --base-href=/cwwed-static-assets-frontend/index.html
-    aws s3 cp --acl=public-read --recursive dist/cwwed s3://cwwed-static-assets-frontend/
+#### Build the app
+
+
+    # build the resources
+    cd frontend
+    ng build --prod --output-hashing none
     
-https://s3.amazonaws.com/cwwed-static-assets-frontend/index.html
+    # use `collectstatic` to upload to S3 (there's a symlink from the `ng build` output (`frontend/dist/cwwed`) to `/static/`)
+    python manage.py collectstatic -y
     
+Integration example (i.e WordPress):
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://s3.amazonaws.com/cwwed-static-assets/cwwed/styles.css"></head>
+
+    <app-root></app-root>
+
+    <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/runtime.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/polyfills.js"></script>
+    <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/main.js"></script>
+        
     
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
