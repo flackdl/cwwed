@@ -145,9 +145,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
 
     # build the resources
     cd frontend
-    ng build --prod --output-hashing none
+    npm run build-prod
     
-    # use `collectstatic` to upload to S3 (there's a symlink from the `ng build` output (`frontend/dist/cwwed`) to `/static/`)
+    # use `collectstatic` to upload to S3 (there's a symlink from the npm output (`frontend/dist/cwwed`) to `/static/`)
     python manage.py collectstatic -y
     
 Integration example (i.e WordPress):
