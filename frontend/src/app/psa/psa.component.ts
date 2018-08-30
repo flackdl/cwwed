@@ -1,7 +1,7 @@
 import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
-import { latLng, tileLayer, geoJSON, GeoJSONOptions } from "leaflet";
+import { geoJSON, GeoJSONOptions, latLng, tileLayer } from "leaflet";
 import { HttpClient } from "@angular/common/http";
 import { GeoJsonObject } from "geojson";
 
@@ -11,7 +11,7 @@ const mbUrl = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token
 @Component({
   selector: 'app-psa',
   templateUrl: './psa.component.html',
-  styleUrls: ['./psa.component.css']
+  styleUrls: ['./psa.component.css'],
 })
 export class PsaComponent implements OnInit {
   public nsemId: number;

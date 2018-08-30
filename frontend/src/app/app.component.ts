@@ -15,7 +15,8 @@ export class AppComponent implements OnInit {
   constructor(
     private cwwedService: CwwedService,
     private spinner: NgxSpinnerService,
-  ) {}
+  ) {
+  }
 
   ngOnInit() {
     // show loading animation until the core data has been loaded

@@ -1,4 +1,3 @@
-import { forkJoin } from 'rxjs';
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from "@angular/router";
 import { CwwedService } from "../cwwed.service";

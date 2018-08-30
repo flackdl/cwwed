@@ -1,5 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { NgModule} from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
@@ -40,12 +41,17 @@ const appRoutes: Routes = [
       }
     ),
     BrowserModule,
+    BrowserAnimationsModule,
     NgbModule,
     HttpClientModule,
     NgxSpinnerModule,
     LeafletModule,
   ],
+  entryComponents: [],
   providers: [],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {
+  constructor() {
+  }
+}
