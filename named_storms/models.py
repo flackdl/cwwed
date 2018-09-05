@@ -1,5 +1,6 @@
 from datetime import datetime
 from django.contrib.gis.db import models
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 
@@ -58,7 +59,7 @@ class CoveredData(models.Model):
     name = models.CharField(max_length=500, unique=True)  # i.e "Global Forecast System"
     description = models.TextField(blank=True)
     active = models.BooleanField(default=True)
-    url = models.CharField(max_length=5000, blank=True)
+    url = models.CharField(max_length=5000, blank=True, help_text='Product URL for this dataset')
 
     def __str__(self):
         return self.name
@@ -66,7 +67,7 @@ class CoveredData(models.Model):
 
 class CoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES))
+    processor_factory = models.CharField(max_length=50, blank=True, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES), help_text='Optionally specify a custom processor factory')
     processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
     url = models.CharField(max_length=5000)
@@ -81,13 +82,19 @@ class CoveredDataProvider(models.Model):
 class NamedStormCoveredData(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    date_start = models.DateTimeField()
-    date_end = models.DateTimeField()
+    date_start = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
+    date_end = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
+    dates_required = models.BooleanField(default=True)
     geo = models.GeometryField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
 
     def __str__(self):
         return str(self.covered_data)
+
+    def clean(self):
+        if self.dates_required and not all([self.date_start, self.date_end]):
+            raise ValidationError('Start and End dates are required')
+        return super().clean()
 
 
 class NamedStormCoveredDataLog(models.Model):

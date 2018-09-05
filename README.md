@@ -142,13 +142,12 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
 
 #### Build the app
 
-
     # build the resources
     cd frontend
     npm run build-prod
     
-    # use `collectstatic` to upload to S3 (there's a symlink from the npm output (`frontend/dist/cwwed`) to `/static/`)
-    python manage.py collectstatic -y
+    # use `collectstatic` to upload to S3 (there's a symlink from the npm output `frontend/dist/cwwed` to `/static/`)
+    python manage.py collectstatic --no-input
     
 Integration example (i.e WordPress):
 
