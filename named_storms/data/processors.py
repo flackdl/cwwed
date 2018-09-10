@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import ssl
 import logging
+from urllib.parse import urlparse
 import h5py
 import numpy
 from typing import List, NamedTuple
@@ -108,6 +109,9 @@ class BaseProcessor:
             self._named_storm_covered_data.covered_data.name,
         )
 
+    def _get_data_extension(self):
+        return self._data_extension
+
     def _get_output_path(self):
         paths = [
             self._incomplete_path(),
@@ -119,9 +123,10 @@ class BaseProcessor:
 
         file_name = self._label
 
-        # include extension if it was declared
-        if self._data_extension:
-            file_name = '{}.{}'.format(file_name, self._data_extension)
+        # include file extension if it was declared
+        data_extension = self._get_data_extension()
+        if data_extension:
+            file_name = '{}.{}'.format(file_name, data_extension)
 
         paths.append(file_name)
 
@@ -171,6 +176,12 @@ class GenericFileProcessor(BaseProcessor):
     def _post_process(self):
         pass
 
+    def _get_data_extension(self):
+        # try and extract a file name and extension from url to populate the downloaded file's extension
+        url_parsed = urlparse(self._url)
+        _, extension = os.path.splitext(url_parsed.path)
+        return extension.lstrip('.') if extension else None
+
     def _fetch(self):
 
         # fetch the actual file
@@ -183,6 +194,7 @@ class GenericFileProcessor(BaseProcessor):
                 f.write(chunk)
         # set file permissions -rw-r--r-- (using octal literal notation)
         os.chmod(tmp_file, 0o644)
+
         shutil.move(tmp_file, self._output_path)
 
         # run any post processing on the dataset
