@@ -13,6 +13,7 @@ PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B = 'JPL_SMAP_L2B'  # JPL - https://podaac.jpl
 # https://podaac.jpl.nasa.gov/dataset/ASCATB-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
 # https://podaac.jpl.nasa.gov/dataset/ASCATA-L2-Coastal?ids=Measurement:Sensor&values=Ocean%20Winds:ASCAT
 PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2 = 'JPL_MET_OP_ASCAT_L2'
+PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS = 'TIDES_AND_CURRENTS'  # https://tidesandcurrents.noaa.gov/api/
 
 
 # data factory choices
@@ -23,6 +24,7 @@ PROCESSOR_DATA_FACTORY_CHOICES = (
     PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C,
     PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B,
     PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2,
+    PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS,
 )
 
 # data sources

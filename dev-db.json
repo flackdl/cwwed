@@ -102,6 +102,16 @@
   }
 },
 {
+  "model": "named_storms.covereddata",
+  "pk": 9,
+  "fields": {
+    "name": "CO-OPS - Water Levels",
+    "description": "The rising and falling of the sea, \u201cthe tides,\u201d are a phenomenon upon which we can always depend. Caused by the gravitational pull of the moon and the sun, tides are very long-period waves that move through the ocean and progress toward the coastlines where they appear as the regular rise and fall of the sea surface. The same happens in the Great Lakes, although the largest tides in the Great Lakes are only about 5 cm and are mostly impacted by precipitation, evaporation and runoff.\r\n\r\nCO-OPS maintains the National Water Level Observation Network (NWLON), an observation network with more than 200 permanent water level stations on the coasts and Great Lakes. This system allows NOAA to provide the official tidal predictions for the nation. Accurate water level data is critical for safe and efficient marine navigation and for the protection of infrastructure along the coast. The NWLON also provides the national standards for tide and water level reference datums used for nautical charting, coastal engineering, international treaty regulation, and boundary determination. The NWLON is also widely recognized as the key federal component of the Integrated Ocean Observing System (IOOS).",
+    "active": true,
+    "url": "https://tidesandcurrents.noaa.gov/water_level_info.html"
+  }
+},
+{
   "model": "named_storms.covereddataprovider",
   "pk": 1,
   "fields": {
@@ -201,6 +211,19 @@
     "processor_source": "FILE-GENERIC",
     "name": "Multi-Resolution Land Characteristics (MRLC)",
     "url": "https://landfire.cr.usgs.gov/MRLC/NLCD/nlcd_2011_landcover_2011_edition_2014_10_10.zip?ORIG=137_singlelfr&SIZEMB=17881",
+    "active": true,
+    "epoch_datetime": "1970-01-01T00:00:00Z"
+  }
+},
+{
+  "model": "named_storms.covereddataprovider",
+  "pk": 9,
+  "fields": {
+    "covered_data": 9,
+    "processor_factory": "TIDES_AND_CURRENTS",
+    "processor_source": "FILE-GENERIC",
+    "name": "CO-OPS - Water Levels",
+    "url": "https://tidesandcurrents.noaa.gov/api/",
     "active": true,
     "epoch_datetime": "1970-01-01T00:00:00Z"
   }
@@ -319,6 +342,19 @@
     "date_end": null,
     "dates_required": false,
     "geo": "SRID=4326;POLYGON ((-96.064453125 27.09228515625, -97.6904296875 29.94873046875, -89.47265625 31.79443359375, -82.6611328125 31.04736328125, -80.68359375 24.71923828125, -96.064453125 27.09228515625))",
+    "external_storm_id": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 11,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 9,
+    "date_start": "2017-08-17T18:01:29Z",
+    "date_end": "2017-09-02T18:01:30Z",
+    "dates_required": true,
+    "geo": "SRID=4326;POLYGON ((-95.712890625 25.751953125, -90.703125 27.59765625, -84.7265625 28.65234375, -81.9140625 24.609375, -81.298828125 31.201171875, -88.681640625 32.080078125, -99.580078125 28.30078125, -98.26171875 26.806640625, -95.712890625 25.751953125))",
     "external_storm_id": ""
   }
 }

@@ -6,6 +6,7 @@ import pytz
 import requests
 from datetime import datetime, timedelta
 from django.conf import settings
+from django.contrib.gis.geos import Point
 from lxml import etree
 from typing import List
 from io import BytesIO
@@ -489,3 +490,72 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
                 need_both = within_realtime_start and within_realtime_end
                 return not need_both and year in [self._named_storm_covered_data.date_start.year, self._named_storm_covered_data.date_end.year]
         return False
+
+
+class TidesAndCurrentsProcessorFactory(ProcessorFactory):
+    """
+    REST APIs:
+      - List of stations
+          https://opendap.co-ops.nos.noaa.gov/axis/webservices/activestations/response.jsp?v=2&format=xml
+      - Station data
+          https://tidesandcurrents.noaa.gov/api
+
+        - sample args:
+            begin_date=20130101 10:00
+            end_date=20130101 10:24
+            station=8454000
+            product=water_level
+            datum=mllw
+            units=metric
+            time_zone=gmt
+            application=cwwed
+            format=xml
+    Datum options: https://tidesandcurrents.noaa.gov/datum_options.html
+    """
+    API_STATIONS_URL = 'https://tidesandcurrents.noaa.gov/mdapi/latest/webapi/stations.json'
+    API_DATA_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter'
+    DATUM = 'mllw'
+    FILE_TYPE = 'xml'
+    DATE_FORMAT_STR = '%Y%m%d %H:%M'
+    PRODUCT = 'water_level'
+
+    def processors_data(self) -> List[ProcessorData]:
+        processors_data = []
+
+        # fetch and parse the station listings
+        stations_response = requests.get(self.API_STATIONS_URL, timeout=10)
+        stations_response.raise_for_status()
+        stations_json = stations_response.json()
+        stations = stations_json['stations']
+
+        # build a list of stations to collect data
+        for station in stations:
+
+            lat = station['lat']
+            lng = station['lng']
+
+            station_point = Point(x=lng, y=lat)
+
+            url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(dict(
+                begin_date=self._named_storm_covered_data.date_start.strftime(self.DATE_FORMAT_STR),
+                end_date=self._named_storm_covered_data.date_end.strftime(self.DATE_FORMAT_STR),
+                station=station['id'],
+                product=self.PRODUCT,
+                datum=self.DATUM,
+                units='metric',
+                time_zone='gmt',
+                application='cwwed',
+                format=self.FILE_TYPE,
+            )))
+
+            # add this station if it's within our covered data's geo
+            if self._named_storm_covered_data.geo.contains(station_point):
+                processors_data.append(ProcessorData(
+                    named_storm_id=self._named_storm.id,
+                    provider_id=self._provider.id,
+                    url=url,
+                    label='station-{}-water_level-{}.{}'.format(station['id'], self.DATUM, self.FILE_TYPE),
+                    kwargs=self._processor_kwargs(),
+                ))
+
+        return processors_data

@@ -177,10 +177,12 @@ class GenericFileProcessor(BaseProcessor):
         pass
 
     def _get_data_extension(self):
-        # try and extract a file name and extension from url to populate the downloaded file's extension
-        url_parsed = urlparse(self._url)
-        _, extension = os.path.splitext(url_parsed.path)
-        return extension.lstrip('.') if extension else None
+        # if none provided, try and extract an extension from the url
+        if not self._data_extension:
+            url_parsed = urlparse(self._url)
+            _, extension = os.path.splitext(url_parsed.path)
+            return extension.lstrip('.') if extension else None
+        return super()._get_data_extension()
 
     def _fetch(self):
 
