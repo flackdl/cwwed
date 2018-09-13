@@ -514,7 +514,7 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
     """
     API_STATIONS_URL = 'https://tidesandcurrents.noaa.gov/mdapi/latest/webapi/stations.json'
     API_DATA_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter'
-    DATUM = 'mllw'
+    DATUM = 'MLLW'
     FILE_TYPE = 'xml'
     DATE_FORMAT_STR = '%Y%m%d %H:%M'
     PRODUCT = 'water_level'
@@ -533,8 +533,27 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
 
             lat = station['lat']
             lng = station['lng']
-
             station_point = Point(x=lng, y=lat)
+
+            #
+            # validate station
+            #
+
+            # skip this station if it's outside our covered data's geo
+            if not self._named_storm_covered_data.geo.contains(station_point):
+                continue
+
+            # skip this station if it doesn't offer the right DATUM
+            datum_request = requests.get(station['datums']['self'], timeout=10)
+            if datum_request.ok:
+                if not [d for d in datum_request.json()['datums'] if d['name'] == self.DATUM]:
+                    continue
+            else:
+                continue
+
+            #
+            # success - add station to list
+            #
 
             url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(dict(
                 begin_date=self._named_storm_covered_data.date_start.strftime(self.DATE_FORMAT_STR),
@@ -548,14 +567,12 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
                 format=self.FILE_TYPE,
             )))
 
-            # add this station if it's within our covered data's geo
-            if self._named_storm_covered_data.geo.contains(station_point):
-                processors_data.append(ProcessorData(
-                    named_storm_id=self._named_storm.id,
-                    provider_id=self._provider.id,
-                    url=url,
-                    label='station-{}-water_level-{}.{}'.format(station['id'], self.DATUM, self.FILE_TYPE),
-                    kwargs=self._processor_kwargs(),
-                ))
+            processors_data.append(ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=url,
+                label='station-{}-water_level-{}.{}'.format(station['id'], self.DATUM, self.FILE_TYPE),
+                kwargs=self._processor_kwargs(),
+            ))
 
         return processors_data
