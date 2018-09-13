@@ -63,12 +63,16 @@ def processor_factory_class(provider: CoveredDataProvider):
     return sources.get(provider.processor_factory, ProcessorFactory)
 
 
+def root_data_path() -> str:
+    return settings.CWWED_DATA_DIR
+
+
 def named_storm_path(named_storm: NamedStorm) -> str:
     """
     Returns a path to a storm's data (top level directory)
     """
     return os.path.join(
-        settings.CWWED_DATA_DIR,
+        root_data_path(),
         settings.CWWED_THREDDS_DIR,
         named_storm.name,
     )
@@ -89,8 +93,9 @@ def named_storm_covered_data_incomplete_path(named_storm: NamedStorm) -> str:
     Returns a path to a storm's temporary/incomplete covered data
     """
     return os.path.join(
-        named_storm_covered_data_path(named_storm),
+        root_data_path(),
         settings.CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME,
+        named_storm.name,
     )
 
 
