@@ -107,12 +107,19 @@ class Command(BaseCommand):
                         data_path = os.path.join(complete_path, data.name)
                         data_path_incomplete = os.path.join(incomplete_path, data.name)
 
-                        # remove any previous version in the complete path
-                        if os.path.exists(data_path):
-                            shutil.rmtree(data_path)
-
-                        # then move the covered data outputs from the incomplete/staging directory to the complete directory
-                        shutil.move(data_path_incomplete, complete_path)
+                        try:
+                            # remove any previous version in the complete path
+                            if os.path.exists(data_path):
+                                shutil.rmtree(data_path)
+                            # move the covered data outputs from the incomplete/staging directory to the complete directory
+                            shutil.move(data_path_incomplete, complete_path)
+                        except OSError as e:
+                            slack.chat.post_message('#errors', 'Error moving path for {} \n{}'.format(provider, e))
+                            logging.exception(e)
+                            log.success = False
+                            log.exception = str(e)
+                            log.save()
+                            continue
 
                         # create a task to archive the data
                         archive_named_storm_covered_data_task.delay(
