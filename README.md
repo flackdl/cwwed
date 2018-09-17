@@ -140,6 +140,15 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # delete minikube cluster
     minikube delete
     
+#### Monitoring
+Monitoring via Prometheus/Grafana.
+[Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
+
+User:admin
+
+    # port forward grafana to local
+    kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
+    
     
 ### S3 static hosting
 
