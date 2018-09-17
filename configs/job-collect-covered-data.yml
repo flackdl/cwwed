@@ -17,6 +17,7 @@ spec:
         image: flackdl/cwwed
         command: ['python']
         args: ['manage.py', 'collect_covered_data']
+        # args: ['manage.py', 'collect_covered_data', '--storm_id', '1', '--covered_data_id', '9']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage

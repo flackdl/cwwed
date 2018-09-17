@@ -68,8 +68,7 @@ class Command(BaseCommand):
                         processors_data = factory.processors_data()
                     except Exception as e:
                         # failed building processors data so log error and skip this provider
-                        slack.chat.post_message('#errors', 'Error building factory for {} \n{}'.format(provider, e))
-                        logging.exception(e)
+                        logging.error('Error building factory for {} \n{}'.format(provider, e))
                         # save the log
                         log.success = False
                         log.exception = str(e)
@@ -89,8 +88,7 @@ class Command(BaseCommand):
                         tasks_results = group_result.get()
                     except Exception as e:
                         # failed running processor tasks so log error and skip this provider
-                        slack.chat.post_message('#errors', 'Error running tasks for {} \n{}'.format(provider, e))
-                        logging.exception(e)
+                        logging.error('Error running tasks for {} \n{}'.format(provider, e))
                         log.success = False
                         log.exception = str(e)
                         log.save()
@@ -114,8 +112,7 @@ class Command(BaseCommand):
                             # move the covered data outputs from the incomplete/staging directory to the complete directory
                             shutil.move(data_path_incomplete, complete_path)
                         except OSError as e:
-                            slack.chat.post_message('#errors', 'Error moving path for {} \n{}'.format(provider, e))
-                            logging.exception(e)
+                            logging.error('Error moving path for {} \n{}'.format(provider, e))
                             log.success = False
                             log.exception = str(e)
                             log.save()
@@ -138,9 +135,9 @@ class Command(BaseCommand):
                         # skip additional providers since this was successful
                         break
                     else:
-                        slack.chat.post_message('#errors', 'Error collecting {} from {}'.format(data, provider))
+                        logging.error('Error collecting {} from {}'.format(data, provider))
                         self.stdout.write(self.style.ERROR('\t\tFailed'))
                         self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
 
                 if not covered_data_success:
-                    slack.chat.post_message('#errors', 'Error collecting {} from ALL providers'.format(data))
+                    logging.error('Error collecting {} from ALL providers'.format(data))

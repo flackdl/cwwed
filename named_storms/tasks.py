@@ -18,20 +18,11 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    slack_error, get_superuser_emails,
+    get_superuser_emails,
 )
 
 
-class TaskBase(app.Task):
-
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        msg = '{0!r} failed: {1!r}'.format(task_id, exc)
-        print(msg)
-        slack_error(msg)
-
-
 TASK_ARGS = dict(
-    base=TaskBase,
     autoretry_for=(Exception,),
     default_retry_delay=5,
     max_retries=10,
@@ -188,7 +179,7 @@ def extract_nsem_covered_data_task(nsem_data: dict):
     return NSEMSerializer(instance=nsem).data
 
 
-class ExtractNSEMTaskBase(TaskBase):
+class ExtractNSEMTaskBase(app.Task):
 
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         """

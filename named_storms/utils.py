@@ -143,10 +143,6 @@ def copy_path_to_default_storage(source_path: str, destination_path: str):
     return destination_path
 
 
-def slack_error(message: str, channel='#errors'):
-    slack.chat.post_message(channel, message)
-
-
 def get_superuser_emails():
     return [u.email for u in User.objects.filter(is_superuser=True) if u.email]
 

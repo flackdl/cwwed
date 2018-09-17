@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 import sys
+import raven
 import dj_database_url
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'crispy_forms',
+    'raven.contrib.django.raven_compat',
 ]
 
 MIDDLEWARE = [
@@ -151,6 +153,12 @@ USE_L10N = True
 
 USE_TZ = True
 
+# sentry/logging configuration
+RAVEN_CONFIG = {
+    'dsn': os.getenv('SENTRY_DSN', ''),
+    # automatically configure the release based on the git info
+    'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
+}
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
@@ -179,17 +187,45 @@ MEDIA_ROOT = '/media/bucket/cwwed'
 # https://docs.djangoproject.com/en/2.0/topics/logging/
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,
+    'disable_existing_loggers': True,
     'handlers': {
+        'sentry': {
+            'level': 'WARNING',
+            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
+            'tags': {'custom-tag': 'x'},
+        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
-    # log everything to the console
     'root': {
-        'handlers': ['console'],
+        'handlers': ['sentry', 'console'],
         'level': 'INFO',
+    },
+    'formatters': {
+        'verbose': {
+            'format': '%(levelname)s  %(asctime)s  %(module)s '
+                      '%(process)d  %(thread)d  %(message)s'
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'level': 'ERROR',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'raven': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
+        'sentry.errors': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+            'propagate': False,
+        },
     },
 }
 

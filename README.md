@@ -74,6 +74,7 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
     # create secrets
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
+    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
     kubectl create secret generic cwwed-secrets \
         --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
         --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
@@ -83,7 +84,9 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
         --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt) \
         --from-literal=CELERY_FLOWER_USER=$(cat ~/Documents/cwwed/secrets/celery_flower_user.txt) \
         --from-literal=CELERY_FLOWER_PASSWORD=$(cat ~/Documents/cwwed/secrets/celery_flower_password.txt) \
-        --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt)
+        --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt) \
+        --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
+        && true
     
     # create everything all at once (in the right order: services, local volumes then deployments)
     ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | xargs -L 1 kubectl apply -f

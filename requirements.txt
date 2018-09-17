@@ -25,3 +25,4 @@ slacker==0.9.60
 django-cors-headers==2.2.0
 h5py==2.8.0
 numpy==1.14.2
+raven==6.9.0

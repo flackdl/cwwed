@@ -96,7 +96,6 @@ class BaseProcessor:
             self._fetch()
         except Exception as e:
             self._success = False
-            logging.exception(e)
             raise
 
     def _fetch(self):
