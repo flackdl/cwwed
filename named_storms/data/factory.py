@@ -505,7 +505,7 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
             end_date=20130101 10:24
             station=8454000
             product=water_level
-            datum=mllw
+            datum=mllw (required for water_level product)
             units=metric
             time_zone=gmt
             application=cwwed
@@ -514,10 +514,22 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
     """
     API_STATIONS_URL = 'https://tidesandcurrents.noaa.gov/mdapi/latest/webapi/stations.json'
     API_DATA_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter'
-    DATUM = 'MLLW'
+    DATUM = 'MLLW'  # required for water level
     FILE_TYPE = 'xml'
     DATE_FORMAT_STR = '%Y%m%d %H:%M'
-    PRODUCT = 'water_level'
+
+    # products mapped via (api code name, name)
+    # example of stations products: https://tidesandcurrents.noaa.gov/mdapi/v0.6/webapi/stations/1611400/products.json
+    PRODUCT_WATER_LEVEL = ('water_level', 'Water Levels',)
+    PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE = ('air_temperature', 'Meteorological')
+    PRODUCT_METEOROLOGICAL_AIR_PRESSURE = ('air_pressure', 'Meteorological')
+    PRODUCT_METEOROLOGICAL_WIND = ('wind', 'Meteorological')
+    PRODUCTS = [
+        PRODUCT_WATER_LEVEL,
+        PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE,
+        PRODUCT_METEOROLOGICAL_AIR_PRESSURE,
+        PRODUCT_METEOROLOGICAL_WIND,
+    ]
 
     def processors_data(self) -> List[ProcessorData]:
         processors_data = []
@@ -535,44 +547,69 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
             lng = station['lng']
             station_point = Point(x=lng, y=lat)
 
-            #
-            # validate station
-            #
-
             # skip this station if it's outside our covered data's geo
             if not self._named_storm_covered_data.geo.contains(station_point):
                 continue
 
-            # skip this station if it doesn't offer the right DATUM
-            datum_request = requests.get(station['datums']['self'], timeout=10)
-            if datum_request.ok:
-                if not [d for d in datum_request.json()['datums'] if d['name'] == self.DATUM]:
-                    continue
+            # get a list of products this station offers
+            products_request = requests.get(station['products']['self'], timeout=10)
+            if products_request.ok:
+                station_products = [p['name'] for p in products_request.json()['products']]
             else:
                 continue
 
-            #
-            # success - add station to list
-            #
+            # build a list for each product that's available
+            for product in self.PRODUCTS:
 
-            url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(dict(
-                begin_date=self._named_storm_covered_data.date_start.strftime(self.DATE_FORMAT_STR),
-                end_date=self._named_storm_covered_data.date_end.strftime(self.DATE_FORMAT_STR),
-                station=station['id'],
-                product=self.PRODUCT,
-                datum=self.DATUM,
-                units='metric',
-                time_zone='gmt',
-                application='cwwed',
-                format=self.FILE_TYPE,
-            )))
+                # verify product "name" was added to the station's available products
+                if product[1] not in station_products:
+                    continue
 
-            processors_data.append(ProcessorData(
-                named_storm_id=self._named_storm.id,
-                provider_id=self._provider.id,
-                url=url,
-                label='station-{}-water_level-{}.{}'.format(station['id'], self.DATUM, self.FILE_TYPE),
-                kwargs=self._processor_kwargs(),
-            ))
+                label = 'station-{}-{}'.format(station['id'], product[0])
+
+                query_args = dict(
+                    begin_date=self._named_storm_covered_data.date_start.strftime(self.DATE_FORMAT_STR),
+                    end_date=self._named_storm_covered_data.date_end.strftime(self.DATE_FORMAT_STR),
+                    station=station['id'],
+                    product=product[0],
+                    units='metric',
+                    time_zone='gmt',
+                    application='cwwed',
+                    format=self.FILE_TYPE,
+                )
+
+                # PRODUCT_WATER_LEVEL only
+                if product[0] == self.PRODUCT_WATER_LEVEL[0]:
+
+                    # skip this station if it doesn't offer the right DATUM
+                    datum_request = requests.get(station['datums']['self'], timeout=10)
+                    if datum_request.ok:
+                        if not [d for d in datum_request.json()['datums'] if d['name'] == self.DATUM]:
+                            continue
+                    else:
+                        continue
+
+                    # include "datum" in query args
+                    query_args.update({
+                        'datum': self.DATUM,
+                    })
+
+                    # include "datum" in label
+                    label = '{}-{}'.format(label, self.DATUM)
+
+                #
+                # success - add station to list
+                #
+
+                url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(query_args))
+
+                processors_data.append(ProcessorData(
+                    named_storm_id=self._named_storm.id,
+                    provider_id=self._provider.id,
+                    url=url,
+                    label='{}.{}'.format(label, self.FILE_TYPE),
+                    kwargs=self._processor_kwargs(),
+                    group=product[1],
+                ))
 
         return processors_data
