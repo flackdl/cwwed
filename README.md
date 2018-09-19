@@ -154,24 +154,33 @@ User:admin
 
 #### Build the app
 
-    # build the resources
     cd frontend
     npm run build-prod
     
-    # use `collectstatic` to upload to S3 (there's a symlink from the npm output `frontend/dist/cwwed` to `/static/`)
+#### Copy to S3
+
     python manage.py collectstatic --no-input
     
 Integration example (i.e WordPress):
 
+    <style>
+        #app-root {
+          min-height: 400px;
+        }
+    </style>
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://s3.amazonaws.com/cwwed-static-assets/cwwed/styles.css"></head>
-
-    <app-root></app-root>
-
+    
+    <div id="app-root">
+      <app-root></app-root>
+    </div>
+    
     <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/runtime.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/polyfills.js"></script>
     <script type="text/javascript" src="https://s3.amazonaws.com/cwwed-static-assets/cwwed/main.js"></script>
-        
+    
+*TODO* - use output hashing during the npm build process to fix stale cache
     
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
