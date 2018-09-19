@@ -140,12 +140,13 @@ def archive_nsem_covered_data_task(nsem_id):
         settings.CWWED_COVERED_DATA_DIR_NAME,
     )
 
-    for log in logs:
+    for log in logs_to_archive:
         src_path = log.snapshot
         dest_path = os.path.join(storage_path, os.path.basename(src_path))
         # copy snapshot to versioned nsem location in default storage
         default_storage.copy_within_storage(src_path, dest_path)
 
+    nsem.covered_data_logs.set(logs_to_archive)  # many to many field
     nsem.covered_data_snapshot = storage_path
     nsem.save()
 

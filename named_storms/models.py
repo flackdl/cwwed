@@ -110,7 +110,7 @@ class NamedStormCoveredDataLog(models.Model):
 
     def __str__(self):
         if self.success:
-            return self.snapshot
+            return '{}: {}'.format(self.date.isoformat(), self.snapshot)
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
 
 
@@ -120,8 +120,9 @@ class NSEM(models.Model):
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_requested = models.DateTimeField(auto_now_add=True)
-    date_returned = models.DateTimeField(null=True)  # manually set once the model output is returned
+    date_returned = models.DateTimeField(null=True, blank=True)  # manually set once the model output is returned
     covered_data_snapshot = models.TextField(blank=True)  # path to the covered data snapshot
+    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
     model_output_snapshot = models.TextField(blank=True)  # path to the model output snapshot
     model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
 
