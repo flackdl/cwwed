@@ -5,9 +5,8 @@ import celery
 from django.core.management.base import BaseCommand
 from named_storms.data.factory import ProcessorFactory
 from named_storms.models import NamedStorm, NamedStormCoveredDataLog
-from cwwed import slack
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class
+from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class, slack_channel
 
 
 class Command(BaseCommand):
@@ -141,3 +140,5 @@ class Command(BaseCommand):
 
                 if not covered_data_success:
                     logging.error('Error collecting {} from ALL providers'.format(data))
+
+        slack_channel('Finished collecting covered data', '#events')

@@ -15,6 +15,10 @@ from named_storms.models import (
     PROCESSOR_DATA_SOURCE_FILE_HDF, PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2, PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS)
 
 
+def slack_channel(message: str, channel='#errors'):
+    slack.chat.post_message(channel, message)
+
+
 def create_directory(path, remove_if_exists=False):
     if remove_if_exists:
         shutil.rmtree(path, ignore_errors=True)
