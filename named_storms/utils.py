@@ -11,8 +11,8 @@ from django.core.files.storage import default_storage
 from cwwed import slack
 from named_storms.models import (
     CoveredDataProvider, NamedStorm, NSEM, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
-    PROCESSOR_DATA_FACTORY_NDBC, PROCESSOR_DATA_FACTORY_USGS, PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C, PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B,
-    PROCESSOR_DATA_SOURCE_FILE_HDF, PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2, PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS)
+    PROCESSOR_DATA_SOURCE_FILE_HDF,
+)
 
 
 def slack_channel(message: str, channel='#errors'):
@@ -51,20 +51,11 @@ def processor_factory_class(provider: CoveredDataProvider):
     """
     :return: ProcessorFactory class for a particular provider
     """
-    from named_storms.data.factory import (
-        NDBCProcessorFactory, USGSProcessorFactory, JPLQSCATL1CProcessorFactory, ProcessorFactory, JPLSMAPL2BProcessorFactory,
-        JPLMetOpASCATL2ProcessorFactory, TidesAndCurrentsProcessorFactory,
-    )
+    # import locally to prevent circular dependencies
+    from named_storms.data.factory import ProcessorFactory
 
-    sources = {
-        PROCESSOR_DATA_FACTORY_NDBC: NDBCProcessorFactory,
-        PROCESSOR_DATA_FACTORY_USGS: USGSProcessorFactory,
-        PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C: JPLQSCATL1CProcessorFactory,
-        PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B: JPLSMAPL2BProcessorFactory,
-        PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2: JPLMetOpASCATL2ProcessorFactory,
-        PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS: TidesAndCurrentsProcessorFactory,
-    }
-    return sources.get(provider.processor_factory, ProcessorFactory)
+    # each factory is decorated/registered to map it's name to itself which helps us map the two later on during processing
+    return ProcessorFactory.registered_factories.get(provider.processor_factory, ProcessorFactory)
 
 
 def root_data_path() -> str:

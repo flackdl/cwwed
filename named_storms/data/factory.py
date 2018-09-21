@@ -11,12 +11,17 @@ from lxml import etree
 from typing import List
 from io import BytesIO
 from urllib import parse
+from named_storms.data.decorators import register_factory
 from named_storms import tasks
 from named_storms.data.processors import ProcessorData
+from named_storms import models as storm_models
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
 
 class ProcessorFactory:
+    # "singleton" (class variable) which automatically gets populated from factory class decorators
+    registered_factories = {}
+
     _named_storm: NamedStorm = None
     _provider: CoveredDataProvider = None
     _verify_ssl = True
@@ -50,6 +55,7 @@ class ProcessorFactory:
         return {}
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_USGS)
 class USGSProcessorFactory(ProcessorFactory):
     """
     USGS - STN Web Services
@@ -356,6 +362,7 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
         return processors_data
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2)
 class JPLMetOpASCATL2ProcessorFactory(JPLProcessorFactoryBase):
     """
     JPL MetOp-A/B ASCAT Level 2
@@ -377,6 +384,7 @@ class JPLMetOpASCATL2ProcessorFactory(JPLProcessorFactoryBase):
         return dataset.endswith('.nc.gz')
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B)
 class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
     """
     JPL SMAP Level 2B CAP Sea Surface Salinity
@@ -387,6 +395,7 @@ class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
         return dataset.endswith('.h5')
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C)
 class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
     """
     JPL Quikscat L1C
@@ -412,6 +421,7 @@ class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
         return dataset.endswith('.dat')
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_NDBC)
 class NDBCProcessorFactory(THREDDSCatalogFactory):
     """
     https://dods.ndbc.noaa.gov/
@@ -492,6 +502,7 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
         return False
 
 
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS)
 class TidesAndCurrentsProcessorFactory(ProcessorFactory):
     """
     REST APIs:
@@ -612,4 +623,12 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
                     group=product[1],
                 ))
 
+        return processors_data
+
+
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_NWM)
+class NWMProcessorFactory(ProcessorFactory):
+
+    def processors_data(self) -> List[ProcessorData]:
+        processors_data = []
         return processors_data
