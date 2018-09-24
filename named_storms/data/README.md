@@ -51,3 +51,40 @@ http://projects.knmi.nl/scatterometer/publications/pdf/ASCAT_Product_Manual.pdf
 The data is netcdf, however, the dimensions aren't "standard" (ie. time, lat, lon).
 Instead, the dimensions are "NUMROWS" and "NUMCELLS" which makes generic filtering challenging so we're currently just not doing it.
 The file sizes aren't terribly big so we can address this later by defining a custom processor.
+
+#### National Land Coverage Database
+
+Provided by the Multi-Resolution Land Characteristics (MRLC).
+
+https://www.mrlc.gov/nlcd2011.php
+
+[File download](https://landfire.cr.usgs.gov/MRLC/NLCD/nlcd_2011_landcover_2011_edition_2014_10_10.zip?ORIG=137_singlelfr&SIZEMB=17881)
+
+The data is a large zip file containing a few different image formats.  No data sub-setting is being performed.
+
+
+#### CO-OPS
+
+Center for Operational Oceanographic Products and Services
+
+Data is provided through a REST API.
+
+https://tidesandcurrents.noaa.gov/
+
+https://tidesandcurrents.noaa.gov/api/
+
+We're collecting the following products:
+- Water Levels
+- Air temperature
+- Air pressure
+- Wind
+
+#### National Weather Model
+
+The data lives on an FTP server.
+
+http://water.noaa.gov/about/nwm
+
+ftp://ftpprd.ncep.noaa.gov/pub/data/nccf/com/nwm/prod/
+
+*NOTE - they're not configured to serve CWWED with historical data yet, so we're temporarily just collecting recent data*
