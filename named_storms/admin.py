@@ -40,7 +40,7 @@ class CoveredDataAdmin(admin.GeoModelAdmin):
 
 @admin.register(CoveredDataProvider)
 class CoveredDataProviderAdmin(admin.GeoModelAdmin):
-    list_display = ('name', 'active', 'url', 'processor_factory', 'processor_source', 'epoch_datetime',)
+    list_display = ('name', 'covered_data', 'active', 'url', 'processor_factory', 'processor_source', 'epoch_datetime',)
     list_filter = ('active',)
 
 

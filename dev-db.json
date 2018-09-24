@@ -112,6 +112,16 @@
   }
 },
 {
+  "model": "named_storms.covereddata",
+  "pk": 10,
+  "fields": {
+    "name": "National Water Model",
+    "description": "The National Water Model (NWM) is a hydrologic model that simulates observed and forecast streamflow over the entire continental United States (CONUS). The NWM simulates the water cycle with mathematical representations of the different processes and how they fit together. This complex representation of physical processes such as snowmelt and infiltration and movement of water through the soil layers varies significantly with changing elevations, soils, vegetation types and a host of other variables. Additionally, extreme variability in precipitation over short distances and times can cause the response on rivers and streams to change very quickly. Overall, the process is so complex that to simulate it with a mathematical model means that it needs a very high powered computer or super computer in order to run in the time frame needed to support decision makers when flooding is threatened.\r\n\r\nThe NWM complements current hydrologic modeling which is done in a simplified manner for approximately 4000 locations across the CONUS by providing information at a very fine spatial and temporal scale at those locations, as well as for locations that don\u2019t have a traditional river forecast.",
+    "active": true,
+    "url": "http://water.noaa.gov/about/nwm"
+  }
+},
+{
   "model": "named_storms.covereddataprovider",
   "pk": 1,
   "fields": {
@@ -131,7 +141,7 @@
     "covered_data": 2,
     "processor_factory": "ERDDAP",
     "processor_source": "DAP",
-    "name": "NOAA/NCEP GFS",
+    "name": "NCEP",
     "url": "http://coastwatch.pfeg.noaa.gov/erddap/griddap/NCEP_Global_Best",
     "active": true,
     "epoch_datetime": "1970-01-01T00:00:00Z"
@@ -157,7 +167,7 @@
     "covered_data": 4,
     "processor_factory": "JPL_QSCAT_L1C",
     "processor_source": "FILE-BINARY",
-    "name": "JPL PODAAC - QuikSCAT Level 1C",
+    "name": "JPL PODAAC",
     "url": "https://opendap.jpl.nasa.gov/opendap/allData/quikscat/L1C/v2/catalog.xml",
     "active": true,
     "epoch_datetime": "2000-01-01T00:00:00Z"
@@ -170,7 +180,7 @@
     "covered_data": 5,
     "processor_factory": "JPL_SMAP_L2B",
     "processor_source": "HDF",
-    "name": "JPL PODAAC - SMAP L2B",
+    "name": "JPL PODAAC",
     "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/smap/L2/JPL/V4/catalog.xml",
     "active": true,
     "epoch_datetime": "2015-01-01T00:00:00Z"
@@ -183,7 +193,7 @@
     "covered_data": 6,
     "processor_factory": "JPL_MET_OP_ASCAT_L2",
     "processor_source": "DAP",
-    "name": "JPL PODAAC MetOp-A ASCAT L2",
+    "name": "JPL PODAAC",
     "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/ascat/preview/L2/metop_a/coastal_opt/catalog.xml",
     "active": true,
     "epoch_datetime": "1990-01-01T00:00:00Z"
@@ -196,7 +206,7 @@
     "covered_data": 7,
     "processor_factory": "JPL_MET_OP_ASCAT_L2",
     "processor_source": "DAP",
-    "name": "JPL PODAAC MetOp-B ASCAT L2",
+    "name": "JPL PODAAC",
     "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/ascat/preview/L2/metop_b/coastal_opt/catalog.xml",
     "active": true,
     "epoch_datetime": "1990-01-01T00:00:00Z"
@@ -207,7 +217,7 @@
   "pk": 8,
   "fields": {
     "covered_data": 8,
-    "processor_factory": "",
+    "processor_factory": "CORE",
     "processor_source": "FILE-GENERIC",
     "name": "Multi-Resolution Land Characteristics (MRLC)",
     "url": "https://landfire.cr.usgs.gov/MRLC/NLCD/nlcd_2011_landcover_2011_edition_2014_10_10.zip?ORIG=137_singlelfr&SIZEMB=17881",
@@ -222,8 +232,21 @@
     "covered_data": 9,
     "processor_factory": "TIDES_AND_CURRENTS",
     "processor_source": "FILE-GENERIC",
-    "name": "CO-OPS - Water Levels",
+    "name": "CO-OPS",
     "url": "https://tidesandcurrents.noaa.gov/api/",
+    "active": true,
+    "epoch_datetime": "1970-01-01T00:00:00Z"
+  }
+},
+{
+  "model": "named_storms.covereddataprovider",
+  "pk": 10,
+  "fields": {
+    "covered_data": 10,
+    "processor_factory": "NATIONAL_WATER_MODEL",
+    "processor_source": "FILE-GENERIC",
+    "name": "NOMADS",
+    "url": "ftp://ftpprd.ncep.noaa.gov/pub/data/nccf/com/nwm/prod/",
     "active": true,
     "epoch_datetime": "1970-01-01T00:00:00Z"
   }
@@ -355,6 +378,19 @@
     "date_end": "2017-09-02T18:01:30Z",
     "dates_required": true,
     "geo": "SRID=4326;POLYGON ((-95.712890625 25.751953125, -90.703125 27.59765625, -84.7265625 28.65234375, -81.9140625 24.609375, -81.298828125 31.201171875, -88.681640625 32.080078125, -99.580078125 28.30078125, -98.26171875 26.806640625, -95.712890625 25.751953125))",
+    "external_storm_id": ""
+  }
+},
+{
+  "model": "named_storms.namedstormcovereddata",
+  "pk": 12,
+  "fields": {
+    "named_storm": 1,
+    "covered_data": 10,
+    "date_start": "2017-08-17T15:01:21Z",
+    "date_end": "2017-09-02T15:01:21Z",
+    "dates_required": true,
+    "geo": "SRID=4326;POLYGON ((-96.328125 26.455078125, -92.63671875 28.65234375, -84.90234375 29.091796875, -82.353515625 25.927734375, -83.408203125 31.81640625, -98.0859375 30.146484375, -96.328125 26.455078125))",
     "external_storm_id": ""
   }
 }

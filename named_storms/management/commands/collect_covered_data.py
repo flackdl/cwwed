@@ -2,8 +2,9 @@ import logging
 import os
 import shutil
 import celery
+from django.conf import settings
 from django.core.management.base import BaseCommand
-from named_storms.data.factory import ProcessorFactory
+from named_storms.data.factory import ProcessorCoreFactory
 from named_storms.models import NamedStorm, NamedStormCoveredDataLog
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class, slack_channel
@@ -60,14 +61,15 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS('\t\tProvider: %s' % provider))
 
                     factory_cls = processor_factory_class(provider)
-                    factory = factory_cls(storm, provider)  # type: ProcessorFactory
+                    factory = factory_cls(storm, provider)  # type: ProcessorCoreFactory
 
                     # fetch all the processors data
                     try:
                         processors_data = factory.processors_data()
                     except Exception as e:
                         # failed building processors data so log error and skip this provider
-                        logging.error('Error building factory for {} \n{}'.format(provider, e))
+                        logging.error(e)
+                        logging.error('Error building factory for {}'.format(provider))
                         # save the log
                         log.success = False
                         log.exception = str(e)
@@ -87,7 +89,8 @@ class Command(BaseCommand):
                         tasks_results = group_result.get()
                     except Exception as e:
                         # failed running processor tasks so log error and skip this provider
-                        logging.error('Error running tasks for {} \n{}'.format(provider, e))
+                        logging.error(e)
+                        logging.error('Error running tasks for {}'.format(provider))
                         log.success = False
                         log.exception = str(e)
                         log.save()
@@ -111,7 +114,8 @@ class Command(BaseCommand):
                             # move the covered data outputs from the incomplete/staging directory to the complete directory
                             shutil.move(data_path_incomplete, complete_path)
                         except OSError as e:
-                            logging.error('Error moving path for {} \n{}'.format(provider, e))
+                            logging.error(e)
+                            logging.error('Error moving path for {}'.format(provider))
                             log.success = False
                             log.exception = str(e)
                             log.save()
@@ -141,4 +145,5 @@ class Command(BaseCommand):
                 if not covered_data_success:
                     logging.error('Error collecting {} from ALL providers'.format(data))
 
-        slack_channel('Finished collecting covered data', '#events')
+        if not settings.DEBUG:
+            slack_channel('Finished collecting covered data', '#events')

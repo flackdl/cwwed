@@ -49,13 +49,12 @@ def processor_class(provider: CoveredDataProvider):
 
 def processor_factory_class(provider: CoveredDataProvider):
     """
-    :return: ProcessorFactory class for a particular provider
+    Each factory is decorated/registered to map it's name to itself which helps us map the two later on during processing
+    :return: ProcessorCoreFactory class/sub-class for a particular provider
     """
     # import locally to prevent circular dependencies
-    from named_storms.data.factory import ProcessorFactory
-
-    # each factory is decorated/registered to map it's name to itself which helps us map the two later on during processing
-    return ProcessorFactory.registered_factories.get(provider.processor_factory, ProcessorFactory)
+    from named_storms.data.factory import ProcessorBaseFactory
+    return ProcessorBaseFactory.registered_factories[provider.processor_factory]
 
 
 def root_data_path() -> str:

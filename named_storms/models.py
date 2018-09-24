@@ -5,6 +5,7 @@ from django.utils import timezone
 
 
 # data factories
+PROCESSOR_DATA_FACTORY_CORE = 'CORE'  # core factory
 PROCESSOR_DATA_FACTORY_ERDDAP = 'ERDDAP'  # any ERDDAP provider
 PROCESSOR_DATA_FACTORY_NDBC = 'NDBC'  # National Data Buoy Center - https://dods.ndbc.noaa.gov/
 PROCESSOR_DATA_FACTORY_USGS = 'USGS'  # USGS - https://stn.wim.usgs.gov/STNServices/Documentation/home
@@ -19,6 +20,7 @@ PROCESSOR_DATA_FACTORY_NWM = 'NATIONAL_WATER_MODEL'  # http://nomads.ncep.noaa.g
 
 # data factory choices
 PROCESSOR_DATA_FACTORY_CHOICES = (
+    PROCESSOR_DATA_FACTORY_CORE,
     PROCESSOR_DATA_FACTORY_ERDDAP,
     PROCESSOR_DATA_FACTORY_NDBC,
     PROCESSOR_DATA_FACTORY_USGS,
@@ -71,7 +73,7 @@ class CoveredData(models.Model):
 
 class CoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    processor_factory = models.CharField(max_length=50, blank=True, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES), help_text='Optionally specify a custom processor factory')
+    processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES), help_text='Optionally specify a custom processor factory')
     processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
     url = models.CharField(max_length=5000)

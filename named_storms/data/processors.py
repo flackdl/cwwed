@@ -3,7 +3,8 @@ import tempfile
 import shutil
 import ssl
 import logging
-from urllib.parse import urlparse
+from ftplib import FTP
+from urllib.parse import urlparse, ParseResult
 import h5py
 import numpy
 from typing import List, NamedTuple
@@ -39,6 +40,7 @@ class BaseProcessor:
     """
 
     _url: str = None
+    _url_parsed: ParseResult = None
     _success: bool = True
     _output_path: str = None
     _named_storm: NamedStorm = None
@@ -46,7 +48,7 @@ class BaseProcessor:
     _named_storm_covered_data: NamedStormCoveredData = None
     _label: str = None
     _group: str = None
-    _data_extension: str = None
+    _file_extension: str = None
     _dimension_time: str = None
     _dimension_latitude: str = None
     _dimension_longitude: str = None
@@ -58,6 +60,7 @@ class BaseProcessor:
         self._named_storm = named_storm
         self._provider = provider
         self._url = url
+        self._url_parsed = urlparse(self._url)
         self._label = label or DEFAULT_LABEL
         self._group = group
         self._dimension_time = dimension_time or DEFAULT_DIMENSION_TIME
@@ -108,8 +111,8 @@ class BaseProcessor:
             self._named_storm_covered_data.covered_data.name,
         )
 
-    def _get_data_extension(self):
-        return self._data_extension
+    def _get_file_extension(self):
+        return self._file_extension
 
     def _get_output_path(self):
         paths = [
@@ -123,9 +126,9 @@ class BaseProcessor:
         file_name = self._label
 
         # include file extension if it was declared
-        data_extension = self._get_data_extension()
-        if data_extension:
-            file_name = '{}.{}'.format(file_name, data_extension)
+        file_extension = self._get_file_extension()
+        if file_extension:
+            file_name = '{}.{}'.format(file_name, file_extension)
 
         paths.append(file_name)
 
@@ -175,31 +178,56 @@ class GenericFileProcessor(BaseProcessor):
     def _post_process(self):
         pass
 
-    def _get_data_extension(self):
-        # if none provided, try and extract an extension from the url
-        if not self._data_extension:
-            url_parsed = urlparse(self._url)
-            _, extension = os.path.splitext(url_parsed.path)
+    def _get_file_extension(self):
+        # if no extension appears to be in the file label, try and extract a file extension from the url
+        if '.' not in self._label:
+            _, extension = os.path.splitext(self._url_parsed.path)
             return extension.lstrip('.') if extension else None
-        return super()._get_data_extension()
+        return super()._get_file_extension()
 
     def _fetch(self):
+        if self._is_ftp():
+            self._fetch_ftp()
+        else:
+            self._fetch_http()
 
-        # fetch the actual file
-        file_req = requests.get(self._url, stream=True, timeout=10)
+        # run any post processing on the dataset
+        self._post_process()
 
-        # write to tmp space then move
+    @staticmethod
+    def _get_tmp_file():
         _, tmp_file = tempfile.mkstemp()
-        with open(tmp_file, 'wb') as f:
-            for chunk in file_req.iter_content(chunk_size=1024):
-                f.write(chunk)
+        return tmp_file
+
+    def _move_tmp_file_to_complete(self, tmp_file):
         # set file permissions -rw-r--r-- (using octal literal notation)
         os.chmod(tmp_file, 0o644)
 
         shutil.move(tmp_file, self._output_path)
 
-        # run any post processing on the dataset
-        self._post_process()
+    def _is_ftp(self):
+        return self._url.startswith('ftp://')
+
+    def _fetch_ftp(self):
+        # connect, login and retrieve file
+        ftp = FTP(self._url_parsed.hostname)
+        ftp.login()
+        tmp_file = self._get_tmp_file()
+        ftp.retrbinary('RETR {}'.format(self._url_parsed.path), open(tmp_file, 'wb').write)
+
+        self._move_tmp_file_to_complete(tmp_file)
+
+    def _fetch_http(self):
+        # fetch the actual file
+        file_req = requests.get(self._url, stream=True, timeout=10)
+
+        # write to tmp space then move
+        tmp_file = self._get_tmp_file()
+        with open(tmp_file, 'wb') as f:
+            for chunk in file_req.iter_content(chunk_size=1024):
+                f.write(chunk)
+
+        self._move_tmp_file_to_complete(tmp_file)
 
 
 class HierarchicalDataFormatProcessor(GenericFileProcessor):
@@ -276,7 +304,7 @@ class BinaryFileProcessor(GenericFileProcessor):
 class OpenDapProcessor(BaseProcessor):
 
     _dataset: xarray.Dataset = None
-    _data_extension: str = 'nc'  # netcdf
+    _file_extension: str = 'nc'  # netcdf
     _variables: List[str] = None
     _time_start: float = None
     _time_end: float = None

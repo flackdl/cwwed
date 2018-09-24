@@ -1,9 +1,10 @@
 import os
 import re
-from functools import cmp_to_key
 import celery
 import pytz
 import requests
+from ftplib import FTP
+from functools import cmp_to_key
 from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.gis.geos import Point
@@ -18,9 +19,18 @@ from named_storms import models as storm_models
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
 
-class ProcessorFactory:
+class ProcessorBaseFactory:
     # "singleton" (class variable) which automatically gets populated from factory class decorators
     registered_factories = {}
+
+    def _verify_registered(self):
+        # verify this factory instance was registered properly
+        if self.__class__ not in ProcessorBaseFactory.registered_factories.values():
+            raise NotImplementedError('Processor factory must be registered through register_factory()')
+
+
+@register_factory(storm_models.PROCESSOR_DATA_FACTORY_CORE)
+class ProcessorCoreFactory(ProcessorBaseFactory):
 
     _named_storm: NamedStorm = None
     _provider: CoveredDataProvider = None
@@ -34,7 +44,7 @@ class ProcessorFactory:
         self._provider_url_parsed = parse.urlparse(self._provider.url)
         self._named_storm_covered_data = self._named_storm.namedstormcovereddata_set.get(covered_data=self._provider.covered_data)
 
-    def processors_data(self) -> List[ProcessorData]:
+    def _processors_data(self) -> List[ProcessorData]:
         return [
             ProcessorData(
                 named_storm_id=self._named_storm.id,
@@ -43,6 +53,10 @@ class ProcessorFactory:
                 kwargs=self._processor_kwargs(),
             )
         ]
+
+    def processors_data(self) -> List[ProcessorData]:
+        self._verify_registered()
+        return self._processors_data()
 
     @staticmethod
     def generic_filter(records: list):
@@ -56,7 +70,7 @@ class ProcessorFactory:
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_USGS)
-class USGSProcessorFactory(ProcessorFactory):
+class USGSProcessorFactory(ProcessorCoreFactory):
     """
     USGS - STN Web Services
     https://stn.wim.usgs.gov/STNServices/Documentation/home
@@ -73,7 +87,7 @@ class USGSProcessorFactory(ProcessorFactory):
     deployment_types = []
     sensors = []
 
-    def processors_data(self) -> List[ProcessorData]:
+    def _processors_data(self) -> List[ProcessorData]:
         processors_data = []
 
         # fetch deployment types
@@ -198,7 +212,7 @@ class USGSProcessorFactory(ProcessorFactory):
         raise Exception('Could not find deployment type for instrument_id {}'.format(instrument_id))
 
 
-class THREDDSCatalogFactory(ProcessorFactory):
+class THREDDSCatalogBaseFactory(ProcessorCoreFactory):
 
     namespaces = {
         'catalog': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0',
@@ -253,7 +267,7 @@ class THREDDSCatalogFactory(ProcessorFactory):
         return catalogs
 
 
-class JPLProcessorFactoryBase(THREDDSCatalogFactory):
+class JPLProcessorBaseFactory(THREDDSCatalogBaseFactory):
     """
     JPL Factory (BASE)
 
@@ -303,7 +317,7 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
                 results.append(ref)
         return results
 
-    def processors_data(self) -> List[ProcessorData]:
+    def _processors_data(self) -> List[ProcessorData]:
         dataset_paths = []
         processors_data = []
 
@@ -363,7 +377,7 @@ class JPLProcessorFactoryBase(THREDDSCatalogFactory):
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_MET_OP_ASCAT_L2)
-class JPLMetOpASCATL2ProcessorFactory(JPLProcessorFactoryBase):
+class JPLMetOpASCATL2ProcessorFactory(JPLProcessorBaseFactory):
     """
     JPL MetOp-A/B ASCAT Level 2
     [Meteorological Operational (MetOp)]
@@ -380,12 +394,12 @@ class JPLMetOpASCATL2ProcessorFactory(JPLProcessorFactoryBase):
         }
 
     def _is_using_dataset(self, dataset: str) -> bool:
-        # the files have the .gz extension but they're returned as regular netcdf files
+        # the files have the .gz extension but they're returned as uncompressed netcdf files
         return dataset.endswith('.nc.gz')
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_SMAP_L2B)
-class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
+class JPLSMAPL2BProcessorFactory(JPLProcessorBaseFactory):
     """
     JPL SMAP Level 2B CAP Sea Surface Salinity
     https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
@@ -396,7 +410,7 @@ class JPLSMAPL2BProcessorFactory(JPLProcessorFactoryBase):
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C)
-class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
+class JPLQSCATL1CProcessorFactoryFactory(JPLProcessorBaseFactory):
     """
     JPL Quikscat L1C
     Note: we're actually using version 2 even though version 1 is displayed on the main data access page.
@@ -422,7 +436,7 @@ class JPLQSCATL1CProcessorFactory(JPLProcessorFactoryBase):
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_NDBC)
-class NDBCProcessorFactory(THREDDSCatalogFactory):
+class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
     """
     https://dods.ndbc.noaa.gov/
     The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
@@ -439,7 +453,7 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
 
     _verify_ssl = False
 
-    def processors_data(self) -> List[ProcessorData]:
+    def _processors_data(self) -> List[ProcessorData]:
         dataset_paths = []
         processors_data = []
 
@@ -503,7 +517,7 @@ class NDBCProcessorFactory(THREDDSCatalogFactory):
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS)
-class TidesAndCurrentsProcessorFactory(ProcessorFactory):
+class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
     """
     REST APIs:
       - List of stations
@@ -542,7 +556,7 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
         PRODUCT_METEOROLOGICAL_WIND,
     ]
 
-    def processors_data(self) -> List[ProcessorData]:
+    def _processors_data(self) -> List[ProcessorData]:
         processors_data = []
 
         # fetch and parse the station listings
@@ -627,8 +641,47 @@ class TidesAndCurrentsProcessorFactory(ProcessorFactory):
 
 
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_NWM)
-class NWMProcessorFactory(ProcessorFactory):
+class NWMProcessorFactory(ProcessorCoreFactory):
+    """
+    National Water Model
 
-    def processors_data(self) -> List[ProcessorData]:
+    TODO - provider isn't fully prepared for CWWED transfer so we're arbitrarily grabbing a current/active directory (i.e today's data)
+
+    Data is on an ftp server:
+    Example:
+        ftp://ftpprd.ncep.noaa.gov/pub/data/nccf/com/nwm/prod/nwm.20180924/analysis_assim/nwm.t00z.analysis_assim.channel_rt.tm00.conus.nc
+    We mostly want to only grab the "tm02" (t minus 2 hour) files
+    """
+    PRODUCT_TIME_SLICE = 'usgs_timeslices'
+    PRODUCT_ANALYSIS_ASSIM = 'analysis_assim'
+    PRODUCT_FORCING_ANALYSIS_ASSIM = 'forcing_analysis_assim'
+    PRODUCT_DIRECTORIES = [PRODUCT_TIME_SLICE, PRODUCT_ANALYSIS_ASSIM, PRODUCT_FORCING_ANALYSIS_ASSIM]
+
+    def _processors_data(self) -> List[ProcessorData]:
         processors_data = []
+        ftp = FTP(self._provider_url_parsed.hostname)
+        ftp.login()
+        base_path = self._provider_url_parsed.path
+        directory_dates = ftp.nlst(base_path)
+        if directory_dates:
+            base_path = directory_dates[-1]
+            for directory_product in ftp.nlst(base_path):
+                if os.path.basename(directory_product) in self.PRODUCT_DIRECTORIES:
+                    files = ftp.nlst(directory_product)
+                    for file in files:
+                        # we only want tm02 files ("time minus 2 hour files, valid two hours before cycle time)
+                        if os.path.basename(directory_product) != self.PRODUCT_TIME_SLICE and not file.startswith('nwm.t02z.'):
+                            continue
+                        processors_data.append(ProcessorData(
+                            named_storm_id=self._named_storm.id,
+                            provider_id=self._provider.id,
+                            url='ftp://{}{}'.format(self._provider_url_parsed.hostname, os.path.join(directory_product, file)),
+                            label=os.path.basename(file),
+                            kwargs=self._processor_kwargs(),
+                            group=os.path.basename(directory_product),
+                        ))
+
+        # filter
+        processors_data = self.generic_filter(processors_data)
+
         return processors_data
