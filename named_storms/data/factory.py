@@ -650,7 +650,7 @@ class NWMProcessorFactory(ProcessorCoreFactory):
     Data is on an ftp server:
     Example:
         ftp://ftpprd.ncep.noaa.gov/pub/data/nccf/com/nwm/prod/nwm.20180924/analysis_assim/nwm.t00z.analysis_assim.channel_rt.tm00.conus.nc
-    We mostly want to only grab the "tm02" (t minus 2 hour) files
+    We mostly just want "tm02" files (time minus 2 hour files, valid two hours before cycle time)
     """
     PRODUCT_TIME_SLICE = 'usgs_timeslices'
     PRODUCT_ANALYSIS_ASSIM = 'analysis_assim'

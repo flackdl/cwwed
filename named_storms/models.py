@@ -93,6 +93,7 @@ class NamedStormCoveredData(models.Model):
     dates_required = models.BooleanField(default=True)
     geo = models.GeometryField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
+    last_successful_log = models.ForeignKey('NamedStormCoveredDataLog', on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return str(self.covered_data)

@@ -84,7 +84,7 @@ class Command(BaseCommand):
                     task_group = celery.group([process_dataset_task.s(data) for data in processors_data])
                     group_result = task_group()
 
-                    # we must handle exceptions from the actual results
+                    # handle exceptions from the individual task results
                     try:
                         tasks_results = group_result.get()
                     except Exception as e:
@@ -120,6 +120,11 @@ class Command(BaseCommand):
                             log.exception = str(e)
                             log.save()
                             continue
+
+                        # attach successful log to the storm covered data record
+                        storm_covered_data = storm.namedstormcovereddata_set.get(covered_data=data)
+                        storm_covered_data.last_successful_log = log
+                        storm_covered_data.save()
 
                         # create a task to archive the data
                         archive_named_storm_covered_data_task.delay(
