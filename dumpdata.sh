@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# TODO - fix "successful log" references in named storm covered data
-
 excluded_apps=(sites auth admin sessions authtoken socialaccount contenttypes audit named_storms.namedstormcovereddatalog named_storms.nsem)
 
 exclusions=''

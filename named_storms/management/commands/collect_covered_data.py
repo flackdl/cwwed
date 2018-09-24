@@ -2,10 +2,11 @@ import logging
 import os
 import shutil
 import celery
+from datetime import datetime
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from named_storms.data.factory import ProcessorCoreFactory
-from named_storms.models import NamedStorm, NamedStormCoveredDataLog
+from named_storms.models import NamedStorm, NamedStormCoveredDataLog, NamedStormCoveredData
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class, slack_channel
 
@@ -39,10 +40,10 @@ class Command(BaseCommand):
 
             for data in storm.covered_data.filter(**covered_data_filter_args):
 
-                storm_covered_data = storm.namedstormcovereddata_set.get(covered_data=data)
-                if storm_covered_data.last_successful_log:
+                storm_covered_data = NamedStormCoveredData.objects.filter(named_storm=storm, covered_data=data).get()  # this has to exist
+                if storm_covered_data.date_collected:
                     self.stdout.write(
-                        self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (data, storm_covered_data.last_successful_log)))
+                        self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (data, storm_covered_data.date_collected)))
                     continue
 
                 self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data))
@@ -127,8 +128,8 @@ class Command(BaseCommand):
                             log.save()
                             continue
 
-                        # attach successful log to the storm covered data record
-                        storm_covered_data.last_successful_log = log
+                        # set the date collected on the named storm covered data instance
+                        storm_covered_data.date_collected = datetime.utcnow()
                         storm_covered_data.save()
 
                         # create a task to archive the data

@@ -81,7 +81,7 @@ class CoveredDataProvider(models.Model):
     epoch_datetime = models.DateTimeField(default=datetime(1970, 1, 1, tzinfo=timezone.utc))
 
     def __str__(self):
-        return '{} // {}'.format(self.name, self.covered_data)
+        return self.name
 
 
 class NamedStormCoveredData(models.Model):
@@ -92,15 +92,28 @@ class NamedStormCoveredData(models.Model):
     dates_required = models.BooleanField(default=True)
     geo = models.GeometryField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
-    last_successful_log = models.ForeignKey('NamedStormCoveredDataLog', on_delete=models.CASCADE, null=True, blank=True)
+    date_collected = models.DateField(blank=True, null=True)   # indicates last collection date, operating as a switch to recollect
 
     def __str__(self):
-        return str(self.covered_data)
+        return '{}: {}'.format(self.named_storm, self.covered_data)
 
     def clean(self):
         if self.dates_required and not all([self.date_start, self.date_end]):
             raise ValidationError('Start and End dates are required')
         return super().clean()
+
+    @staticmethod
+    def last_successful_log(named_storm: NamedStorm, covered_data: CoveredData):
+        """
+        :return: Last successful covered data log for a particular storm
+        :rtype named_storm.models.NamedStormCoveredDataLog
+        """
+        # query last successful log by ordering by storm/data/date using "distinct" on storm/data
+        log = named_storm.namedstormcovereddatalog_set.filter(success=True, covered_data=covered_data)
+        log = log.order_by('named_storm', 'covered_data', '-date').distinct('named_storm', 'covered_data')
+        if log.exists():
+            return log.get()
+        return None
 
 
 class NamedStormCoveredDataLog(models.Model):
@@ -131,4 +144,4 @@ class NSEM(models.Model):
     model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
 
     def __str__(self):
-        return 'NSEM: {}'.format(self.named_storm)
+        return '{}: {}'.format(self.named_storm, self.date_requested)
