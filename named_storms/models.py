@@ -21,7 +21,6 @@ PROCESSOR_DATA_FACTORY_NWM = 'NATIONAL_WATER_MODEL'  # http://nomads.ncep.noaa.g
 # data factory choices
 PROCESSOR_DATA_FACTORY_CHOICES = (
     PROCESSOR_DATA_FACTORY_CORE,
-    PROCESSOR_DATA_FACTORY_ERDDAP,
     PROCESSOR_DATA_FACTORY_NDBC,
     PROCESSOR_DATA_FACTORY_USGS,
     PROCESSOR_DATA_FACTORY_JPL_QSCAT_L1C,
@@ -93,7 +92,7 @@ class NamedStormCoveredData(models.Model):
     dates_required = models.BooleanField(default=True)
     geo = models.GeometryField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
-    last_successful_log = models.ForeignKey('NamedStormCoveredDataLog', on_delete=models.CASCADE, null=True)
+    last_successful_log = models.ForeignKey('NamedStormCoveredDataLog', on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
         return str(self.covered_data)

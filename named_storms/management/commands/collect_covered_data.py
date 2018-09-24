@@ -39,6 +39,12 @@ class Command(BaseCommand):
 
             for data in storm.covered_data.filter(**covered_data_filter_args):
 
+                storm_covered_data = storm.namedstormcovereddata_set.get(covered_data=data)
+                if storm_covered_data.last_successful_log:
+                    self.stdout.write(
+                        self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (data, storm_covered_data.last_successful_log)))
+                    continue
+
                 self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data))
 
                 covered_data_success = False
@@ -122,7 +128,6 @@ class Command(BaseCommand):
                             continue
 
                         # attach successful log to the storm covered data record
-                        storm_covered_data = storm.namedstormcovereddata_set.get(covered_data=data)
                         storm_covered_data.last_successful_log = log
                         storm_covered_data.save()
 
