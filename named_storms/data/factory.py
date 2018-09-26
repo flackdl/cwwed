@@ -60,8 +60,10 @@ class ProcessorCoreFactory(ProcessorBaseFactory):
 
     @staticmethod
     def generic_filter(records: list):
-        # if DEBUG return a small subset of records
+        # if DEBUG return a small subset of randomized records
         if settings.DEBUG:
+            from random import shuffle
+            shuffle(records)
             return records[:10]
         return records
 
@@ -664,18 +666,18 @@ class NWMProcessorFactory(ProcessorCoreFactory):
         base_path = self._provider_url_parsed.path
         directory_dates = ftp.nlst(base_path)
         if directory_dates:
-            base_path = directory_dates[-1]
+            base_path = directory_dates[-1]  # arbitrarily choosing the most recent date in the interim
             for directory_product in ftp.nlst(base_path):
                 if os.path.basename(directory_product) in self.PRODUCT_DIRECTORIES:
                     files = ftp.nlst(directory_product)
                     for file in files:
                         # we only want tm02 files ("time minus 2 hour files, valid two hours before cycle time)
-                        if os.path.basename(directory_product) != self.PRODUCT_TIME_SLICE and not file.startswith('nwm.t02z.'):
+                        if os.path.basename(directory_product) != self.PRODUCT_TIME_SLICE and not os.path.basename(file).startswith('nwm.t02z.'):
                             continue
                         processors_data.append(ProcessorData(
                             named_storm_id=self._named_storm.id,
                             provider_id=self._provider.id,
-                            url='ftp://{}{}'.format(self._provider_url_parsed.hostname, os.path.join(directory_product, file)),
+                            url='ftp://{}{}'.format(self._provider_url_parsed.hostname, file),
                             label=os.path.basename(file),
                             kwargs=self._processor_kwargs(),
                             group=os.path.basename(directory_product),
