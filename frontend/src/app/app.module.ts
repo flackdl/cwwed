@@ -12,9 +12,13 @@ import { CoveredDataDetailComponent } from './covered-data-detail/covered-data-d
 import { CoveredDataMainComponent } from './covered-data-main/covered-data-main.component';
 import { PsaComponent } from './psa/psa.component';
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
+import { MainComponent } from './main/main.component';
+import { CoastalActComponent } from './coastal-act/coastal-act.component';
 
 const appRoutes: Routes = [
-  { path: '', component: CoveredDataMainComponent },
+  { path: '',   redirectTo: '/home', pathMatch: 'full' },
+  { path: 'home', component: MainComponent },
+  { path: 'coastal-act', component: CoastalActComponent },
   { path: 'covered-data', component: CoveredDataMainComponent },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
   { path: 'post-storm-assessment', component: PsaComponent },
@@ -31,6 +35,8 @@ const appRoutes: Routes = [
     CoveredDataMainComponent,
     PsaComponent,
     PageNotFoundComponent,
+    MainComponent,
+    CoastalActComponent,
   ],
   imports: [
     RouterModule.forRoot(

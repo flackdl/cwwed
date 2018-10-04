@@ -1,3 +1,54 @@
-<ngx-spinner size="large"></ngx-spinner>
-<router-outlet *ngIf="isLoaded"></router-outlet>
+<header class="py-3">
+  <div class="row flex-nowrap justify-content-between align-items-center">
+    <div class="col-12 col-md-8">
+      <img class="img-fluid" src="assets/header.png" />
+    </div>
+    <div class="col-md-4 text-right">
+      <img class="img-fluid" src="assets/header_doc.png" />
+    </div>
+  </div>
+</header>
 
+<ul class="nav nav-pills mb-3">
+  <li class="nav-item">
+    <a class="nav-link" routerLink="home" routerLinkActive="active">CWWED</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" routerLink="coastal-act" routerLinkActive="active">The COASTAL Act</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" routerLink="covered-data" routerLinkActive="active">Covered Data</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active">Post Storm Assessment</a>
+  </li>
+</ul>
+
+<ngx-spinner size="large"></ngx-spinner>
+
+<div>
+  <router-outlet *ngIf="isLoaded"></router-outlet>
+</div>
+
+<footer class="pt-4 my-md-5 pt-md-5 border-top">
+  <div class="row">
+    <div class="col-12 col-md">
+      <img class="mb-2" src="/assets/noaa-logo.svg" alt="" width="24" height="24">
+      <small class="d-block mb-3 text-muted">CWWED</small>
+    </div>
+    <div class="col-6 col-md">
+      <h5>About</h5>
+      <ul class="list-unstyled text-small">
+        <li><a class="text-muted" routerLink="home">CWWED</a></li>
+        <li><a class="text-muted" routerLink="coastal-act">The COASTAL Act</a></li>
+      </ul>
+    </div>
+    <div class="col-6 col-md">
+      <h5>Features</h5>
+      <ul class="list-unstyled text-small">
+        <li><a class="text-muted" routerLink="covered-data">Covered Data</a></li>
+        <li><a class="text-muted" routerLink="post-storm-assessment">Post Storm Assessment</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
