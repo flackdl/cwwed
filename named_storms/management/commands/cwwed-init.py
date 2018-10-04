@@ -8,6 +8,8 @@ class Command(BaseCommand):
     help = 'CWWED Init'
 
     def handle(self, *args, **options):
+        if not settings.CWWED_NSEM_PASSWORD:
+            raise RuntimeError('CWWED_NSEM_PASSWORD needs to be defined')
         self._create_nsem_user()
 
     @staticmethod

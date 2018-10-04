@@ -27,19 +27,19 @@ services:
     ports:
       - "5672:5672"
 
-  cwwed:
-    build:
-      context: .
-    ports:
-      - "8888:80"
-    env_file: .env  # not in version control
-    environment:
-      DJANGO_SETTINGS_MODULE: cwwed.settings
-      DATABASE_URL: postgis://postgres@postgis:5432/postgres
-    depends_on:
-      - postgis
-      - thredds
-      - rabbitmq
+  #cwwed:
+  #  build:
+  #    context: .
+  #  ports:
+  #    - "8888:80"
+  #  env_file: .env  # not in version control
+  #  environment:
+  #    DJANGO_SETTINGS_MODULE: cwwed.settings
+  #    DATABASE_URL: postgis://postgres@postgis:5432/postgres
+  #  depends_on:
+  #    - postgis
+  #    - thredds
+  #    - rabbitmq
 
 volumes:
   cwwed-postgresql:
