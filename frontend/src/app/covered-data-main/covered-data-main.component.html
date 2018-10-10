@@ -1,13 +1,13 @@
 <div class="container">
   <div class="row">
     <div class="col-md-4">
-      <nav class="navbar navbar-expand-md">
+      <nav class="navbar navbar-expand-md navbar-light bg-light">
         <button class="navbar-toggler" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" [ngbCollapse]="isNavCollapsed">
-          <ul class="nav nav-pills flex-column">
-            <a class="nav-link" *ngFor="let data of coveredDataList" (click)="toggleNavCollapse()" [routerLink]="[data.id]" routerLinkActive="active">{{ data.name }}</a>
+        <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
+          <ul class="navbar-nav flex-column">
+            <a class="nav-link" *ngFor="let data of coveredDataList" (click)="navCollapse()" [routerLink]="[data.id]" routerLinkActive="active">{{ data.name }}</a>
           </ul>
         </div>
       </nav>

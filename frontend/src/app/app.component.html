@@ -13,19 +13,19 @@
     <button class="navbar-toggler" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="collapse navbar-collapse" [ngbCollapse]="isNavCollapsed">
+    <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
       <ul class="navbar-nav">
         <li class="nav-item">
-          <a class="nav-link" routerLink="coastal-act" routerLinkActive="active" (click)="toggleNavCollapse()">COASTAL Act</a>
+          <a class="nav-link" routerLink="coastal-act" routerLinkActive="active" (click)="navCollapse()">COASTAL Act</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="coastal-act-projects" routerLinkActive="active" (click)="toggleNavCollapse()">COASTAL Act Projects</a>
+          <a class="nav-link" routerLink="coastal-act-projects" routerLinkActive="active" (click)="navCollapse()">COASTAL Act Projects</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="covered-data" routerLinkActive="active" (click)="toggleNavCollapse()">Covered Data</a>
+          <a class="nav-link" routerLink="covered-data" routerLinkActive="active" (click)="navCollapse()">Covered Data</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active" (click)="toggleNavCollapse()">Post Storm Assessment</a>
+          <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active" (click)="navCollapse()">Post Storm Assessment</a>
         </li>
       </ul>
     </div>

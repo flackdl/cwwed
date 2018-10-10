@@ -8,7 +8,7 @@ import { CwwedService } from "../cwwed.service";
 })
 export class CoastalActProjectsComponent implements OnInit {
 
-  public isNavCollapsed = true;
+  public isNavCollapsed: boolean = false;
   public coastalActProjects: any [];
 
   constructor(
@@ -18,6 +18,10 @@ export class CoastalActProjectsComponent implements OnInit {
 
   ngOnInit() {
     this.coastalActProjects = this.cwwedService.coastalActProjects;
+  }
+
+  public navCollapse() {
+    this.isNavCollapsed = false;
   }
 
   public toggleNavCollapse() {

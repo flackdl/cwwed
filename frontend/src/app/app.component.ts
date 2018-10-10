@@ -11,12 +11,16 @@ import { CwwedService } from "./cwwed.service";
 })
 export class AppComponent implements OnInit {
   public isLoaded: boolean = false;
-  public isNavCollapsed: boolean = true;
+  public isNavCollapsed: boolean = false;
 
   constructor(
     private cwwedService: CwwedService,
     private spinner: NgxSpinnerService,
   ) {
+  }
+
+  public navCollapse() {
+    this.isNavCollapsed = false;
   }
 
   public toggleNavCollapse() {

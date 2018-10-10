@@ -8,7 +8,7 @@ import { CwwedService } from "../cwwed.service";
 })
 export class CoveredDataMainComponent implements OnInit {
   public coveredDataList: any;
-  public isNavCollapsed = true;
+  public isNavCollapsed: boolean = false;
 
   constructor(
     private cwwedService: CwwedService,
@@ -20,5 +20,9 @@ export class CoveredDataMainComponent implements OnInit {
 
   public toggleNavCollapse() {
     this.isNavCollapsed = !this.isNavCollapsed;
+  }
+
+  public navCollapse() {
+    this.isNavCollapsed = false;
   }
 }
