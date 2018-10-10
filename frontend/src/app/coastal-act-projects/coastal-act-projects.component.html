@@ -1,14 +1,16 @@
 <div class="container">
   <div class="row">
-    <div class="col-sm-4">
-      <div class="list-group">
-        <a class="list-group-item list-group-item-action list-group-item-primary d-flex justify-content-between align-items-center" [routerLink]="['/coastal-act-projects/']" routerLinkActive="active">
-          <strong>COASTAL Act Projects</strong>
-        </a>
-        <a *ngFor="let data of coastalActProjects" class="list-group-item list-group-item-action" [routerLink]="[data.id]" routerLinkActive="active">
-          {{ data.name }}
-        </a>
-      </div>
+    <div class="col-md-4">
+      <nav class="navbar navbar-expand-md navbar-light bg-light">
+        <button class="navbar-toggler" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" [ngbCollapse]="isNavCollapsed">
+          <ul class="nav nav-pills flex-column">
+            <a class="nav-link" *ngFor="let project of coastalActProjects" (click)="toggleNavCollapse()" [routerLink]="[project.id]" routerLinkActive="active">{{ project.name }}</a>
+          </ul>
+        </div>
+      </nav>
     </div>
     <div class="col-sm">
       <router-outlet></router-outlet>

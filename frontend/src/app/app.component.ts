@@ -7,15 +7,20 @@ import { CwwedService } from "./cwwed.service";
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
   public isLoaded: boolean = false;
+  public isNavCollapsed: boolean = true;
 
   constructor(
     private cwwedService: CwwedService,
     private spinner: NgxSpinnerService,
   ) {
+  }
+
+  public toggleNavCollapse() {
+    this.isNavCollapsed = !this.isNavCollapsed;
   }
 
   ngOnInit() {
