@@ -29,7 +29,14 @@ const appRoutes: Routes = [
       { path: ':id', component: CoastalActProjectsDetailComponent },
     ]
   },
-  { path: 'covered-data', component: CoveredDataMainComponent },
+  {
+    path: 'covered-data',
+    component: CoveredDataMainComponent,
+    children: [
+      { path: '', component: CoveredDataDetailComponent },
+      { path: ':id', component: CoveredDataDetailComponent },
+    ]
+  },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
   { path: 'post-storm-assessment', component: PsaComponent },
   { path: 'post-storm-assessment/:id', component: PsaComponent },
