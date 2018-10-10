@@ -9,6 +9,7 @@ let API_ROOT = environment.production ? API_ROOT_PROD : API_ROOT_DEV;
 let API_COVERED_DATA = `${API_ROOT}/covered-data/`;
 let API_NAMED_STORMS = `${API_ROOT}/named-storms/`;
 let API_NSEM_PER_STORM = `${API_ROOT}/nsem/per-storm/`;
+let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-projects/`;
 
 @Injectable({
   providedIn: 'root'
@@ -17,6 +18,7 @@ export class CwwedService {
   coveredDataList: any;
   namedStorms: any;
   nsemList: any;
+  coastalActProjects: any;
 
   constructor(
     private http: HttpClient,
@@ -53,6 +55,15 @@ export class CwwedService {
       map((data) => {
         this.coveredDataList = data;
         return this.coveredDataList;
+      }),
+    );
+  }
+
+  public fetchCoastalActProjects() {
+    return this.http.get(API_COASTAL_ACT_PROJECTS).pipe(
+      map((data) => {
+        this.coastalActProjects = data;
+        return this.coastalActProjects;
       }),
     );
   }

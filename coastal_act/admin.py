@@ -1,7 +1,7 @@
 from django.contrib.gis import admin
-from coastal_act.models import ComponentProject
+from coastal_act.models import CoastalActProject
 
 
-@admin.register(ComponentProject)
+@admin.register(CoastalActProject)
 class ComponentProjectAdmin(admin.GeoModelAdmin):
     pass

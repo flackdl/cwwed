@@ -25,6 +25,7 @@ export class AppComponent implements OnInit {
       this.cwwedService.fetchCoveredData(),
       this.cwwedService.fetchNamedStorms(),
       this.cwwedService.fetchNSEMPerStorm(),
+      this.cwwedService.fetchCoastalActProjects(),
     ).subscribe(() => {
       this.isLoaded = true;
       this.spinner.hide();

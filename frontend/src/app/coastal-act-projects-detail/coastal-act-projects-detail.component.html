@@ -1,0 +1,16 @@
+<div *ngIf="!project">
+  <h1>COASTAL Act Projects</h1>
+  Please choose a COASTAL Act Project
+</div>
+<div *ngIf="project">
+  <div class="jumbotron">
+    <h1 class="display-4">{{ project.name }}</h1>
+    <hr class="my-4">
+    <p>
+      {{ project.description }}
+    </p>
+    <div>
+      <img [src]="project.image_url" class="img-fluid">
+    </div>
+  </div>
+</div>
