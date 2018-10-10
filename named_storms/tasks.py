@@ -2,7 +2,6 @@ from __future__ import absolute_import, unicode_literals
 import json
 from datetime import datetime
 from django.contrib.auth.models import User
-from django.core.files.storage import default_storage
 import os
 import tarfile
 import requests
@@ -13,6 +12,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 
 from cwwed.celery import app
+from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
@@ -144,7 +144,7 @@ def archive_nsem_covered_data_task(nsem_id):
         src_path = log.snapshot
         dest_path = os.path.join(storage_path, os.path.basename(src_path))
         # copy snapshot to versioned nsem location in default storage
-        default_storage.copy_within_storage(src_path, dest_path)
+        S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
     nsem.covered_data_logs.set(logs_to_archive)  # many to many field
     nsem.covered_data_snapshot = storage_path
@@ -165,8 +165,9 @@ def extract_nsem_covered_data_task(nsem_data: dict):
         settings.CWWED_COVERED_DATA_DIR_NAME,
     )
     # download all the archives
-    default_storage.download_directory(
-        default_storage.path(nsem.covered_data_snapshot), file_system_path)
+    storage = S3ObjectStoragePrivate()
+    storage.download_directory(
+        storage.path(nsem.covered_data_snapshot), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -221,6 +222,7 @@ def extract_nsem_model_output_task(nsem_id):
 
     nsem = get_object_or_404(NSEM, pk=int(nsem_id))
     uploaded_file_path = nsem.model_output_snapshot
+    storage = S3ObjectStoragePrivate()
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.model_output_snapshot_extracted:
@@ -228,7 +230,7 @@ def extract_nsem_model_output_task(nsem_id):
     elif not uploaded_file_path:
         raise Http404("Missing model output snapshot")
     # verify the uploaded output exists in storage
-    elif not default_storage.exists(uploaded_file_path):
+    elif not storage.exists(uploaded_file_path):
         raise Http404("{} doesn't exist in storage".format(uploaded_file_path))
 
     storage_path = os.path.join(
@@ -240,7 +242,7 @@ def extract_nsem_model_output_task(nsem_id):
     )
 
     # copy from "upload" directory to the versioned path
-    default_storage.copy_within_storage(uploaded_file_path, storage_path)
+    storage.copy_within_storage(uploaded_file_path, storage_path)
 
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
@@ -249,7 +251,7 @@ def extract_nsem_model_output_task(nsem_id):
     )
 
     # download to the file system
-    default_storage.download_file(default_storage.path(storage_path), file_system_path)
+    storage.download_file(storage.path(storage_path), file_system_path)
 
     # extract the tgz
     tar = tarfile.open(file_system_path, settings.CWWED_NSEM_ARCHIVE_READ_MODE)
@@ -274,9 +276,9 @@ def extract_nsem_model_output_task(nsem_id):
     nsem.save()
 
     # delete the original/uploaded copy
-    default_storage.delete(uploaded_file_path)
+    storage.delete(uploaded_file_path)
 
-    return default_storage.url(storage_path)
+    return storage.url(storage_path)
 
 
 @app.task(**TASK_ARGS)

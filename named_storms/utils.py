@@ -6,7 +6,6 @@ from django.http.request import HttpRequest
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.files import File
-from django.core.files.storage import default_storage
 
 from cwwed import slack
 from named_storms.models import (
@@ -124,15 +123,18 @@ def named_storm_nsem_version_path(nsem: NSEM) -> str:
 
 def copy_path_to_default_storage(source_path: str, destination_path: str):
     """
-    Copies source to destination using "default_storage" and returns the path
+    Copies source to destination using object storage and returns the path
     """
+    from cwwed.storage_backends import S3ObjectStoragePrivate  # local import prevents circular dependency
+
     # copy path to default storage
     with File(open(source_path, 'rb')) as fd:
+        storage = S3ObjectStoragePrivate()
 
         # remove any existing storage
-        if default_storage.exists(destination_path):
-            default_storage.delete(destination_path)
-        default_storage.save(destination_path, fd)
+        if storage.exists(destination_path):
+            storage.delete(destination_path)
+        storage.save(destination_path, fd)
 
     return destination_path
 

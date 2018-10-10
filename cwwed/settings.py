@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'named_storms.apps.NamedStormsConfig',  # specify AppConfig to include custom signals
+    'coastal_act',
     'audit',
     'rest_framework',
     'rest_framework.authtoken',
@@ -172,7 +173,7 @@ STATIC_URL = "https://%s.s3.amazonaws.com/" % AWS_STORAGE_BUCKET_NAME
 STATICFILES_STORAGE = 'cwwed.storage_backends.S3StaticStorage'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
-    os.path.join(BASE_DIR, "frontend/dist"),
+    os.path.join(BASE_DIR, "frontend/dist"),  # dev only (during ng serve)
 ]
 
 # custom file storage

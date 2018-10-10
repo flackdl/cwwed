@@ -11,8 +11,8 @@ class S3ObjectStorage(S3Boto3Storage):
     """
 
     def __init__(self, *args, **kwargs):
-        self.location = self._get_location()  # ie. "local", "dev" or "" when in production
-        self.default_acl = 'private'
+        self.location = 'Coastal Act'
+        self.default_acl = 'public-read'
         self.access_key = settings.CWWED_ARCHIVES_ACCESS_KEY_ID
         self.secret_key = settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY
         self.bucket_name = settings.AWS_ARCHIVE_BUCKET_NAME
@@ -20,6 +20,22 @@ class S3ObjectStorage(S3Boto3Storage):
         self.auto_create_bucket = True
 
         super().__init__(*args, **kwargs)
+
+    def _get_s3_client(self):
+        # create s3 client
+        return boto3.resource(
+            's3',
+            aws_access_key_id=self.access_key,
+            aws_secret_access_key=self.secret_key,
+        )
+
+
+class S3ObjectStoragePrivate(S3ObjectStorage):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.location = self._get_location()  # ie. "local", "dev" or "" when in production
+        self.default_acl = 'private'
 
     @staticmethod
     def _get_location():
@@ -29,14 +45,6 @@ class S3ObjectStorage(S3Boto3Storage):
         if settings.DEPLOY_STAGE == settings.DEPLOY_STAGE_PROD:
             return ''
         return settings.DEPLOY_STAGE
-
-    def _get_s3_client(self):
-        # create s3 client
-        return boto3.resource(
-            's3',
-            aws_access_key_id=self.access_key,
-            aws_secret_access_key=self.secret_key,
-        )
 
     def download_directory(self, obj_directory_path, file_system_path):
         # create the s3 instance
@@ -66,7 +74,7 @@ class S3ObjectStorage(S3Boto3Storage):
         if self.exists(destination):
             self.delete(destination)
 
-        # create absolute references to account for the default_storage "location" (prefix)
+        # create absolute references to account for the object storage "location" (prefix)
         source_absolute = self.path(source)
         destination_absolute = self.path(destination)
 
@@ -79,7 +87,7 @@ class S3ObjectStorage(S3Boto3Storage):
 
     def path(self, path):
         """
-        Include the default_storage "location" (prefix), i.e "local", "dev", "test" etc.  Will be empty when in production
+        Include the storage "location" (prefix), i.e "local", "dev", "test" etc.  Will be empty when in production
         """
         return os.path.join(self.location, path)
 

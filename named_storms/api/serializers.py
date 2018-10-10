@@ -1,7 +1,8 @@
 import os
 from django.conf import settings
-from django.core.files.storage import default_storage
 from rest_framework import serializers
+
+from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider
 from named_storms.utils import get_thredds_url_nsem, get_thredds_url_nsem_covered_data, get_thredds_url_nsem_psa
 
@@ -82,8 +83,9 @@ class NSEMSerializer(serializers.ModelSerializer):
         return get_thredds_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NSEM):
+        storage = S3ObjectStoragePrivate()
         if obj.covered_data_snapshot:
-            return default_storage.storage_url(obj.covered_data_snapshot)
+            return storage.storage_url(obj.covered_data_snapshot)
         return None
 
     def validate_model_output_snapshot(self, value):
@@ -91,6 +93,7 @@ class NSEMSerializer(serializers.ModelSerializer):
         Check that it hasn't already been processed
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
         """
+        storage = S3ObjectStoragePrivate()
         obj = self.instance  # type: NSEM
         if obj:
 
@@ -104,13 +107,13 @@ class NSEMSerializer(serializers.ModelSerializer):
             if s3_path != value:
                 raise serializers.ValidationError("'model_output_snapshot' should equal '{}'".format(s3_path))
 
-            # remove any prefixed "location" from the default_storage instance
-            location_prefix = '{}/'.format(default_storage.location)
+            # remove any prefixed "location" from the object storage instance
+            location_prefix = '{}/'.format(storage.location)
             if s3_path.startswith(location_prefix):
                 s3_path = s3_path.replace(location_prefix, '')
 
             # verify the path exists
-            if not default_storage.exists(s3_path):
+            if not storage.exists(s3_path):
                 raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
 
             return s3_path
@@ -121,7 +124,8 @@ class NSEMSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def _get_model_output_upload_path(obj: NSEM) -> str:
-        return default_storage.path(os.path.join(
+        storage = S3ObjectStoragePrivate()
+        return storage.path(os.path.join(
             settings.CWWED_NSEM_DIR_NAME,
             settings.CWWED_NSEM_UPLOAD_DIR_NAME,
             'v{}.{}'.format(obj.id, settings.CWWED_ARCHIVE_EXTENSION)),
