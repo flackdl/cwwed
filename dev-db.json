@@ -404,5 +404,113 @@
     "external_storm_id": "",
     "date_collected": null
   }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 1,
+  "fields": {
+    "name": "Wave Surge Coupling",
+    "image_url": "WWW_III_Coupled_ADCIRC.png",
+    "description": "The Consumer Option for an Alternative System to Allocate Losses (COASTAL) Act requires an accurate modeling of flooding due to hurricanes. A significant portion of flooding due to storm-induced hurricanes are caused by the interactions of wind-generated waves and the underlying surge \u2013 with radiation stresses from wave processes playing a significant role in the surge, and the combined wave\u2013current bottom boundary dynamics being important for the both the wave and surge processes. Highly-sophisticated numerical models that separately simulate surge and wave processes have been developed and validated at NOAA over the last decade (the ADCIRC-based ESTOFS system for the surge modeling and WAVEWATCH III Global Multi-1 system for wave modeling). Apart from having state\u2013of\u2013the-art physics, these models can be run in unstructured grid formulation, a key requirement for seamlessly simulating inundation processes at small spatial scales along the coast. In this project, the two modeling systems will be dynamically coupled to exchange physical processes so as to obtain accurate estimates of total wave\u2013surge induced inundation."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 2,
+  "fields": {
+    "name": "Numerical Developments of the WAVEWATCH III Model",
+    "image_url": "WW_III2.png",
+    "description": "The Consumer Option for an Alternative System to Allocate Losses (COASTAL) Act requires an accurate modeling of flooding due to hurricanes. The wave model chosen as part of developing this modeling system is the WAVEWATCH III wave model \u2013 a State-Of-the-Art community wave modeling system whose development is managed by NOAA. The wave model is a sophisticated modeling system with numerous developments that have been added in recent years (wave \u2013 hurricane interaction physics, unstructured grid formulation, new wave growth and dissipation physics packages, wave \u2013 mud and wave \u2013 bottom interaction physics to name a few) that make this model attractive for this project. Being a community model with a very active international team of wave developers also allows us to partner and leverage resources. In this project we will partner with the USACE towards the development of a more efficient numerical solver for the WAVEWATCH III model that will make it possible to carry out wave simulations in very high resolution domains with extensive computational grids \u2013 a necessary condition for accurate simulations of total inundation. The USACE has a common interest in developing the WAVEWATCH III model as a coastal wave model and thus resources will be pooled for this development. Since the WAVEWATCH III modeling system is very modular and maintained on a subversion repository, development of the numerical engine can be done in parallel with the wave \u2013 surge coupling work (see statement of work on wave coupling) with incremental improvements to the numerical engine being provided to the coupled system for testing at regular intervals."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 3,
+  "fields": {
+    "name": "Coupled ADCIRC-WAVEWATCH III Validation",
+    "image_url": "WWW_III_Coupled_ADCIRC.png",
+    "description": "This project would use the coupled ADCIRC-WaveWatch III modeling system in a test case to validate the model performance in representing total water level as a combination of storm surge, tides, and wave activity. The model system will be validated for previous hurricane events for which (1) damage from the storm\u2019s inundation led to incidents of buildings being destroyed to their foundation (i.e. \u201cslab\u201d scenarios), and (2) more data on total water level recordings are available to validate the model performance, and (3) pre-existing unstructured triangular grids are available for use, with little or no modifications, in the hindcast simulations. For this project, skill assessment techniques and criteria will be determined that will be consistent with the goal of the COASTAL Act to have models that are 90% accurate. This project will also support coupling to WAVEWATCHIII on an unstructured grid system, critical to achieving the 90% requirement for water levels. The two modeling systems will be dynamically coupled to exchange physical processes so as to obtain accurate estimates of total wave\u2013surge induced inundation. Coupling strategy will be based on long term aligning with overall NOAA plans for coupled modeling as well as being cognizant of deliverable schedules. At those locations where data are available for the hurricane hindcast scenarios, the performance of the coupled model will be evaluated using the skill assessment techniques. While an updated Hurricane Surge On-Demand Forecast System (HSOFS) grid is in development, separate pre-existing grids with higher local refinement and overland coverage will also be used in this assessment to fully evaluate the model resolution requirements for the COASTAL Act."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 4,
+  "fields": {
+    "name": "Development of Updated Surge/Wave Grid",
+    "image_url": "Surge_Wave_Grid_ADCIRC.png",
+    "description": "This project would develop a single grid for the Atlantic and Gulf of Mexico coastal waters of the United States, to be used in the Named Storm Event Model (NSEM) simulations. The grid would be based on modification to the existing Hurricane Surge On-demand Forecast System (HSOFS) unstructured triangular grid. The current HSOFS grid covers the entire Gulf of Mexico and extends into the Atlantic Ocean to the approximate longitude of 65W, allowing for appropriate generation of storm surge from atmospheric effects over a large region. Nearshore, the grid extends on to land up to a topographic height of 10m using an overland grid resolution of approximately 200m. This grid will be modified in the nearshore and overland areas to improve the NSEM\u2019s ability to meet the COASTAL Act\u2019s requirements, as determined by model testing. The grid will also be adjusted to (1) better represent features in regions vulnerable to inundation and (2) incorporate and better reflect new bathymetry and topography made available through other Bathymetry/Topography projects. The final modifications to the HSOFS grid will be tested with the ADCIRC-WaveWatch III coupled model system to ensure numerical soundness and stability."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 5,
+  "fields": {
+    "name": "Seamless Bathy-Topo Digital Elevation Models Supporting Surge and Inundation Modeling",
+    "image_url": "Seamless_Bath_Topo_DEMs.png",
+    "description": "In meeting the requirements of the COASTAL Act Capabilities Development Plan (CACDP), NCEI, with support from NOAA's Office for Coastal Management (OCM), will identify and evaluate existing coastal elevation datasets, including source data (i.e. lidar surveys) and derivative products (i.e. DEMs). The gap analysis will include assessing the data quality, spatial extent and date of acquisition and/or creation (in the case of DEMs). The comparison of existing modern DEMs with up-to-date available source topographic and bathymetric data will help inform the process of determining area(s) of interest for proposed DEM development. Using the DEM assessment and gap analysis, NCEI will work with the COASTAL modelers to prioritize areas of interest.\r\n\r\nOnce the area(s) of interest have been decided, NCEI will follow the procedures developed and tested under the Disaster Relief Appropriation for Hurricane Sandy to build the suite of seamless topographic-bathymetric and bathymetric high-resolution telescoping DEMs. The DEMs along the coast will have a spatial resolution of 1/9 arc-second (~3m), and will coarsen to 1/3 arc-second (~10m) further offshore. NCEI will then work with CSDL to develop a strategy for incorporating DEM updates into models."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 6,
+  "fields": {
+    "name": "High-Resolution Reanalysis and Reforecasts Using State-of-the-Art Operational HWRF Model",
+    "image_url": "HWRF.PNG",
+    "description": "The Consumer Option for an Alternative System to Allocate Losses (COASTAL) Act requires a time history of mean wind, wind gust, surface pressure and air-sea temperature difference (atmospheric stability, AS) over the area impacted by a land falling tropical cyclone in order to estimate the strength and timing of damaging winds and also to force wave and surge models. Near-surface (10 m) wind and surface pressure analyses are produced hourly at 2.5 km resolution by the operational NWS Un-Restricted Mesoscale Analysis (URMA) that uses the same software as the Real-Time Mesoscale Analysis (RTMA) but operates on a time delay to allow more data to be gathered. For near-shore oceanic environs, in the presence of tropical storms and hurricanes, the operational Hurricane Weather Research and Forecast (HWRF) system can be used in retrospective (historical) mode to generate the URMA background field. The HWRF executes operationally at 2 km resolution near the tropical cyclone\u2019s center where the strongest winds are usually found. The URMA and HWRF systems can provide a consistent starting point for the NSEM wind analyses since they are of comparable resolution.\r\n\r\nA two-year effort will generate wind and surface pressure analysis by running the HWRF system retrospectives for the selected storms. HWRF will provide the background fields while URMA will perform the mean wind, gust, and surface pressure and AS analyses (detailed under a separate SOW for COASTAL ACT)."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 7,
+  "fields": {
+    "name": "Wind Speed, Wind Gust and Surface Pressure Analyses",
+    "image_url": "Wind_and_surface_pressure_analysis.png",
+    "description": "The Consumer Option for an Alternative System to Allocate Losses (COASTAL) Act requires a time history of mean wind, wind gust, surface pressure and air-sea temperature difference (atmospheric stability, AS) over the area impacted by a landfalling tropical cyclone in order to estimate the strength and timing of damaging winds and also to force wave and surge models. The wind analysis will also be used to \u201cdownscale\u201d evolution at \u201cparcel-scale\u201d over-land locations in the impacted area. Wind analyses should also include gusts since they are generally the major factor in generating wind damage. Consistent with modern geophysical analysis techniques, a background field generated by a model will be combined with existing observations to produce the most accurate analysis. The NOAA Hurricane Weather Research and Forecast (HWRF) system will provide the background and the UnRestricted Mesoscale Analysis (URMA), part of the NOAA Real-Time Mesoscale Analysis (RTMA) system, will perform the mean wind, gust, surface pressure and AS analyses. The RTMA will be adapted to the HWRF background, available observations will be gathered and processed, the URMA/RTMA analysis for all required variables in the hurricane landfall environment will be developed, and an analysis procedure that also provides an estimate of analysis uncertainty will be formulated. Since the COASTAL Act requires analysis of individual storms and possibly observations that were not obtained in real-time operations, some development of a portable software system and \u201cnew\u201d observations processing system will be needed."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 8,
+  "fields": {
+    "name": "Wind Analysis Downscaling",
+    "image_url": "Wind_Analysis_Downscaling.png",
+    "description": "The Consumer Option for an Alternative System to Allocate Losses (COASTAL) Act requires a wind analysis and to estimate the strength and timing of damaging winds at a given, \u201cparcel-scale\u201d over-land location in the area impacted by the tropical cyclone and to drive surge and wave models for estimating the water damage. Since parcels are approximately 100 m in extent, and feasible wind analyses are in the 1,000-2,500 m range, some further estimate of wind at the parcel scale must be derived using a \u201cdownscaling\u201d technique. Since downscaling techniques are at the edge of current technology, there may be no generally accepted algorithm and some effective familiarity with past literature will be necessary initially. Once an algorithm is chosen, extensive research and development (R&D) will likely be necessary. Furthermore, since wind gusts are generally the major factor in generating wind damage, an emphasis must be placed on developing and validating a \u201cgust analysis\u201d (GU) from available information including direct observations, a background field generated by the NOAA Hurricane Weather Research and Forecast (WRF) system and the Unrestricted Real-time Mesoscale Analysis (URMA)."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 9,
+  "fields": {
+    "name": "Coastal Wind and Water Event Database (CWWED)",
+    "image_url": "CWWED1.png",
+    "description": "The CWWED will serve as an interactive database that provides access to all \u201cCovered Data\u201d, both by the Named Storm Event Model (NSEM) as well as relevant stakeholders, and serves as an accessible repository for the NSEM output so it can be referenced by FEMA and all relevant stakeholders. To ensure full interoperability with both Covered Data sources as well as the NSEM, it is critical that the CWWED be developed and configured concurrently with the development of the NSEM. In order to achieve this integrated functionality, several things must happen. First, the database structure itself must be developed as a federated database environment. It must then be populated by indexing all existing Covered Data sources and developing (Application Programming Interfaces (APIs) that facilitate the seamless and high-speed transfer, reformatting, and packaging of Covered Data from the data sources to the requestor (e.g., NSEM). As a \u201cfederated\u201d database, the CWWED will not house any covered data itself, but rather will act as a virtual database, providing real-time access to covered data as though they were physically housed within the database itself. However, this may require the negotiation and implementation of data sharing agreements or service level agreements between NOAA and external Covered Data sources. The output from the NSEM, while also flowing through the CWWED, would be physically archived on servers at the NOAA National Centers for Environmental Information (NCEI), unless an alternative archival repository is identified for this purpose. When properly configured, this distinction is transparent to users. To ensure that the NSEM is able to request and retrieve all required covered data from the CWWED, and that the CWWED can, an API needs to be developed that intrinsically links the NSEM to the CWWED."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 10,
+  "fields": {
+    "name": "National Water Model",
+    "image_url": "owp_3.png",
+    "description": "Office of Water Prediction (OWP) support of COASTAL Act Named Storm Event Modeling (NSEM) Requirements NOAA\u2019s National Water Model (NWM) is the foundation for the nationally consistent operational hydro forecasting and source of inland hydrologic information. NWM provides river channel discharge within the CONUS areas including coastal zones. This project will develop documentation and demonstration code to couple the Extratropical Surge and Tide Operational Forecast System (ESTOFS) and Advanced Circulation Model (ADCIRC) to the National Water Model (NWM) in the Coastal Zones and determine the possibility of utilizing NEMS for unified model coupling. This project will support COASTAL Act Named Storm Event Modeling (NSEM) requirements by coupling freshwater model to ocean models."
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 11,
+  "fields": {
+    "name": "Precipitation Analyses",
+    "image_url": "MRMS.png",
+    "description": "Operational precipitation analyses provide critical input for hydrological models and are available from combined rain gauge and radar data, but do not presently meet the Act\u2019s temporal resolution requirement of 15 minutes (the 1km spatial resolution is met). The Multiple-Radar Multiple-Sensor (MRMS) precipitation analysis, which combines data from radar, satellites, surface observations, upper air observations, rain gauges, and models, provides an approximation of the amount of precipitation accumulated on areas in near-real time. The High-Resolution Rapid Refresh (HRRR) model is a real-time, 3km resolution convective-allowing model (CAM), updated hourly, with 3km radar data assimilated every 15 minutes over a 1 hour period. This project aims to access the data from both MRMS and HRRR, in 15 min increments, thereby providing observed/analyzed and modeled precipitation data at the temporal frequency required by the Act. It is envisioned the higher temporal frequency MRMS and HRRR precipitation data resulting from this project will serve as future forcings to the National Water Model (NWM; Project #10) in meeting the Act\u2019s requirements for resolving freshwater/inland hydrological features at high spatial and temporal resolutions (assumed, with FY19 funds)"
+  }
+},
+{
+  "model": "coastal_act.coastalactproject",
+  "pk": 12,
+  "fields": {
+    "name": "NHC Guidance",
+    "image_url": "inundation-uppertexas-example_sm.png",
+    "description": "National Hurricane Center (NHC) storm surge guidance is necessary to better inform the placement of observations, with longer lead times and greater accuracy. This project\u2019s focus is on extending forecast guidance lead time from 48 to 72 hours, improving accuracy, and extending spatial coverage to better enable interagency partners (e.g. USGS) in a timely placement of observations (e.g. storm-tide sensors, gauges) with spatial accuracy."
+  }
 }
 ]
