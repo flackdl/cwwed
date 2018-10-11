@@ -6,19 +6,16 @@
   <div class="card">
     <h5 class="card-header">
       <div class="row">
-        <div class="col-sm">
-          <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
+        <div class="col-md">
+           Source <a [href]="data.url" target="_blank"><span class="oi oi-document"></span></a>
         </div>
-        <div class="col-sm">
-          <ul>
-            <div *ngFor="let provider of data.providers">
-              <a [href]="provider.url" target="_blank">
-                <span class="oi oi-external-link"></span> Latest Data
-              </a>
-            </div>
-          </ul>
+        <div class="col-md">
+          Latest Data
+            <a [href]="provider.url" target="_blank" *ngFor="let provider of data.providers">
+              <span class="oi oi-external-link"></span> ({{ provider.name }})
+            </a>
         </div>
-        <div class="col-sm">
+        <div class="col-md">
           <div ngbDropdown class="d-inline-block">
             <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
             <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
