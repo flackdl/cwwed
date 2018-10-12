@@ -19,17 +19,19 @@
         </div>
       </div>
       <div class="col-sm">
-        <span class="card-text">
-          <h1>Delaware Bay</h1>
-					<h6>
-            <a target="_blank" [href]="'https://dev.cwwed-staging.com/thredds/catalog/cwwed/Harvey/NSEM/v1/Post%20Storm%20Assessment/catalog.html?dataset=coveredDataDatasetScan/Harvey/NSEM/v1/Post%20Storm%20Assessment/delaware.nc'" target="_blank">
-							<span class="oi oi-cloud-download"></span>
-							Data
-            </a>
-          </h6>
-          This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
-          the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
-        </span>
+          <div class="d-flex justify-content-between align-items-center">
+            <h1>Delaware Bay</h1>
+            <h6>
+              <a target="_blank" [href]="'https://dev.cwwed-staging.com/thredds/catalog/cwwed/Harvey/NSEM/v1/Post%20Storm%20Assessment/catalog.html?dataset=coveredDataDatasetScan/Harvey/NSEM/v1/Post%20Storm%20Assessment/delaware.nc'" target="_blank">
+                <span class="oi oi-cloud-download"></span>
+                Data
+              </a>
+            </h6>
+          </div>
+          <div class="card-text">
+            This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
+            the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
+          </div>
         <div *ngIf="isLoaded" leaflet [leafletOptions]="mapOptions"></div>
       </div>
     </div>

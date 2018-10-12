@@ -10,10 +10,11 @@
            Source <a [href]="data.url" target="_blank"><span class="oi oi-document"></span></a>
         </div>
         <div class="col-md">
-          Latest Data
-            <a [href]="provider.url" target="_blank" *ngFor="let provider of data.providers">
-              <span class="oi oi-external-link"></span> ({{ provider.name }})
+          <div *ngFor="let provider of data.providers">
+            <a [href]="provider.url" target="_blank">
+              <span class="oi oi-external-link"></span> {{ provider.name }} Data
             </a>
+          </div>
         </div>
         <div class="col-md">
           <div ngbDropdown class="d-inline-block">
