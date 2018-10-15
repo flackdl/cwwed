@@ -173,7 +173,7 @@ STATIC_URL = "https://%s.s3.amazonaws.com/" % AWS_STORAGE_BUCKET_NAME
 STATICFILES_STORAGE = 'cwwed.storage_backends.S3StaticStorage'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
-    os.path.join(BASE_DIR, "frontend/dist"),  # dev only (during ng serve)
+    os.path.join(BASE_DIR, "frontend/dist/cwwed/"),  # built during ng serve, copied to static root
 ]
 
 # custom file storage
