@@ -14,12 +14,29 @@ import { PsaComponent } from './psa/psa.component';
 import { PageNotFoundComponent } from './page-not-found/page-not-found.component';
 import { MainComponent } from './main/main.component';
 import { CoastalActComponent } from './coastal-act/coastal-act.component';
+import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-projects.component';
+import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
 
 const appRoutes: Routes = [
   { path: '',   redirectTo: '/home', pathMatch: 'full' },
   { path: 'home', component: MainComponent },
   { path: 'coastal-act', component: CoastalActComponent },
-  { path: 'covered-data', component: CoveredDataMainComponent },
+  {
+    path: 'coastal-act-projects',
+    component: CoastalActProjectsComponent,
+    children: [
+      { path: '', component: CoastalActProjectsDetailComponent },
+      { path: ':id', component: CoastalActProjectsDetailComponent },
+    ]
+  },
+  {
+    path: 'covered-data',
+    component: CoveredDataMainComponent,
+    children: [
+      { path: '', component: CoveredDataDetailComponent },
+      { path: ':id', component: CoveredDataDetailComponent },
+    ]
+  },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
   { path: 'post-storm-assessment', component: PsaComponent },
   { path: 'post-storm-assessment/:id', component: PsaComponent },
@@ -37,6 +54,8 @@ const appRoutes: Routes = [
     PageNotFoundComponent,
     MainComponent,
     CoastalActComponent,
+    CoastalActProjectsComponent,
+    CoastalActProjectsDetailComponent,
   ],
   imports: [
     RouterModule.forRoot(

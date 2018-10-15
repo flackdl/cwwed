@@ -4,11 +4,11 @@
       <nav class="navbar navbar-expand-md navbar-light">
         <button class="navbar-toggler btn btn-block" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
           <span class="oi oi-list"></span>
-          Covered Data
+          Projects
         </button>
         <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
           <ul class="navbar-nav flex-column">
-            <a class="nav-link" *ngFor="let data of coveredDataList" (click)="navCollapse()" [routerLink]="[data.id]" routerLinkActive="active">{{ data.name }}</a>
+            <a class="nav-link" *ngFor="let project of coastalActProjects" (click)="navCollapse()" [routerLink]="[project.id]" routerLinkActive="active">{{ project.name }}</a>
           </ul>
         </div>
       </nav>

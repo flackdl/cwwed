@@ -1,20 +1,22 @@
+<div *ngIf="!data">
+  <h1>Covered Data</h1>
+  Please choose a Covered Data
+</div>
 <div *ngIf="data">
   <div class="card">
     <h5 class="card-header">
       <div class="row">
-        <div class="col-sm">
-          <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
+        <div class="col-md">
+           <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
         </div>
-        <div class="col-sm">
-          <ul>
-            <div *ngFor="let provider of data.providers">
-              <a [href]="provider.url" target="_blank">
-                <span class="oi oi-external-link"></span> Latest Data
-              </a>
-            </div>
-          </ul>
+        <div class="col-md">
+          <div *ngFor="let provider of data.providers">
+            <a [href]="provider.url" target="_blank">
+              <span class="oi oi-external-link"></span> {{ provider.name }} Data
+            </a>
+          </div>
         </div>
-        <div class="col-sm">
+        <div class="col-md">
           <div ngbDropdown class="d-inline-block">
             <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
             <div ngbDropdownMenu aria-labelledby="dropdownBasic1">

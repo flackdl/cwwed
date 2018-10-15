@@ -1,3 +1,4 @@
+import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit, Input } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import * as _ from 'lodash';
@@ -9,17 +10,24 @@ import * as _ from 'lodash';
   styleUrls: ['./covered-data-detail.component.css']
 })
 export class CoveredDataDetailComponent implements OnInit {
-  @Input() data: any;
+  public data: any;
   public namedStorms: any;
   public nsemList: any;
 
   constructor(
     private cwwedService: CwwedService,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit() {
     this.namedStorms = this.cwwedService.namedStorms;
     this.nsemList = this.cwwedService.nsemList;
+
+    this.route.params.subscribe((params) => {
+      this.data = _.find(this.cwwedService.coveredDataList, (data) => {
+        return data.id == params.id;
+      });
+    });
   }
 
   public stormCoveredDataUrl(storm) {

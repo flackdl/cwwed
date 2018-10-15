@@ -1,7 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute } from "@angular/router";
 import { CwwedService } from "../cwwed.service";
-import * as _ from 'lodash';
 
 @Component({
   selector: 'app-covered-data-main',
@@ -9,27 +7,22 @@ import * as _ from 'lodash';
   styleUrls: ['./covered-data-main.component.css']
 })
 export class CoveredDataMainComponent implements OnInit {
-  coveredDataId: number;
-  coveredDataList: any;
+  public coveredDataList: any;
+  public isNavCollapsed: boolean = false;
 
   constructor(
-    private route: ActivatedRoute,
     private cwwedService: CwwedService,
-    ) {}
-
-   public activeCoveredData() {
-    return _.find(this.cwwedService.coveredDataList, (data) => {
-      return data.id == this.coveredDataId;
-    });
-   }
+  ) {}
 
   ngOnInit() {
     this.coveredDataList = this.cwwedService.coveredDataList;
+  }
 
-    this.route.params.subscribe((data) => {
-      if (data.id) {
-        this.coveredDataId = parseInt(data.id);
-      }
-    });
+  public toggleNavCollapse() {
+    this.isNavCollapsed = !this.isNavCollapsed;
+  }
+
+  public navCollapse() {
+    this.isNavCollapsed = false;
   }
 }
