@@ -140,6 +140,14 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # delete minikube cluster
     minikube delete
     
+#### Load Balancing
+*TODO* (currently using Amazon's ELB which costs $20/month per service)
+
+Options:
+    1) https://www.getambassador.io/
+    2) Nginx (ingress)
+    3) Traefik (ingress)
+    
 #### Monitoring
 Monitoring via Prometheus/Grafana.
 [Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
