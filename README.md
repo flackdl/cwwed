@@ -163,7 +163,7 @@ User:admin
     
 ### Build front-end app
 
-    # copies output to django static sub-folder
+    # copies output to a sub-folder which django includes as a "static" directory
     npm --prefix frontend run build-prod
     
 ## Production *-TODO-*

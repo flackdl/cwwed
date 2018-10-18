@@ -26,6 +26,7 @@ RUN npm --prefix frontend install
 RUN npm --prefix frontend run build-prod
 
 # collect static assets
+RUN mkdir -p static
 RUN python manage.py collectstatic --no-input
 
 EXPOSE 80
