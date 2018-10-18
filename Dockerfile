@@ -22,6 +22,7 @@ ENV CWWED_ARCHIVES_SECRET_ACCESS_KEY ''
 ENV SLACK_BOT_TOKEN ''
 
 # build front-end angular app
+RUN npm --prefix frontend install
 RUN npm --prefix frontend run build-prod
 
 # collect static assets
