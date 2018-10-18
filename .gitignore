@@ -107,8 +107,5 @@ venv.bak/
 .idea/
 db.sqlite3
 staticfiles/
-
-# Elastic Beanstalk Files
-.elasticbeanstalk/*
-!.elasticbeanstalk/*.cfg.yml
-!.elasticbeanstalk/*.global.yml
+# angular assets get built during the docker build phase and we don't need them checked into git
+static/angular
