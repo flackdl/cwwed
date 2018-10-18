@@ -98,18 +98,3 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
             self.location,
             path,
         )
-
-
-class S3StaticStorage(S3Boto3Storage):
-    """
-    AWS S3 Storage backend for static assets
-    """
-
-    def __init__(self, *args, **kwargs):
-        self.bucket_name = settings.AWS_STORAGE_BUCKET_NAME
-        self.custom_domain = '%s.s3.amazonaws.com' % settings.AWS_STORAGE_BUCKET_NAME
-        self.auto_create_bucket = True
-        self.file_overwrite = False
-        self.gzip = True
-
-        super().__init__(*args, **kwargs)

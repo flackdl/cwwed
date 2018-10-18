@@ -4,8 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
-    "build-prod": "ng build --prod",
+    "watch": "ng build --watch --output-path=../static/angular --output-hashing=none --delete-output-path=false --extract-css",
+    "build": "ng build --output-path=../static/angular --output-hashing=none --delete-output-path=false --extract-css",
+    "build-prod": "ng build --prod --output-path=../static/angular --output-hashing=none --delete-output-path=false",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"

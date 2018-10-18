@@ -149,6 +149,9 @@ Options:
     3) Traefik (ingress)
     
 #### Monitoring
+
+*NOTE: This takes up a lot of resources and is not in use.*
+
 Monitoring via Prometheus/Grafana.
 [Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
 
@@ -158,16 +161,10 @@ User:admin
     kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
     
     
-### S3 static hosting
+### Build front-end app
 
-#### Build the app
-
-    cd frontend
-    npm run build-prod
-    
-#### Copy to S3
-
-    python manage.py collectstatic --no-input
+    # copies output to django static sub-folder
+    npm --prefix frontend run build-prod
     
 ## Production *-TODO-*
 Setup RDS with proper VPC and security group permissions.
@@ -182,12 +179,6 @@ Environment variables
 - `DATABASE_URL`
 - `SLACK_BOT_TOKEN`
 - `CWWED_NSEM_PASSWORD`
-
-Create S3 bucket and configure CORS settings (prepopulated settings look ok).
-However, `django-storages` might configure it for us with the setting `AWS_AUTO_CREATE_BUCKET`.
-
-    # collect static files to S3 (from local/dev computer since it's auth'd with aws)
-    AWS_STORAGE_BUCKET_NAME=cwwed-static-assets python manage.py collectstatic
     
 Create AWS user *cwwed-archives* and assign the following polices:
  - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.

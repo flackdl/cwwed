@@ -5,13 +5,14 @@ ENV PYTHONUNBUFFERED 1
 RUN apt-get update && apt-get install -y \
     libgdal-dev \
     postgresql-client \
-    && echo
+    && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir /app
 ADD . /app
 WORKDIR /app
 
 RUN pip install -r requirements.txt
+RUN python manage.py collectstatic --no-input
 
 EXPOSE 80
 

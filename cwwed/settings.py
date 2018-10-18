@@ -70,6 +70,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -164,17 +165,16 @@ RAVEN_CONFIG = {
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
-# django-storages
-# http://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html
-
-# static storage
-AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'cwwed-static-assets')
-STATIC_URL = "https://%s.s3.amazonaws.com/" % AWS_STORAGE_BUCKET_NAME
-STATICFILES_STORAGE = 'cwwed.storage_backends.S3StaticStorage'
+# WhiteNoise
+# http://whitenoise.evans.io/en/stable/django.html
+STATIC_URL = "/static/"
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
-    os.path.join(BASE_DIR, "frontend/dist/cwwed/"),  # built during ng serve, copied to static root
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATIC_ANGULAR_ASSETS_URL = "{}angular/".format(STATIC_URL)
 
 # custom file storage
 DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.S3ObjectStorage'

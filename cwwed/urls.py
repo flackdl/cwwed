@@ -16,16 +16,22 @@ Including another URLconf
 from django.conf import settings
 from django.contrib import admin
 from django.urls import path, include, re_path
-from audit.proxy import ThreddsProxy
+from django.views.generic import TemplateView
 from django.conf.urls.static import static
+
+from cwwed.views import AngularStaticAssetsRedirectView
+from audit.proxy import ThreddsProxy
 
 
 urlpatterns = [
+    path('', TemplateView.as_view(template_name='coastal_act/index.html')),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('api/', include('cwwed.api.urls')),
+    re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
 ]
 
 # serving media in dev only
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
