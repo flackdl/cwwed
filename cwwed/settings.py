@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'named_storms.apps.NamedStormsConfig',  # specify AppConfig to include custom signals
@@ -171,10 +172,11 @@ STATIC_URL = "/static/"
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),
+    os.path.join(BASE_DIR, "frontend/dist"),  # npm assets output directory
 ]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-STATIC_ANGULAR_ASSETS_URL = "{}angular/".format(STATIC_URL)
+STATIC_ANGULAR_ASSETS_URL = "{}cwwed/".format(STATIC_URL)
 
 # custom file storage
 DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.S3ObjectStorage'
