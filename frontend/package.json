@@ -4,9 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "watch": "ng build --watch --output-hashing=none --extract-css",
-    "build": "ng build --output-hashing=none --extract-css",
-    "build-prod": "ng build --prod --output-hashing=none",
+    "watch": "ng build --watch --output-hashing=none --extract-css --vendor-chunk",
+    "build": "ng build --output-hashing=none --extract-css --vendor-chunk",
+    "build-prod": "ng build --prod --output-hashing=none --extract-css --vendor-chunk",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "ng e2e"
