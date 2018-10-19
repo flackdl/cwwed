@@ -156,6 +156,12 @@ USE_L10N = True
 
 USE_TZ = True
 
+
+LOGIN_REDIRECT_URL = 'home'
+
+# https://django-crispy-forms.readthedocs.io/en/latest/index.html
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
 # sentry/logging configuration
 RAVEN_CONFIG = {
     'dsn': os.getenv('SENTRY_DSN', ''),

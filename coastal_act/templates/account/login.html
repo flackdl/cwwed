@@ -1,0 +1,55 @@
+{% extends "account/base.html" %}
+
+{% load crispy_forms_tags %}
+{% load static %}
+{% load i18n %}
+{% load account socialaccount %}
+
+{% block extra_head %}
+	<link rel="stylesheet" href="{% static 'coastal_act/login.css' %}">
+{% endblock extra_head %}
+
+{% block head_title %}{% trans "Sign In" %}{% endblock %}
+
+{% block content %}
+
+	<div class="row justify-content-center">
+
+	{% get_providers as socialaccount_providers %}
+
+		<form class="form-signin col-12 col-md-6 border-info border-right" method="POST" action="{% url 'account_login' %}">
+
+			<!-- TODO - third party auth providers
+			{% if socialaccount_providers %}
+				<p>Sign in with one of your existing third party accounts</p>
+				<div class="socialaccount_ballot">
+					<ul class="socialaccount_providers">
+						{% include "socialaccount/snippets/provider_list.html" with process="login" %}
+					</ul>
+					<div class="login-or">{% trans 'or' %}</div>
+				</div>
+				{% include "socialaccount/snippets/login_extra.html" %}
+			{% endif %}
+			-->
+
+			{% csrf_token %}
+			<h1 class="h3 mb-3 font-weight-normal">Sign In</h1>
+			{{ form | crispy }}
+			<button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+			{% if redirect_field_value %}
+				<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+			{% endif %}
+		</form>
+		<div class="col-12 col-md-6">
+			<h1 class="h3 mb-3 font-weight-normal">Sign Up</h1>
+			<a class="btn btn-lg btn-success btn-block" href="{% url 'account_signup' %}">Sign Up</a>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-12 text-center">
+			<p class="mt-5 mb-3 text-muted">CWWED</p>
+		</div>
+	</div>
+
+{% endblock %}

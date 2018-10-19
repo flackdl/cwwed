@@ -14,7 +14,7 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
-      <ul class="navbar-nav">
+      <ul class="navbar-nav mr-auto">
         <li class="nav-item">
           <a class="nav-link" routerLink="coastal-act" routerLinkActive="active" (click)="navCollapse()">COASTAL Act</a>
         </li>
@@ -28,6 +28,20 @@
           <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active" (click)="navCollapse()">Post Storm Assessment</a>
         </li>
       </ul>
+      <div ngbDropdown class="d-inline-block">
+        <button class="btn btn-outline-secondary" id="dropdownBasic1" ngbDropdownToggle>
+          <span class="oi oi-person"></span>
+        </button>
+        <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+          <li *ngIf="isLoggedIn()" class="dropdown-item disabled">{{ userName() }}</li>
+          <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item">
+            Sign In
+          </a>
+          <a *ngIf="isLoggedIn()" href="/accounts/logout" class="dropdown-item">
+            Sign Out
+          </a>
+        </div>
+      </div>
     </div>
   </nav>
 </header>

@@ -27,6 +27,14 @@ export class AppComponent implements OnInit {
     this.isNavCollapsed = !this.isNavCollapsed;
   }
 
+  public isLoggedIn(): boolean {
+    return !!this.cwwedService.user;
+  }
+
+  public userName(): string {
+    return this.isLoggedIn() ? this.cwwedService.user.username : '';
+  }
+
   ngOnInit() {
     // show loading animation until the core data has been loaded
     this.spinner.show();
@@ -35,9 +43,14 @@ export class AppComponent implements OnInit {
       this.cwwedService.fetchNamedStorms(),
       this.cwwedService.fetchNSEMPerStorm(),
       this.cwwedService.fetchCoastalActProjects(),
-    ).subscribe(() => {
-      this.isLoaded = true;
-      this.spinner.hide();
-    });
+      this.cwwedService.fetchUser(),
+    ).subscribe(
+      () => {
+        this.isLoaded = true;
+        this.spinner.hide();
+      },
+      (error) => {
+        console.log(error);
+      });
   }
 }

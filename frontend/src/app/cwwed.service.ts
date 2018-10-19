@@ -6,6 +6,7 @@ import { environment } from '../environments/environment';
 let API_ROOT_DEV = 'http://localhost:8000/api';
 let API_ROOT_PROD = 'https://dev.cwwed-staging.com/api';
 let API_ROOT = environment.production ? API_ROOT_PROD : API_ROOT_DEV;
+let API_USER = `${API_ROOT}/user/`;
 let API_COVERED_DATA = `${API_ROOT}/covered-data/`;
 let API_NAMED_STORMS = `${API_ROOT}/named-storms/`;
 let API_NSEM_PER_STORM = `${API_ROOT}/nsem/per-storm/`;
@@ -15,6 +16,7 @@ let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-projects/`;
   providedIn: 'root'
 })
 export class CwwedService {
+  user: any;
   coveredDataList: any;
   namedStorms: any;
   nsemList: any;
@@ -23,6 +25,17 @@ export class CwwedService {
   constructor(
     private http: HttpClient,
   ) {}
+
+  public fetchUser() {
+    return this.http.get(API_USER).pipe(
+      map((data: any[]) => {
+        if (data.length) {
+            this.user = data[0];
+            return this.user;
+        }
+      }),
+    );
+  }
 
   public fetchNamedStorms() {
     return this.http.get(API_NAMED_STORMS).pipe(

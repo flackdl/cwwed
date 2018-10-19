@@ -24,7 +24,7 @@ from audit.proxy import ThreddsProxy
 
 
 urlpatterns = [
-    path('', TemplateView.as_view(template_name='coastal_act/index.html')),
+    path('', TemplateView.as_view(template_name='coastal_act/index.html'), name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('api/', include('cwwed.api.urls')),
