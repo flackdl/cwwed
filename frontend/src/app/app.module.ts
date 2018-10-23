@@ -16,6 +16,7 @@ import { MainComponent } from './main/main.component';
 import { CoastalActComponent } from './coastal-act/coastal-act.component';
 import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-projects.component';
 import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
+import { PsaOlComponent } from './psa-ol/psa-ol.component';
 
 const appRoutes: Routes = [
   { path: '',   redirectTo: '/home', pathMatch: 'full' },
@@ -38,6 +39,7 @@ const appRoutes: Routes = [
     ]
   },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
+  { path: 'ol', component: PsaOlComponent },
   { path: 'post-storm-assessment', component: PsaComponent },
   { path: 'post-storm-assessment/:id', component: PsaComponent },
   { path: 'page-not-found', component: PageNotFoundComponent },
@@ -56,6 +58,7 @@ const appRoutes: Routes = [
     CoastalActComponent,
     CoastalActProjectsComponent,
     CoastalActProjectsDetailComponent,
+    PsaOlComponent,
   ],
   imports: [
     RouterModule.forRoot(
