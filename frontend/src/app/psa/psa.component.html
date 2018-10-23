@@ -10,9 +10,6 @@
     <div class="row">
       <div class="col-sm-4">
         <div class="list-group">
-          <div class="list-group-item list-group-item-primary">
-            <strong>Products</strong>
-          </div>
           <li class="list-group-item list-group-item-action active">
             Delaware Bay
           </li>
@@ -32,7 +29,13 @@
             This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
             the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
           </div>
-        <div *ngIf="isLoaded" leaflet [leafletOptions]="mapOptions"></div>
+        <div id="map"></div>
+        <div id="info">
+          <p>Extent Coords:
+            <li *ngFor="let coord of extentCoords">{{ coord }}</li>
+					</p>
+          <p>Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span></p>
+        </div>
       </div>
     </div>
   </div>

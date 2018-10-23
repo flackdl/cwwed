@@ -179,6 +179,10 @@ Environment variables
 - `DATABASE_URL`
 - `SLACK_BOT_TOKEN`
 - `CWWED_NSEM_PASSWORD`
+
+Configure Django "Sites" (in admin)
+
+    For example, log into the admin and create a site as `dev.cwwed-staging.com`.
     
 Create AWS user *cwwed-archives* and assign the following polices:
  - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.
