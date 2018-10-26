@@ -30,11 +30,11 @@
             the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
           </div>
         <div id="map"></div>
-        <div id="info">
-          <p>Extent Coords:
-            <li *ngFor="let coord of extentCoords">{{ coord }}</li>
-					</p>
-          <p>Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span></p>
+        <div>
+           <p>
+             Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span>
+           </p>
+          <a [href]="filteredDownloadURL()">Download Filtered Data</a>
         </div>
       </div>
     </div>

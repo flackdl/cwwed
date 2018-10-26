@@ -1,7 +1,7 @@
 import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
-import { HttpClient } from "@angular/common/http";
+import {HttpClient, HttpParams} from "@angular/common/http";
 
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -70,7 +70,7 @@ export class PsaComponent implements OnInit {
       ],
       target: 'map',
       view: new View({
-        center: fromLonLat([-75.249730, 39.153332]),
+        center: fromLonLat(<any>[-75.249730, 39.153332]),
         zoom: 8,
       })
     });
@@ -93,11 +93,9 @@ export class PsaComponent implements OnInit {
       if (event.keyCode == 16) {
         const extentCoords = extent.getExtent();
         if (extentCoords && extentCoords.length === 4) {
-            this.extentCoords = toLonLat([extentCoords[0], extentCoords[1]]).concat(
-              toLonLat([extentCoords[2], extentCoords[3]]));
-            console.log(this.extentCoords);
+            this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
+              toLonLat(<any>[extentCoords[2], extentCoords[3]]));
         }
-        //this.extentCoords = toLonLat([extentCoords[0], extentCoords[1]]);
         extent.setActive(false);
       }
     });
@@ -111,6 +109,20 @@ export class PsaComponent implements OnInit {
       this.currentFeature = features[0].getProperties();
     });
 
+  }
+
+  public filteredDownloadURL() {
+    const params = {
+      path: '/media/bucket/cwwed/THREDDS/delaware.nc',
+    };
+
+    if (this.extentCoords) {
+      params['extent'] = this.extentCoords;
+    }
+
+    const httpParams = new HttpParams({fromObject: params});
+
+    return `/psa-filter/?${httpParams.toString()}`;
   }
 
 }

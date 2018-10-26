@@ -1,6 +1,5 @@
 import os
 import xarray as xr
-from io import BytesIO
 from django.conf import settings
 from django.http import HttpResponse, Http404, StreamingHttpResponse
 from django.views.generic.base import RedirectView, View
@@ -19,7 +18,7 @@ class AngularStaticAssetsRedirectView(RedirectView):
         return url
 
 
-class DapFilterView(View):
+class PSAFilterView(View):
 
     _dataset: xr.Dataset = None
 
@@ -35,12 +34,27 @@ class DapFilterView(View):
         except ValueError:
             raise Http404('Extent bounds should be floats')
 
+        lon_start = extent[0]
+        lon_end = extent[2]
+        lat_start = extent[1]
+        lat_end = extent[3]
+
         self._dataset = xr.open_dataset(path)
-        # TODO - filter
-        # self._dataset['ds.mesh2d_node_x']
+
+        mask = (
+                (self._dataset.nmesh2d_face.mesh2d_face_x >= lon_start)
+                & (self._dataset.nmesh2d_face.mesh2d_face_x <= lon_end)
+                & (self._dataset.nmesh2d_face.mesh2d_face_y >= lat_start)
+                & (self._dataset.nmesh2d_face.mesh2d_face_y <= lat_end)
+        )
+
+        # TODO - apply mask to all relevant variables
+
+        result = self._dataset.nmesh2d_face[mask]
+
+        return HttpResponse(str(result), content_type='text/plain')
 
         # TODO - this reads the entire dataset into memory
-        response = HttpResponse(self._dataset.to_netcdf(), content_type='application/x-netcdf')
-        response['Content-Disposition'] = 'attachment; filename="data.nc"'
-
-        return response
+        #response = HttpResponse(self._dataset.to_netcdf(), content_type='application/x-netcdf')
+        #response['Content-Disposition'] = 'attachment; filename="data.nc"'
+        #return response
