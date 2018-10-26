@@ -48,13 +48,16 @@ class PSAFilterView(View):
                 & (self._dataset.nmesh2d_face.mesh2d_face_y <= lat_end)
         )
 
-        # TODO - apply mask to all relevant variables
+        variables = (
+           'nmesh2d_face',
+           'mesh2d_waterdepth',
+           'mesh2d_windx',
+           'mesh2d_windy',
+        )
 
-        result = self._dataset.nmesh2d_face[mask]
-
-        return HttpResponse(str(result), content_type='text/plain')
+        masked_ds = xr.Dataset(dict((v, self._dataset[v][mask]) for v in variables))
 
         # TODO - this reads the entire dataset into memory
-        #response = HttpResponse(self._dataset.to_netcdf(), content_type='application/x-netcdf')
-        #response['Content-Disposition'] = 'attachment; filename="data.nc"'
-        #return response
+        response = HttpResponse(masked_ds.to_netcdf(), content_type='application/x-netcdf')
+        response['Content-Disposition'] = 'attachment; filename="data.nc"'
+        return response

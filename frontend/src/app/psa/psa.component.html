@@ -34,7 +34,9 @@
            <p>
              Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span>
            </p>
-          <a [href]="filteredDownloadURL()">Download Filtered Data</a>
+          <p>
+            Filtered Data: <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Download Filtered Data</a>
+          </p>
         </div>
       </div>
     </div>
