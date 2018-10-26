@@ -97,6 +97,8 @@ export class PsaComponent implements OnInit {
         if (extentCoords && extentCoords.length === 4) {
             this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
               toLonLat(<any>[extentCoords[2], extentCoords[3]]));
+        } else {
+          this.extentCoords = null;
         }
         extent.setActive(false);
       }
