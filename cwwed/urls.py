@@ -19,7 +19,7 @@ from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.conf.urls.static import static
 
-from cwwed.views import AngularStaticAssetsRedirectView
+from cwwed.views import AngularStaticAssetsRedirectView, DapFilterView
 from audit.proxy import ThreddsProxy
 
 
@@ -28,6 +28,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('api/', include('cwwed.api.urls')),
+    path('dap-filter', DapFilterView.as_view()),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
 ]

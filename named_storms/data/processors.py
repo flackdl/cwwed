@@ -399,6 +399,7 @@ class OpenDapProcessor(BaseProcessor):
         # convert numpy array to list for comparison
         values = self._dataset[dimension].values.tolist()
 
+        # TODO - this poorly assumes the data variable is sorted
         # find the index range and fallback the start/end index to 0/None, respectively, if it's not in range
         idx_start = next((idx for idx, v in enumerate(values) if v >= start), 0)
         idx_end = next((idx for idx, v in enumerate(values) if v >= end), None)

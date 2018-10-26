@@ -1,4 +1,5 @@
 import math
+import sys
 from datetime import datetime
 import xarray
 import matplotlib.pyplot as plt
@@ -94,8 +95,10 @@ def build_geojson_contours(water_depths, file_name):
     )
 
 
+dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc'
+
 # open the dataset for reading
-dataset = xarray.open_dataset('/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc')
+dataset = xarray.open_dataset(dataset_path)
 
 for depths in dataset['mesh2d_waterdepth'][::50]:
 
