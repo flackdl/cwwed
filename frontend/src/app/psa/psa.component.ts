@@ -19,6 +19,8 @@ import { Fill, Style } from 'ol/style.js';
   styleUrls: ['./psa.component.scss'],
 })
 export class PsaComponent implements OnInit {
+  public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
+  public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public map;
   public nsemId: number;
   public namedStorms: any;
@@ -113,7 +115,7 @@ export class PsaComponent implements OnInit {
 
   public filteredDownloadURL() {
     const params = {
-      path: '/media/bucket/cwwed/THREDDS/delaware.nc',
+      path: this.demoDataPath,
     };
 
     if (this.extentCoords) {

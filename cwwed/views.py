@@ -1,7 +1,7 @@
 import os
 import xarray as xr
 from django.conf import settings
-from django.http import HttpResponse, Http404, StreamingHttpResponse
+from django.http import HttpResponse, Http404
 from django.views.generic.base import RedirectView, View
 
 
