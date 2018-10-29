@@ -1,7 +1,7 @@
 import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
-import {HttpClient, HttpParams} from "@angular/common/http";
+import { HttpParams } from "@angular/common/http";
 
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -31,7 +31,6 @@ export class PsaComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private cwwedService: CwwedService,
-    private http: HttpClient,
   ) {}
 
   ngOnInit() {
@@ -78,7 +77,7 @@ export class PsaComponent implements OnInit {
     });
 
     const extent = new ExtentInteraction({
-      condition: platformModifierKeyOnly
+      condition: platformModifierKeyOnly,
     });
     this.map.addInteraction(extent);
     extent.setActive(false);
