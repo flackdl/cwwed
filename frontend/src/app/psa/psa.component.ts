@@ -2,6 +2,8 @@ import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { HttpParams } from "@angular/common/http";
+import {debounceTime, tap} from 'rxjs/operators';
+import * as AWS from 'aws-sdk';
 
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -12,6 +14,7 @@ import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style } from 'ol/style.js';
+import { FormControl } from "@angular/forms";
 
 @Component({
   selector: 'app-psa',
@@ -21,12 +24,16 @@ import { Fill, Style } from 'ol/style.js';
 export class PsaComponent implements OnInit {
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
+  public isLoading = true;
   public map;
   public nsemId: number;
   public namedStorms: any;
   public nsemList: any;
   public currentFeature: any;
   public extentCoords: Number[];
+  public contourSources: String[] = [];
+  public currentContour: String;
+  public contourDateInput = new FormControl(0);
 
   constructor(
     private route: ActivatedRoute,
@@ -37,7 +44,16 @@ export class PsaComponent implements OnInit {
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorms = this.cwwedService.namedStorms;
 
-    this._buildMap();
+    this.contourDateInput.valueChanges.pipe(
+      tap(() => {
+        this.isLoading = true;
+      }),
+      debounceTime(2000),
+    ).subscribe((value) => {
+      this.isLoading = false;
+    });
+
+    this._fetchContours();
 
     this.route.params.subscribe((data) => {
       if (data.id) {
@@ -46,10 +62,43 @@ export class PsaComponent implements OnInit {
     });
   }
 
+  protected _fetchContours() {
+
+    const S3 = new AWS.S3();
+    let params = {
+      Bucket: 'cwwed-static-assets-frontend',
+      Prefix: 'contours/',
+      Delimiter: '/',
+    };
+
+    // TODO handle paging
+    // https://github.com/awslabs/aws-js-s3-explorer/blob/master/index.html
+    S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
+      if (error) {
+        console.log('error', error);
+      } else {
+
+        // retrieve and sort the objects (dated)
+        this.contourSources = data.Contents.map((value) => {
+          return value.Key;
+        }).sort();
+
+        if (this.contourSources.length > 0) {
+          // use the first contour date
+          this.currentContour = this.contourSources[0];
+          this._buildMap();
+        } else {
+          alert('No contours retrieved');
+        }
+      }
+    });
+  }
+
   protected _buildMap() {
+    const bucketPrefix = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
 
     const vectorSource = new VectorSource({
-      url: 'https://s3.amazonaws.com/cwwed-static-assets-frontend/contours.geojson',
+      url: `${bucketPrefix}${this.currentContour}`,
       format: new GeoJSON()
     });
 
@@ -76,13 +125,19 @@ export class PsaComponent implements OnInit {
       })
     });
 
+    this.map.on('rendercomplete', () => {
+      this.isLoading = false;
+    });
+
     const extent = new ExtentInteraction({
       condition: platformModifierKeyOnly,
     });
+
     this.map.addInteraction(extent);
+
     extent.setActive(false);
 
-    // Enable interaction by holding shift
+    // enable interaction by holding shift
     window.addEventListener('keydown', (event: any) => {
       if (event.keyCode == 16) {
         this.extentCoords = [];
@@ -90,6 +145,7 @@ export class PsaComponent implements OnInit {
       }
     });
 
+    // disable interaction and catpure extent box
     window.addEventListener('keyup', (event: any) => {
       if (event.keyCode == 16) {
         const extentCoords = extent.getExtent();
@@ -103,6 +159,7 @@ export class PsaComponent implements OnInit {
       }
     });
 
+    // highlight current feature
     this.map.on('pointermove', (event) => {
       const features = this.map.getFeaturesAtPixel(event.pixel);
       if (!features) {

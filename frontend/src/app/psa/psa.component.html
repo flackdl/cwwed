@@ -1,3 +1,4 @@
+
 <div class="card">
   <h5 class="card-header form-inline">
     Post Storm Assessment
@@ -29,14 +30,22 @@
             This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
             the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
           </div>
-        <div id="map"></div>
+				<div id="map" class="position-relative">
+          <ngx-loading [show]="isLoading"></ngx-loading>
+        </div>
         <div>
-           <p>
-             Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span>
-           </p>
-          <p>
+          <div>
+            <input type="range" [formControl]="contourDateInput">
+          </div>
+          <div>
+            Contour Date: <span *ngIf="currentContour">{{ currentContour }}</span>
+          </div>
+          <div>
+            Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span>
+          </div>
+          <div>
             Filtered Data: <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Download Filtered Data</a>
-          </p>
+          </div>
         </div>
       </div>
     </div>

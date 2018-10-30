@@ -1,7 +1,9 @@
 import os
 import xarray as xr
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, Http404
+from django.utils.decorators import method_decorator
 from django.views.generic.base import RedirectView, View
 
 
@@ -22,6 +24,7 @@ class PSAFilterView(View):
 
     _dataset: xr.Dataset = None
 
+    @method_decorator(login_required)
     def get(self, request):
         path = request.GET.get('path')
         extent = request.GET.getlist('extent')

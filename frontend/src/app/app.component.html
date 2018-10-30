@@ -46,10 +46,9 @@
   </nav>
 </header>
 
-<ngx-spinner size="large"></ngx-spinner>
-
-<div>
-  <router-outlet *ngIf="isLoaded"></router-outlet>
+<div class="position-relative">
+  <ngx-loading [show]="isLoading"></ngx-loading>
+  <router-outlet *ngIf="!isLoading"></router-outlet>
 </div>
 
 <footer class="pt-4 my-md-5 pt-md-5 border-top">

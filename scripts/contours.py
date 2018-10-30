@@ -100,7 +100,7 @@ dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDD
 # open the dataset for reading
 dataset = xarray.open_dataset(dataset_path)
 
-for depths in dataset['mesh2d_waterdepth'][::50]:
+for depths in dataset['mesh2d_waterdepth']:
 
     # convert to datetime
     dt = datetime64_to_datetime(depths.time)

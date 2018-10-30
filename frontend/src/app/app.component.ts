@@ -1,4 +1,3 @@
-import { NgxSpinnerService } from "ngx-spinner";
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from "rxjs";
 import { CwwedService } from "./cwwed.service";
@@ -10,12 +9,11 @@ import { CwwedService } from "./cwwed.service";
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent implements OnInit {
-  public isLoaded: boolean = false;
+  public isLoading: boolean = true;
   public isNavCollapsed: boolean = false;
 
   constructor(
     private cwwedService: CwwedService,
-    private spinner: NgxSpinnerService,
   ) {
   }
 
@@ -36,8 +34,6 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    // show loading animation until the core data has been loaded
-    this.spinner.show();
     forkJoin(
       this.cwwedService.fetchCoveredData(),
       this.cwwedService.fetchNamedStorms(),
@@ -46,11 +42,11 @@ export class AppComponent implements OnInit {
       this.cwwedService.fetchUser(),
     ).subscribe(
       () => {
-        this.isLoaded = true;
-        this.spinner.hide();
+        this.isLoading = false;
       },
       (error) => {
         console.log(error);
+        this.isLoading = false;
       });
   }
 }

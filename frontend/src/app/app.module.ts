@@ -1,10 +1,12 @@
+import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgModule} from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
-import { NgxSpinnerModule } from 'ngx-spinner';
+import { NgxLoadingModule } from 'ngx-loading';
+
 
 import { AppComponent } from './app.component';
 import { CoveredDataDetailComponent } from './covered-data-detail/covered-data-detail.component';
@@ -68,7 +70,8 @@ const appRoutes: Routes = [
     BrowserAnimationsModule,
     NgbModule,
     HttpClientModule,
-    NgxSpinnerModule,
+    NgxLoadingModule,
+    ReactiveFormsModule,
   ],
   entryComponents: [],
   providers: [],
