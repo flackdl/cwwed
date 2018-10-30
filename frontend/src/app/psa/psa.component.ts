@@ -2,7 +2,7 @@ import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { HttpParams } from "@angular/common/http";
-import {debounceTime, tap} from 'rxjs/operators';
+import { debounceTime, tap } from 'rxjs/operators';
 import * as AWS from 'aws-sdk';
 
 import Map from 'ol/Map.js';
@@ -34,6 +34,7 @@ export class PsaComponent implements OnInit {
   public contourSources: String[] = [];
   public currentContour: String;
   public contourDateInput = new FormControl(0);
+  public contourLayer: any;  // VectorLayer
 
   constructor(
     private route: ActivatedRoute,
@@ -48,12 +49,17 @@ export class PsaComponent implements OnInit {
       tap(() => {
         this.isLoading = true;
       }),
-      debounceTime(2000),
+      debounceTime(1000),
     ).subscribe((value) => {
+      // update the map's contour source
+      this.currentContour = this.contourSources[value];
+      this.contourLayer.setSource(this._getContourSource());
+
+      // TODO - wait until new vector source is fully loaded
       this.isLoading = false;
     });
 
-    this._fetchContours();
+    this._fetchContourDataAndBuildMap();
 
     this.route.params.subscribe((data) => {
       if (data.id) {
@@ -62,7 +68,21 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _fetchContours() {
+  public getCurrentContourFormatted() {
+    // TODO - replace this poor solution and redo overall data structures (i.e contour file names)
+    return this.currentContour.replace(/.*\//, '').replace(/\..*$/, '');
+  }
+
+  protected _getContourSource(): VectorSource {
+    const bucketPrefix = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
+
+    return new VectorSource({
+      url: `${bucketPrefix}${this.currentContour}`,
+      format: new GeoJSON()
+    });
+  }
+
+  protected _fetchContourDataAndBuildMap() {
 
     const S3 = new AWS.S3();
     let params = {
@@ -73,6 +93,7 @@ export class PsaComponent implements OnInit {
 
     // TODO handle paging
     // https://github.com/awslabs/aws-js-s3-explorer/blob/master/index.html
+
     S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
       if (error) {
         console.log('error', error);
@@ -88,18 +109,27 @@ export class PsaComponent implements OnInit {
           this.currentContour = this.contourSources[0];
           this._buildMap();
         } else {
-          alert('No contours retrieved');
+          console.log('Error: No contours retrieved');
         }
       }
     });
   }
 
-  protected _buildMap() {
-    const bucketPrefix = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
+  protected _getContourStyle(feature) {
+    return new Style({
+      fill: new Fill({
+        color: feature.get('fill')
+      })
+    })
+  };
 
-    const vectorSource = new VectorSource({
-      url: `${bucketPrefix}${this.currentContour}`,
-      format: new GeoJSON()
+  protected _buildMap() {
+
+    this.contourLayer = new VectorLayer({
+      source: this._getContourSource(),
+      style: (feature) => {
+        return this._getContourStyle(feature);
+      },
     });
 
     this.map = new Map({
@@ -107,16 +137,7 @@ export class PsaComponent implements OnInit {
         new TileLayer({
           source: new OSM()
         }),
-        new VectorLayer({
-          source: vectorSource,
-          style: (feature) => {
-            return new Style({
-              fill: new Fill({
-                color: feature.get('fill')
-              })
-            })
-          },
-        })
+        this.contourLayer,
       ],
       target: 'map',
       view: new View({
@@ -125,6 +146,7 @@ export class PsaComponent implements OnInit {
       })
     });
 
+    // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
       this.isLoading = false;
     });

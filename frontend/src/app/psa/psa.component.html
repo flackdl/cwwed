@@ -35,10 +35,10 @@
         </div>
         <div>
           <div>
-            <input type="range" [formControl]="contourDateInput">
+            <input type="range" [formControl]="contourDateInput" class="w-100">
           </div>
           <div>
-            Contour Date: <span *ngIf="currentContour">{{ currentContour }}</span>
+            Contour Date: <span *ngIf="currentContour">{{ getCurrentContourFormatted() }}</span>
           </div>
           <div>
             Depth: <span *ngIf="currentFeature">{{ currentFeature.title }}</span>
