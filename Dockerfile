@@ -19,11 +19,11 @@ RUN echo "Installing dependencies and building application" \
     && pip install -r requirements.txt \
     && npm --prefix frontend install \
     && npm --prefix frontend run build-prod \
-    #&& rm -rf frontend/node_modules \
     && mkdir -p staticfiles && python manage.py collectstatic --no-input \
     && apt-get remove -y \
         libgdal-dev \
         nodejs \
+    && rm -rf frontend/node_modules \
     && rm -rf /var/lib/apt/lists/* \
     && true
 
