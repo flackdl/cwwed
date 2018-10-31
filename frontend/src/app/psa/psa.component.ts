@@ -54,9 +54,6 @@ export class PsaComponent implements OnInit {
       // update the map's contour source
       this.currentContour = this.contourSources[value];
       this.contourLayer.setSource(this._getContourSource());
-
-      // TODO - wait until new vector source is fully loaded
-      this.isLoading = false;
     });
 
     this._fetchContourDataAndBuildMap();
@@ -69,8 +66,12 @@ export class PsaComponent implements OnInit {
   }
 
   public getCurrentContourFormatted() {
-    // TODO - replace this poor solution and redo overall data structures (i.e contour file names)
-    return this.currentContour.replace(/.*\//, '').replace(/\..*$/, '');
+    // TODO - replace this poor solution and redo overall data structures (i.e contour file names by date)
+
+    if (!this.contourSources.length) {
+      return null;
+    }
+    return this.contourSources[this.contourDateInput.value].replace(/.*\//, '').replace(/\..*$/, '');
   }
 
   protected _getContourSource(): VectorSource {
@@ -162,7 +163,6 @@ export class PsaComponent implements OnInit {
     // enable interaction by holding shift
     window.addEventListener('keydown', (event: any) => {
       if (event.keyCode == 16) {
-        this.extentCoords = [];
         extent.setActive(true);
       }
     });
