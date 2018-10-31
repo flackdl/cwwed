@@ -4,6 +4,7 @@ import { CwwedService } from "../cwwed.service";
 import { HttpParams } from "@angular/common/http";
 import { debounceTime, tap } from 'rxjs/operators';
 import * as AWS from 'aws-sdk';
+import * as _ from 'lodash';
 
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
@@ -25,16 +26,21 @@ export class PsaComponent implements OnInit {
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public isLoading = true;
-  public map;
+  public isLoadingMap = false;
+  public map: any; // Map
   public nsemId: number;
   public namedStorms: any;
   public nsemList: any;
   public currentFeature: any;
   public extentCoords: Number[];
-  public contourSources: String[] = [];
+  public contourSourcePaths: {
+    [variable_name: string]: String[],
+  } = {};
   public currentContour: String;
   public contourDateInput = new FormControl(0);
   public contourLayer: any;  // VectorLayer
+  public contourVariableInput = new FormControl('mesh2d_waterdepth');
+  public currentVariable: string = 'mesh2d_waterdepth';
 
   constructor(
     private route: ActivatedRoute,
@@ -45,16 +51,7 @@ export class PsaComponent implements OnInit {
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorms = this.cwwedService.namedStorms;
 
-    this.contourDateInput.valueChanges.pipe(
-      tap(() => {
-        this.isLoading = true;
-      }),
-      debounceTime(1000),
-    ).subscribe((value) => {
-      // update the map's contour source
-      this.currentContour = this.contourSources[value];
-      this.contourLayer.setSource(this._getContourSource());
-    });
+    this._listenForInputChanges();
 
     this._fetchContourDataAndBuildMap();
 
@@ -65,13 +62,45 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  public getCurrentContourFormatted() {
-    // TODO - replace this poor solution and redo overall data structures (i.e contour file names by date)
-
-    if (!this.contourSources.length) {
-      return null;
+  public getCurrentContourDateFormatted() {
+    // extract the date from the file name
+    if (this.contourSourcePaths[this.currentVariable]) {
+      let currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
+      return currentContour ? currentContour.replace(/.*__(.*).json$/, "$1") : '';
     }
-    return this.contourSources[this.contourDateInput.value].replace(/.*\//, '').replace(/\..*$/, '');
+    return '';
+  }
+
+  public getDateInputMax() {
+    return this.contourSourcePaths[this.currentVariable] ? this.contourSourcePaths[this.currentVariable].length - 1 : 0;
+  }
+
+  protected _listenForInputChanges() {
+
+    // listen for variable input changes
+    this.contourVariableInput.valueChanges.pipe(
+      tap(() => {
+        this.isLoadingMap = true;
+      }),
+    ).subscribe(
+      (value) => {
+        this.currentVariable = value;
+        this.currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
+        this.contourLayer.setSource(this._getContourSource());
+      }
+    );
+
+    // listen for date input changes
+    this.contourDateInput.valueChanges.pipe(
+      tap(() => {
+        this.isLoadingMap = true;
+      }),
+      debounceTime(1000),
+    ).subscribe((value) => {
+      // update the map's contour source
+      this.currentContour = this.contourSourcePaths[this.currentVariable][value];
+      this.contourLayer.setSource(this._getContourSource());
+    });
   }
 
   protected _getContourSource(): VectorSource {
@@ -98,20 +127,34 @@ export class PsaComponent implements OnInit {
     S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
       if (error) {
         console.log('error', error);
+        this.isLoading = false;
       } else {
 
         // retrieve and sort the objects (dated)
-        this.contourSources = data.Contents.map((value) => {
-          return value.Key;
-        }).sort();
+        data.Contents.forEach((value: any) => {
+          // extract variable and file name from name, i.e "mesh2d_waterdepth__2012-10-22T07:00:00.json"
+          let fileName: string = value.Key;
+          let variable: string = value.Key.replace(data.Prefix, '').replace(/(.*)__.*$/, '$1');
+          if (variable) {
+            if (!this.contourSourcePaths[variable]) {
+              this.contourSourcePaths[variable] = [];
+            }
+            this.contourSourcePaths[variable].push(fileName);
+          }
+        });
 
-        if (this.contourSources.length > 0) {
+        if (Object.keys(this.contourSourcePaths).length > 0) {
+          _.each(this.contourSourcePaths, (contours, variable) => {
+            contours.sort();
+          });
           // use the first contour date
-          this.currentContour = this.contourSources[0];
+          this.currentContour = this.contourSourcePaths[this.currentVariable][0];
           this._buildMap();
         } else {
           console.log('Error: No contours retrieved');
         }
+
+        this.isLoading = false;
       }
     });
   }
@@ -149,7 +192,7 @@ export class PsaComponent implements OnInit {
 
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
-      this.isLoading = false;
+      this.isLoadingMap = false;
     });
 
     const extent = new ExtentInteraction({

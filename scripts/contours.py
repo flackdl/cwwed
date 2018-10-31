@@ -40,9 +40,9 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(water_depths, file_name):
+def build_geojson_contours(values, file_name):
 
-    z = water_depths
+    z = values
     x = z.mesh2d_face_x
     y = z.mesh2d_face_y
 
@@ -100,10 +100,14 @@ dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDD
 # open the dataset for reading
 dataset = xarray.open_dataset(dataset_path)
 
-for depths in dataset['mesh2d_waterdepth']:
+variables = ['mesh2d_waterdepth', 'mesh2d_windx', 'mesh2d_windy']
 
-    # convert to datetime
-    dt = datetime64_to_datetime(depths.time)
+for variable in variables:
 
-    # build geojson contours
-    build_geojson_contours(depths, file_name=dt.isoformat())
+    for values in dataset[variable][::5]:
+
+        # convert to datetime
+        dt = datetime64_to_datetime(values.time)
+
+        # build geojson contours
+        build_geojson_contours(values, file_name='{}__{}'.format(variable, dt.isoformat()))
