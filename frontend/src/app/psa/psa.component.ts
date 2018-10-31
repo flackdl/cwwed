@@ -159,21 +159,17 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _getContourStyle(feature) {
-    return new Style({
-      fill: new Fill({
-        color: feature.get('fill')
-      })
-    })
-  };
-
   protected _buildMap() {
 
     this.contourLayer = new VectorLayer({
       source: this._getContourSource(),
       style: (feature) => {
-        return this._getContourStyle(feature);
-      },
+        return new Style({
+          fill: new Fill({
+            color: feature.get('fill')
+          })
+        })
+      }
     });
 
     this.map = new Map({
