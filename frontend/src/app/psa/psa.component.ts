@@ -13,7 +13,7 @@ import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
-import { OSM, Vector as VectorSource } from 'ol/source.js';
+import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style } from 'ol/style.js';
 import { FormControl } from "@angular/forms";
 
@@ -23,10 +23,19 @@ import { FormControl } from "@angular/forms";
   styleUrls: ['./psa.component.scss'],
 })
 export class PsaComponent implements OnInit {
+  public MAP_LAYER_OSM_STANDARD = 'osm-standard';
+  public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
+  public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
+
+  public mapLayerOptions = [
+    { name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD },
+    { name: 'MapBox Streets', value: this.MAP_LAYER_MAPBOX_STREETS },
+    { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
+  ];
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public isLoading = true;
-  public isLoadingMap = false;
+  public isLoadingMap = true;
   public map: any; // Map
   public nsemId: number;
   public namedStorms: any;
@@ -41,6 +50,7 @@ export class PsaComponent implements OnInit {
   public contourLayer: any;  // VectorLayer
   public contourVariableInput = new FormControl('mesh2d_waterdepth');
   public currentVariable: string = 'mesh2d_waterdepth';
+  public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
 
   constructor(
     private route: ActivatedRoute,
@@ -76,6 +86,18 @@ export class PsaComponent implements OnInit {
   }
 
   protected _listenForInputChanges() {
+
+    // update map tile layer
+    this.mapLayerInput.valueChanges.subscribe(
+      (value) => {
+        this.map.getLayers().getArray().forEach((layer) => {
+          const mapName = layer.get('mapName');
+          if (mapName) {
+            layer.setVisible(mapName === value);
+          }
+        });
+      }
+    );
 
     // listen for variable input changes
     this.contourVariableInput.valueChanges.pipe(
@@ -127,6 +149,7 @@ export class PsaComponent implements OnInit {
     S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
       if (error) {
         console.log('error', error);
+        console.log('finished loading (error)');
         this.isLoading = false;
       } else {
 
@@ -155,11 +178,14 @@ export class PsaComponent implements OnInit {
         }
 
         this.isLoading = false;
+        console.log('finished loading (got s3 objects)');
       }
     });
   }
 
   protected _buildMap() {
+
+    const mapBoxToken = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
 
     this.contourLayer = new VectorLayer({
       source: this._getContourSource(),
@@ -175,7 +201,22 @@ export class PsaComponent implements OnInit {
     this.map = new Map({
       layers: [
         new TileLayer({
-          source: new OSM()
+          mapName: this.MAP_LAYER_OSM_STANDARD,
+          source: new OSM(),
+        }),
+        new TileLayer({
+          mapName: this.MAP_LAYER_MAPBOX_STREETS,
+          visible: false,
+          source: new XYZ({
+            url: `https://api.mapbox.com/styles/v1/mapbox/streets-v10/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+          })
+        }),
+        new TileLayer({
+          mapName: this.MAP_LAYER_STAMEN_TONER,
+          visible: false,
+          source: new XYZ({
+            url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
+          })
         }),
         this.contourLayer,
       ],

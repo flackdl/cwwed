@@ -9,4 +9,18 @@
   color: white;
   border: 0;
   transition: opacity 100ms ease-in;
+
+}
+
+#map-layer-select {
+  width: 28%;
+  z-index: 1;
+  opacity: 1;
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+  background: rgba(0,60,136,0.7);
+  color: white;
+  border: 0;
 }
