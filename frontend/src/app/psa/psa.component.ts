@@ -26,10 +26,14 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
+  public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
+  public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
 
   public mapLayerOptions = [
     { name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD },
     { name: 'MapBox Streets', value: this.MAP_LAYER_MAPBOX_STREETS },
+    { name: 'MapBox Light', value: this.MAP_LAYER_MAPBOX_LIGHT },
+    { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
@@ -203,6 +207,20 @@ export class PsaComponent implements OnInit {
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
           source: new OSM(),
+        }),
+        new TileLayer({
+          mapName: this.MAP_LAYER_MAPBOX_LIGHT,
+          visible: false,
+          source: new XYZ({
+            url: `https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+          })
+        }),
+        new TileLayer({
+          mapName: this.MAP_LAYER_MAPBOX_SATELLITE,
+          visible: false,
+          source: new XYZ({
+            url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+          })
         }),
         new TileLayer({
           mapName: this.MAP_LAYER_MAPBOX_STREETS,
