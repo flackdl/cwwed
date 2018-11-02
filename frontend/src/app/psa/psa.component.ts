@@ -2,10 +2,8 @@ import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { HttpParams } from "@angular/common/http";
+import { FormControl } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
-import * as AWS from 'aws-sdk';
-import * as _ from 'lodash';
-
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import { platformModifierKeyOnly } from 'ol/events/condition.js';
@@ -15,7 +13,11 @@ import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style } from 'ol/style.js';
-import { FormControl } from "@angular/forms";
+import * as AWS from 'aws-sdk';
+import * as _ from 'lodash';
+
+const hexToRgba = require("hex-to-rgba");
+
 
 @Component({
   selector: 'app-psa',
@@ -36,6 +38,7 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
+  public isMapControlsCollapsed = true;
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public isLoading = true;
@@ -51,6 +54,7 @@ export class PsaComponent implements OnInit {
   } = {};
   public currentContour: String;
   public contourDateInput = new FormControl(0);
+  public mapDataOpacityInput = new FormControl(.5);
   public contourLayer: any;  // VectorLayer
   public contourVariableInput = new FormControl('mesh2d_waterdepth');
   public currentVariable: string = 'mesh2d_waterdepth';
@@ -90,6 +94,15 @@ export class PsaComponent implements OnInit {
   }
 
   protected _listenForInputChanges() {
+
+    // update map data opacity
+    this.mapDataOpacityInput.valueChanges.subscribe(
+      (data) => {
+        this.contourLayer.setStyle((feature) => {
+          return this._contourStyle(feature);
+        });
+      }
+    );
 
     // update map tile layer
     this.mapLayerInput.valueChanges.subscribe(
@@ -152,8 +165,7 @@ export class PsaComponent implements OnInit {
 
     S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
       if (error) {
-        console.log('error', error);
-        console.log('finished loading (error)');
+        console.error('error', error);
         this.isLoading = false;
       } else {
 
@@ -178,13 +190,21 @@ export class PsaComponent implements OnInit {
           this.currentContour = this.contourSourcePaths[this.currentVariable][0];
           this._buildMap();
         } else {
-          console.log('Error: No contours retrieved');
+          console.error('Error: No contours retrieved');
         }
 
         this.isLoading = false;
         console.log('finished loading (got s3 objects)');
       }
     });
+  }
+
+  protected _contourStyle (feature) {
+    return new Style({
+      fill: new Fill({
+        color: hexToRgba(feature.get('fill'), this.mapDataOpacityInput.value),
+      }),
+    })
   }
 
   protected _buildMap() {
@@ -194,12 +214,8 @@ export class PsaComponent implements OnInit {
     this.contourLayer = new VectorLayer({
       source: this._getContourSource(),
       style: (feature) => {
-        return new Style({
-          fill: new Fill({
-            color: feature.get('fill')
-          })
-        })
-      }
+        return this._contourStyle(feature);
+      },
     });
 
     this.map = new Map({
@@ -250,6 +266,11 @@ export class PsaComponent implements OnInit {
       this.isLoadingMap = false;
     });
 
+    // close map controls on single click
+    this.map.on('singleclick', () => {
+      this.isMapControlsCollapsed = true;
+    });
+
     // configure box extent selection
     const extent = new ExtentInteraction({
       condition: platformModifierKeyOnly,
@@ -257,14 +278,14 @@ export class PsaComponent implements OnInit {
     this.map.addInteraction(extent);
     extent.setActive(false);
 
-    // enable interaction by holding shift
+    // enable geo box interaction by holding shift
     window.addEventListener('keydown', (event: any) => {
       if (event.keyCode == 16) {
         extent.setActive(true);
       }
     });
 
-    // disable interaction and catpure extent box
+    // disable geo box interaction and catpure extent box
     window.addEventListener('keyup', (event: any) => {
       if (event.keyCode == 16) {
         const extentCoords = extent.getExtent();

@@ -17,7 +17,7 @@
 
 	<div class="row">
 
-		<form class="form-signin col-12" method="POST" action="{% url 'account_login' %}">
+		<form class="form-signin col-12 col-md-8 offset-md-3" method="POST" action="{% url 'account_login' %}">
 			{% csrf_token %}
 
 			<!-- TODO - third party auth providers
@@ -39,8 +39,8 @@
 
 			<button class="btn btn-lg btn-primary" type="submit">Sign in</button>
 
-			<div class="d-flex justify-content-end mt-3">
-					or <a class="ml-1" href="{% url 'account_signup' %}">Sign Up</a>
+			<div class="d-flex justify-content-center align-items-center mt-3">
+				<h6>Need to register?</h6> <a class="ml-3 btn btn-link btn-lg btn-success" href="{% url 'account_signup' %}">Create an account</a>
 			</div>
 
 			{% if redirect_field_value %}
@@ -48,12 +48,6 @@
 			{% endif %}
 
 		</form>
-	</div>
-
-	<div class="row">
-		<div class="col-12 text-center">
-			<p class="mt-5 mb-3 text-muted">CWWED</p>
-		</div>
 	</div>
 
 {% endblock %}

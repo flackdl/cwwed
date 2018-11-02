@@ -28,6 +28,7 @@
     "aws-sdk": "^2.344.0",
     "bootstrap": "^4.1.3",
     "core-js": "^2.5.4",
+    "hex-to-rgba": "^1.0.2",
     "lodash": "^4.17.10",
     "ngx-loading": "^3.0.1",
     "ol": "^5.2.0",
