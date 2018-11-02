@@ -250,12 +250,11 @@ export class PsaComponent implements OnInit {
       this.isLoadingMap = false;
     });
 
+    // configure box extent selection
     const extent = new ExtentInteraction({
       condition: platformModifierKeyOnly,
     });
-
     this.map.addInteraction(extent);
-
     extent.setActive(false);
 
     // enable interaction by holding shift
@@ -295,14 +294,10 @@ export class PsaComponent implements OnInit {
     const params = {
       path: this.demoDataPath,
     };
-
     if (this.extentCoords) {
       params['extent'] = this.extentCoords;
     }
-
     const httpParams = new HttpParams({fromObject: params});
-
     return `/psa-filter/?${httpParams.toString()}`;
   }
-
 }

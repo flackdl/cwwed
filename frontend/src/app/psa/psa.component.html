@@ -16,16 +16,15 @@
         </div>
       </div>
       <div class="col-sm">
-        <div class="position-relative" *ngIf="isLoading">
-          <h1 class="alert alert-info">Loading</h1>
-          <ngx-loading [show]="true"></ngx-loading>
-        </div>
+
+        <ngx-loading [show]="isLoading"></ngx-loading>
+
         <div class="d-flex justify-content-between align-items-center">
           <h1>Delaware Bay</h1>
           <h6>
-            <a target="_blank" [href]="demoDataURL" target="_blank">
+            <a [href]="demoDataURL" target="_blank">
               <span class="oi oi-cloud-download"></span>
-              Data
+              OPeNDaP
             </a>
           </h6>
         </div>
