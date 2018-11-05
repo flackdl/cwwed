@@ -37,8 +37,8 @@
           <div id="map-controls">
             <div class="text-right">
               <button type="button" class="btn btn-sm btn-light" (click)="isMapControlsCollapsed = !isMapControlsCollapsed" [attr.aria-expanded]="!isMapControlsCollapsed">
-                <span *ngIf="isMapControlsCollapsed" class="oi oi-plus"></span>
-                <span *ngIf="!isMapControlsCollapsed" class="oi oi-minus"></span>
+                <span *ngIf="isMapControlsCollapsed" class="oi oi-chevron-left"></span>
+                <span *ngIf="!isMapControlsCollapsed" class="oi oi-chevron-right"></span>
               </button>
             </div>
             <div [ngbCollapse]="isMapControlsCollapsed">
