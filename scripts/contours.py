@@ -2,10 +2,12 @@ import math
 import sys
 from datetime import datetime
 import xarray
+from matplotlib import animation
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import numpy as np
 import geojsoncontour
+from matplotlib.animation import FFMpegFileWriter  # TODO - use non-file-writer?
 
 
 # make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -40,11 +42,20 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(values, file_name):
+def build_geojson_contours(data, fig):
 
-    z = values
+    z = data
     x = z.mesh2d_face_x
     y = z.mesh2d_face_y
+
+    # capture date and convert to datetime
+    dt = datetime64_to_datetime(z.time)
+
+    # set title on figure
+    fig.suptitle(dt.isoformat())
+
+    # build json file name output
+    file_name = '{}__{}'.format(z.name, dt.isoformat())
 
     # convert to numpy arrays
     z = z.values
@@ -73,15 +84,6 @@ def build_geojson_contours(values, file_name):
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
-    """
-    # debug - save the triangulation as geojson
-    import geojson
-    from geojson import MultiPolygon, Polygon
-    # TODO - factor in masked triangles
-    polygons = [Polygon(coords + (coords[0],)) for coords in tri_coords]  # append the first coord to complete the polygon
-    geojson.dump(MultiPolygon([polygons]), open('/tmp/geo.json', 'w'))
-    """
-
     contourf = plt.contourf(xi, yi, zi, cmap=plt.cm.jet)
 
     # convert matplotlib contourf to geojson
@@ -94,20 +96,28 @@ def build_geojson_contours(values, file_name):
         geojson_filepath='/tmp/{}.json'.format(file_name),
     )
 
+    return contourf
 
-dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc'
 
-# open the dataset for reading
-dataset = xarray.open_dataset(dataset_path)
+if __name__ == '__main__':
 
-variables = ['mesh2d_waterdepth', 'mesh2d_windx', 'mesh2d_windy']
+    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc'
 
-for variable in variables:
+    # open the dataset
+    dataset = xarray.open_dataset(dataset_path)
 
-    for values in dataset[variable][::5]:
+    variables = ['mesh2d_waterdepth', 'mesh2d_windx', 'mesh2d_windy']
 
-        # convert to datetime
-        dt = datetime64_to_datetime(values.time)
+    for variable in variables:
 
-        # build geojson contours
-        build_geojson_contours(values, file_name='{}__{}'.format(variable, dt.isoformat()))
+        # create new figure
+        fig = plt.figure()
+
+        # build geojson outputs and video animation over time series
+        anim = animation.FuncAnimation(
+            fig,
+            build_geojson_contours,
+            frames=dataset[variable],
+            fargs=[fig],
+        )
+        anim.save('/tmp/{}.mp4'.format(variable), writer=FFMpegFileWriter())

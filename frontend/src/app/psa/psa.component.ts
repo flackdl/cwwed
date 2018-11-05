@@ -172,14 +172,22 @@ export class PsaComponent implements OnInit {
 
         // retrieve and sort the objects (dated)
         data.Contents.forEach((value: any) => {
+
           // extract variable and file name from name, i.e "mesh2d_waterdepth__2012-10-22T07:00:00.json"
-          let fileName: string = value.Key;
+          let path: string = value.Key;
+          let fileName: string = path.replace(data.Prefix, '');
           let variable: string = value.Key.replace(data.Prefix, '').replace(/(.*)__.*$/, '$1');
-          if (variable) {
+
+          let contourMatch = /.*.json$/.test(fileName);
+          let animationMatch = /.*.mp4$/.test(fileName);
+
+          if (contourMatch && variable) {
             if (!this.contourSourcePaths[variable]) {
               this.contourSourcePaths[variable] = [];
             }
-            this.contourSourcePaths[variable].push(fileName);
+            this.contourSourcePaths[variable].push(path);
+          } else if (animationMatch) {
+            console.log(value);
           }
         });
 

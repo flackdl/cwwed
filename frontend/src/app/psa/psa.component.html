@@ -24,7 +24,7 @@
           <h6>
             <a [href]="demoDataURL" target="_blank">
               <span class="oi oi-cloud-download"></span>
-              OPeNDaP
+              OPeNDAP
             </a>
           </h6>
         </div>
@@ -84,6 +84,13 @@
             <strong>Download selected data: </strong>
             <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Link</a>
             <i *ngIf="!extentCoords">(none selected)</i>
+          </div>
+          <div>
+            <video controls>
+              <source src="https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+
           </div>
         </div>
       </div>
