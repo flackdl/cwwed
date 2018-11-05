@@ -15,6 +15,7 @@ import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style } from 'ol/style.js';
 import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
+import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 
 const hexToRgba = require("hex-to-rgba");
 
@@ -43,7 +44,7 @@ export class PsaComponent implements OnInit {
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public isLoading = true;
   public isLoadingMap = true;
-  public map: any; // Map
+  public map: any; // ol.Map
   public nsemId: number;
   public namedStorms: any;
   public nsemList: any;
@@ -260,6 +261,19 @@ export class PsaComponent implements OnInit {
         zoom: 8,
       })
     });
+
+    // instantiate geocoder
+    const geocoder = new Geocoder('nominatim', {
+      provider: 'osm',
+      lang: 'en-US',
+      placeholder: 'Search ...',
+      targetType: 'glass-button',
+      limit: 5,
+      keepOpen: true,
+      autoComplete: true,
+      countrycodes: 'us',
+    });
+    this.map.addControl(geocoder);
 
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
