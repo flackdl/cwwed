@@ -8,6 +8,7 @@ import matplotlib.tri as tri
 import numpy as np
 import geojsoncontour
 from matplotlib.animation import FFMpegWriter
+from matplotlib.axes import Axes
 
 
 # make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -42,7 +43,7 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(data, ax):
+def build_geojson_contours(data, ax: Axes):
 
     ax.clear()
 
@@ -86,7 +87,7 @@ def build_geojson_contours(data, ax):
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
-    contourf = plt.contourf(xi, yi, zi, cmap=plt.cm.jet)
+    contourf = ax.contourf(xi, yi, zi, cmap=plt.cm.jet)
 
     # convert matplotlib contourf to geojson
     geojsoncontour.contourf_to_geojson(
@@ -114,9 +115,9 @@ if __name__ == '__main__':
 
         print(variable)
 
-        # create new figure
-        # fig = plt.figure()
         fig, ax = plt.subplots()
+
+        # TODO - try clearing actual contours vs the whole plot: https://stackoverflow.com/a/40946022
 
         # build geojson outputs and video animation over time series
         anim = animation.FuncAnimation(
