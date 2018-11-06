@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import numpy as np
 import geojsoncontour
-from matplotlib.animation import FFMpegFileWriter  # TODO - use non-file-writer?
+from matplotlib.animation import FFMpegWriter
 
 
 # make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -42,17 +42,19 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(data, fig):
+def build_geojson_contours(data, ax):
+
+    ax.clear()
 
     z = data
-    x = z.mesh2d_face_x
-    y = z.mesh2d_face_y
+    x = z.mesh2d_face_x[:len(z)]
+    y = z.mesh2d_face_y[:len(z)]
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(z.time)
 
     # set title on figure
-    fig.suptitle(dt.isoformat())
+    ax.set_title(dt.isoformat())
 
     # build json file name output
     file_name = '{}__{}'.format(z.name, dt.isoformat())
@@ -110,14 +112,17 @@ if __name__ == '__main__':
 
     for variable in variables:
 
+        print(variable)
+
         # create new figure
-        fig = plt.figure()
+        # fig = plt.figure()
+        fig, ax = plt.subplots()
 
         # build geojson outputs and video animation over time series
         anim = animation.FuncAnimation(
             fig,
             build_geojson_contours,
             frames=dataset[variable],
-            fargs=[fig],
+            fargs=[ax],
         )
-        anim.save('/tmp/{}.mp4'.format(variable), writer=FFMpegFileWriter())
+        anim.save('/tmp/{}.mp4'.format(variable), writer=FFMpegWriter())

@@ -1,5 +1,5 @@
 import { ActivatedRoute } from "@angular/router";
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { HttpParams } from "@angular/common/http";
 import { FormControl } from "@angular/forms";
@@ -26,6 +26,7 @@ const hexToRgba = require("hex-to-rgba");
   styleUrls: ['./psa.component.scss'],
 })
 export class PsaComponent implements OnInit {
+  public S3_BUCKET_BASE_URL = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
@@ -60,6 +61,7 @@ export class PsaComponent implements OnInit {
   public contourVariableInput = new FormControl('mesh2d_waterdepth');
   public currentVariable: string = 'mesh2d_waterdepth';
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
+  @ViewChild('animation') animationSource: ElementRef;
 
   constructor(
     private route: ActivatedRoute,
@@ -127,6 +129,7 @@ export class PsaComponent implements OnInit {
         this.currentVariable = value;
         this.currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
         this.contourLayer.setSource(this._getContourSource());
+        this.animationSource.nativeElement.load();
       }
     );
 
@@ -144,10 +147,9 @@ export class PsaComponent implements OnInit {
   }
 
   protected _getContourSource(): VectorSource {
-    const bucketPrefix = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
 
     return new VectorSource({
-      url: `${bucketPrefix}${this.currentContour}`,
+      url: `${this.S3_BUCKET_BASE_URL}${this.currentContour}`,
       format: new GeoJSON()
     });
   }
@@ -176,27 +178,32 @@ export class PsaComponent implements OnInit {
           // extract variable and file name from name, i.e "mesh2d_waterdepth__2012-10-22T07:00:00.json"
           let path: string = value.Key;
           let fileName: string = path.replace(data.Prefix, '');
-          let variable: string = value.Key.replace(data.Prefix, '').replace(/(.*)__.*$/, '$1');
 
+          let contourVariable: string = fileName.replace(/(.*)__.*$/, '$1');
           let contourMatch = /.*.json$/.test(fileName);
-          let animationMatch = /.*.mp4$/.test(fileName);
 
-          if (contourMatch && variable) {
-            if (!this.contourSourcePaths[variable]) {
-              this.contourSourcePaths[variable] = [];
+          let animationMatch = /.*.mp4$/.test(fileName);
+          let animationVariable: string = fileName.replace(/(.*).*$/, '$1');
+
+          if (contourMatch && contourVariable) {
+            if (!this.contourSourcePaths[contourVariable]) {
+              this.contourSourcePaths[contourVariable] = [];
             }
-            this.contourSourcePaths[variable].push(path);
-          } else if (animationMatch) {
+            this.contourSourcePaths[contourVariable].push(path);
+          } else if (animationMatch && animationVariable) {
+            // TODO
             console.log(value);
           }
         });
 
         if (Object.keys(this.contourSourcePaths).length > 0) {
-          _.each(this.contourSourcePaths, (contours, variable) => {
+          // sort each contour path set
+          _.each(this.contourSourcePaths, (contours) => {
             contours.sort();
           });
-          // use the first contour date
+          // use the first contour date as the initial
           this.currentContour = this.contourSourcePaths[this.currentVariable][0];
+          // build the map
           this._buildMap();
         } else {
           console.error('Error: No contours retrieved');
@@ -342,5 +349,11 @@ export class PsaComponent implements OnInit {
     }
     const httpParams = new HttpParams({fromObject: params});
     return `/psa-filter/?${httpParams.toString()}`;
+  }
+
+  public currentAnimationURL() {
+    // TODO - clean this up
+    // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
+    return `${this.S3_BUCKET_BASE_URL}contours/${this.currentVariable}.mp4`;
   }
 }

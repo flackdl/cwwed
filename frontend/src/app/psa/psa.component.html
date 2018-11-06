@@ -66,31 +66,40 @@
           <small class="d-block"><sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.</small>
           <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
           <div class="mt-4">
-            <div class="form-group">
-              <label>Variable</label>
-              <select [formControl]="contourVariableInput" class="form-control">
-                <option value="mesh2d_waterdepth">Water Depth</option>
-                <option value="mesh2d_windx">Wind X</option>
-                <option value="mesh2d_windy">Wind Y</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Date</label>
-              <input type="range" [formControl]="contourDateInput" min="0" [max]="getDateInputMax()" class="w-100">
-              <i>{{ getCurrentContourDateFormatted() }}</i>
+            <div class="card">
+              <div class="card-header">
+                Map Controls
+              </div>
+              <div class="card-body">
+                <div class="form-group">
+                  <label>Variable</label>
+                  <select [formControl]="contourVariableInput" class="form-control">
+                    <option value="mesh2d_waterdepth">Water Depth</option>
+                    <option value="mesh2d_windx">Wind X</option>
+                    <option value="mesh2d_windy">Wind Y</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="range" [formControl]="contourDateInput" min="0" [max]="getDateInputMax()" class="w-100">
+                  <i>{{ getCurrentContourDateFormatted() }}</i>
+                </div>
+                <div class="mt-4">
+                  <i>Download selected data: </i>
+                  <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Link</a>
+                  <i *ngIf="!extentCoords">(none selected)</i>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="mt-4">
-            <strong>Download selected data: </strong>
-            <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Link</a>
-            <i *ngIf="!extentCoords">(none selected)</i>
-          </div>
-          <div>
-            <video controls>
-              <source src="https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4" type="video/mp4">
-              Your browser does not support the video tag.
-            </video>
-
+          <div class="card mt-3">
+            <div class="card-header">Video</div>
+            <div class="card-body">
+							<video controls class="w-100" #animation>
+								<source [src]="currentAnimationURL()" type="video/mp4">
+								Your browser does not support the video tag.
+							</video>
+            </div>
           </div>
         </div>
       </div>
