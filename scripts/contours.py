@@ -117,8 +117,6 @@ if __name__ == '__main__':
 
         fig, ax = plt.subplots()
 
-        # TODO - try clearing actual contours vs the whole plot: https://stackoverflow.com/a/40946022
-
         # build geojson outputs and video animation over time series
         anim = animation.FuncAnimation(
             fig,
