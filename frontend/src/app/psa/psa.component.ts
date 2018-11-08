@@ -83,17 +83,41 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  public getCurrentContourDateFormatted() {
+  public getContourDateFormatted(dateIndex: number) {
     // extract the date from the file name
     if (this.contourSourcePaths[this.currentVariable]) {
-      let currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
+      let currentContour = this.contourSourcePaths[this.currentVariable][dateIndex];
       return currentContour ? currentContour.replace(/.*__(.*).json$/, "$1") : '';
     }
     return '';
   }
 
+  public getDateMin() {
+    return this.contourSourcePaths[this.currentVariable] ?
+      this.getContourDateFormatted(0) :
+      null;
+  }
+
+  public getDateMax() {
+    return this.contourSourcePaths[this.currentVariable] ?
+      this.getContourDateFormatted(this.contourSourcePaths[this.currentVariable].length - 1) :
+      null;
+  }
+
   public getDateInputMax() {
     return this.contourSourcePaths[this.currentVariable] ? this.contourSourcePaths[this.currentVariable].length - 1 : 0;
+  }
+
+  public featureConfidence(value) {
+    // TODO - this is simply demonstrating confidence values until the data is supplied
+    if (value == 0) {
+      return 90;
+    }
+    const mod = 100 % Math.abs(value);
+    if (mod <= 50) {
+      return 100 - mod;
+    }
+    return mod;
   }
 
   protected _listenForInputChanges() {
