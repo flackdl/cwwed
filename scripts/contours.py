@@ -14,6 +14,7 @@ from matplotlib.axes import Axes
 # make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 1000
 MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
+LEVELS = 30
 
 
 def datetime64_to_datetime(dt64):
@@ -87,7 +88,7 @@ def build_geojson_contours(data, ax: Axes):
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
-    contourf = ax.contourf(xi, yi, zi, cmap=plt.cm.jet)
+    contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=plt.cm.jet)
 
     # convert matplotlib contourf to geojson
     geojsoncontour.contourf_to_geojson(
@@ -109,13 +110,13 @@ if __name__ == '__main__':
     # open the dataset
     dataset = xarray.open_dataset(dataset_path)
 
+    fig, ax = plt.subplots()
+
     variables = ['mesh2d_waterdepth', 'mesh2d_windx', 'mesh2d_windy']
 
     for variable in variables:
 
         print(variable)
-
-        fig, ax = plt.subplots()
 
         # build geojson outputs and video animation over time series
         anim = animation.FuncAnimation(

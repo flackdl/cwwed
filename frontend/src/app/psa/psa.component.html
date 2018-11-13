@@ -60,8 +60,8 @@
               </div>
             </div>
           </div>
-          <div id="map-info" *ngIf="currentFeature && !extentCoords">
-            {{ currentFeature.title }} ({{ featureConfidence(currentFeature.title) }}% confidence)
+          <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
+            {{ currentFeature.title }} {{ variableMeasurement() }} ({{ currentConfidence }}% confidence)
           </div>
         </div>
         <div>
@@ -81,19 +81,21 @@
                     <option value="mesh2d_windy">Wind Y</option>
                   </select>
                 </div>
-                <div class="row align-items-center">
-                  <div class="col-md-2">
-                    <small>{{ getDateMin() }}</small>
+                <div class="form-group">
+                  <label>Date</label>
+                  <input type="range" [formControl]="contourDateInput" min="0" [max]="getDateInputMax()" class="w-100">
+                </div>
+                <div class="d-flex justify-content-around">
+                  <div>
+                    <small>Start: {{ getDateMin() }}</small>
                   </div>
-                  <div class="col-md-8 form-group">
-                    <label>Date</label>
-                    <input type="range" [formControl]="contourDateInput" min="0" [max]="getDateInputMax()" class="w-100">
+                  <div>
+                    <strong>{{ getContourDateFormatted(contourDateInput.value) }}</strong>
                   </div>
-                  <div class="col-md-2 justify-content-end">
-                    <small>{{ getDateMax() }}</small>
+                  <div>
+                    <small>End: {{ getDateMax() }}</small>
                   </div>
                 </div>
-                <div class="w-100 text-center"><i>{{ getContourDateFormatted(contourDateInput.value) }}</i></div>
                 <div class="mt-4">
                   <i>Download selected data: </i>
                   <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Link</a>

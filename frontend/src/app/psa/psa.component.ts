@@ -17,6 +17,7 @@ import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 
+const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
 
 
@@ -55,6 +56,7 @@ export class PsaComponent implements OnInit {
     [variable_name: string]: String[],
   } = {};
   public currentContour: String;
+  public currentConfidence: Number;
   public contourDateInput = new FormControl(0);
   public mapDataOpacityInput = new FormControl(.5);
   public contourLayer: any;  // VectorLayer
@@ -106,18 +108,6 @@ export class PsaComponent implements OnInit {
 
   public getDateInputMax() {
     return this.contourSourcePaths[this.currentVariable] ? this.contourSourcePaths[this.currentVariable].length - 1 : 0;
-  }
-
-  public featureConfidence(value) {
-    // TODO - this is simply demonstrating confidence values until the data is supplied
-    if (value == 0) {
-      return 90;
-    }
-    const mod = 100 % Math.abs(value);
-    if (mod <= 50) {
-      return 100 - mod;
-    }
-    return mod;
   }
 
   protected _listenForInputChanges() {
@@ -355,6 +345,21 @@ export class PsaComponent implements OnInit {
     // highlight current feature
     this.map.on('pointermove', (event) => {
       const features = this.map.getFeaturesAtPixel(event.pixel);
+
+      //
+      // TODO - generating random confidence using a consistent seed of the current pixel
+      //
+      const rand = seedrandom(event.pixel.reduce(
+        (p1, p2) => {
+          return Math.round(p1) + Math.round(p2);
+        }));
+      const randValue = Math.round(rand() * 100);
+      if (randValue < 50) {
+        this.currentConfidence = randValue + 50;
+      } else {
+        this.currentConfidence = randValue;
+      }
+
       if (!features) {
         this.currentFeature = undefined;
         return;
@@ -362,6 +367,11 @@ export class PsaComponent implements OnInit {
       this.currentFeature = features[0].getProperties();
     });
 
+  }
+
+  public variableMeasurement() {
+    // TODO - this is temporary and should not be hardcoded
+    return this.currentVariable === 'mesh2d_waterdepth' ? 'feet': 'm/s';
   }
 
   public filteredDownloadURL() {
