@@ -369,9 +369,9 @@ export class PsaComponent implements OnInit {
 
   }
 
-  public variableMeasurement() {
+  public variableUnit() {
     // TODO - this is temporary and should not be hardcoded
-    return this.currentVariable === 'mesh2d_waterdepth' ? 'feet': 'm/s';
+    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
   }
 
   public filteredDownloadURL() {

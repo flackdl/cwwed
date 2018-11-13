@@ -61,7 +61,7 @@
             </div>
           </div>
           <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
-            {{ currentFeature.title }} {{ variableMeasurement() }} ({{ currentConfidence }}% confidence)
+            {{ currentFeature.title }} {{ variableUnit() }} ({{ currentConfidence }}% confidence)
           </div>
         </div>
         <div>
@@ -85,7 +85,7 @@
                   <label>Date</label>
                   <input type="range" [formControl]="contourDateInput" min="0" [max]="getDateInputMax()" class="w-100">
                 </div>
-                <div class="d-flex justify-content-around">
+                <div class="d-flex justify-content-between">
                   <div>
                     <small>Start: {{ getDateMin() }}</small>
                   </div>
