@@ -8,19 +8,8 @@
   </h5>
   <div class="card-body">
     <div class="row">
-      <!--
-      <div class="col-sm-4">
-        <div class="list-group">
-          <li class="list-group-item list-group-item-action active">
-            Delaware Bay
-          </li>
-        </div>
-      </div>
-      -->
       <div class="col-sm">
-
         <ngx-loading [show]="isLoading"></ngx-loading>
-
         <div class="d-flex justify-content-between align-items-center">
           <h1>Delaware Bay</h1>
           <h6>
@@ -63,6 +52,13 @@
           <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
             {{ currentFeature.title }} {{ variableUnit() }} ({{ currentConfidence }}% confidence)
           </div>
+        </div>
+        <div #popup class="ol-popup">
+          <div class="position-relative">
+            <ngx-loading [show]="!popupContent"></ngx-loading>
+          </div>
+          <button (click)="closePopup()" class="ol-popup-closer"></button>
+          <div>{{ popupContent }}</div>
         </div>
         <div>
           <small class="d-block"><sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.</small>

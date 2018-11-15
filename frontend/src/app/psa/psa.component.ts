@@ -13,6 +13,7 @@ import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style } from 'ol/style.js';
+import Overlay from 'ol/Overlay.js';
 import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
@@ -63,7 +64,10 @@ export class PsaComponent implements OnInit {
   public contourVariableInput = new FormControl('mesh2d_waterdepth');
   public currentVariable: string = 'mesh2d_waterdepth';
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
+  public popupOverlay: Overlay;
+  public popupContent: String;
   @ViewChild('animation') animationSource: ElementRef;
+  @ViewChild('popup') popup: ElementRef;
 
   constructor(
     private route: ActivatedRoute,
@@ -237,10 +241,24 @@ export class PsaComponent implements OnInit {
     })
   }
 
+  public closePopup() {
+    this.popupOverlay.setPosition(undefined);
+  }
+
   protected _buildMap() {
 
     const mapBoxToken = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
 
+    // create an overlay to anchor the address specific popup to the map
+    this.popupOverlay = new Overlay({
+      element: this.popup.nativeElement,
+      autoPan: true,
+      autoPanAnimation: {
+        duration: 250
+      }
+    });
+
+    // create a vector layer with the contour data
     this.contourLayer = new VectorLayer({
       source: this._getContourSource(),
       style: (feature) => {
@@ -285,6 +303,7 @@ export class PsaComponent implements OnInit {
         this.contourLayer,
       ],
       target: 'map',
+      overlays: [this.popupOverlay],
       view: new View({
         center: fromLonLat(<any>[-75.249730, 39.153332]),
         zoom: 8,
@@ -309,9 +328,19 @@ export class PsaComponent implements OnInit {
       this.isLoadingMap = false;
     });
 
-    // close map controls on single click
-    this.map.on('singleclick', () => {
+    this.map.on('singleclick', (event) => {
+
+      // close map controls on single click
       this.isMapControlsCollapsed = true;
+
+      // configure popup overlay
+      this.popupOverlay.setPosition(event.coordinate);
+      const coordinate = toLonLat(event.coordinate);
+      const lat = coordinate[0];
+      const lon = coordinate[1];
+      console.log(event.coordinate);
+      console.log(toLonLat(coordinate));
+      this.popupContent = `${lat} ${lon}`;
     });
 
     // configure box extent selection

@@ -11,7 +11,7 @@ from matplotlib.animation import FFMpegWriter
 from matplotlib.axes import Axes
 
 
-# make these values less arbitrary by analyzing the input data density and spatial coverage
+# TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 1000
 MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
 LEVELS = 30
