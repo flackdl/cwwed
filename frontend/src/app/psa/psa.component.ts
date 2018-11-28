@@ -42,7 +42,6 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
-  public isMapControlsCollapsed = true;
   public demoDataURL = "https://dev.cwwed-staging.com/thredds/dodsC/cwwed/delaware.nc.html";
   public demoDataPath = "/media/bucket/cwwed/THREDDS/delaware.nc";
   public isLoading = true;
@@ -210,7 +209,6 @@ export class PsaComponent implements OnInit {
             this.contourSourcePaths[contourVariable].push(path);
           } else if (animationMatch && animationVariable) {
             // TODO
-            console.log(value);
           }
         });
 
@@ -228,7 +226,7 @@ export class PsaComponent implements OnInit {
         }
 
         this.isLoading = false;
-        console.log('finished loading (got s3 objects)');
+        console.log('finished loading initial data');
       }
     });
   }
@@ -330,16 +328,11 @@ export class PsaComponent implements OnInit {
 
     this.map.on('singleclick', (event) => {
 
-      // close map controls on single click
-      this.isMapControlsCollapsed = true;
-
       // configure popup overlay
       this.popupOverlay.setPosition(event.coordinate);
       const coordinate = toLonLat(event.coordinate);
       const lat = coordinate[0];
       const lon = coordinate[1];
-      console.log(event.coordinate);
-      console.log(toLonLat(coordinate));
       this.popupContent = `${lat} ${lon}`;
     });
 
