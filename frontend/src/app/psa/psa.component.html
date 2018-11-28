@@ -96,17 +96,28 @@
           <small class="d-block"><sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.</small>
           <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
 
-          <div class="card mt-3">
-            <div class="card-header">Time Series Video</div>
-            <div class="card-body">
-              <video controls class="w-100" #animation>
-                <source [src]="currentAnimationURL()" type="video/mp4">
-                Your browser does not support the video tag.
-              </video>
-            </div>
-          </div>
+          <p>
+						<button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Watch Time Series Video</button>
+          </p>
+
         </div>
       </div>
     </div>
   </div>
+
+  <ng-template #content let-modal>
+    <div class="modal-header">
+      <h4 class="modal-title">Time Series Video</h4>
+      <button type="button" class="close" aria-label="Close" (click)="modal.dismiss()">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <video controls class="w-100">
+        <source [src]="currentAnimationURL()" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </ng-template>
+
 </div>

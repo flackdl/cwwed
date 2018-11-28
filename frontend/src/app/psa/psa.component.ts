@@ -1,3 +1,4 @@
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
@@ -65,12 +66,12 @@ export class PsaComponent implements OnInit {
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public popupContent: String;
-  @ViewChild('animation') animationSource: ElementRef;
   @ViewChild('popup') popup: ElementRef;
 
   constructor(
     private route: ActivatedRoute,
     private cwwedService: CwwedService,
+    private modalService: NgbModal,
   ) {}
 
   ngOnInit() {
@@ -86,6 +87,10 @@ export class PsaComponent implements OnInit {
         this.nsemId = parseInt(data.id);
       }
     });
+  }
+
+  public openModal(content) {
+    this.modalService.open(content);
   }
 
   public getContourDateFormatted(dateIndex: number) {
@@ -146,7 +151,6 @@ export class PsaComponent implements OnInit {
         this.currentVariable = value;
         this.currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
         this.contourLayer.setSource(this._getContourSource());
-        this.animationSource.nativeElement.load();
       }
     );
 
