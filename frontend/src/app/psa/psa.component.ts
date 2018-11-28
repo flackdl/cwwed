@@ -66,7 +66,7 @@ export class PsaComponent implements OnInit {
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public popupContent: String;
-  @ViewChild('popup') popup: ElementRef;
+  @ViewChild('popup') popupEl: ElementRef;
 
   constructor(
     private route: ActivatedRoute,
@@ -253,7 +253,7 @@ export class PsaComponent implements OnInit {
 
     // create an overlay to anchor the address specific popup to the map
     this.popupOverlay = new Overlay({
-      element: this.popup.nativeElement,
+      element: this.popupEl.nativeElement,
       autoPan: true,
       autoPanAnimation: {
         duration: 250
