@@ -1,5 +1,6 @@
 import os
 import boto3
+import logging
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage
 from named_storms.utils import create_directory
@@ -69,6 +70,10 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
         """
         Copies an S3 object to another location within the same bucket
         """
+
+        if not self.exists(source):
+            logging.warning('skipping source that does not exist: {}'.format(source))
+            return
 
         # delete any existing version if it exists
         if self.exists(destination):

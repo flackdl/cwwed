@@ -7,8 +7,10 @@ ENV CWWED_ARCHIVES_ACCESS_KEY_ID ''
 ENV CWWED_ARCHIVES_SECRET_ACCESS_KEY ''
 ENV SLACK_BOT_TOKEN ''
 
+# include app
 RUN mkdir /app
 ADD . /app
+ADD docker-entrypoint.sh /app
 WORKDIR /app
 
 RUN echo "Installing dependencies and building application" \
@@ -32,4 +34,4 @@ EXPOSE 80
 
 VOLUME /media/bucket/cwwed
 
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:80", "cwwed.wsgi"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

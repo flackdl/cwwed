@@ -20,7 +20,7 @@ from django.views.generic import TemplateView
 from django.conf.urls.static import static
 
 from cwwed.views import AngularStaticAssetsRedirectView, PSAFilterView
-from audit.proxy import ThreddsProxy
+from audit.proxy import OpenDapProxy
 
 
 urlpatterns = [
@@ -30,7 +30,7 @@ urlpatterns = [
     path('api/', include('cwwed.api.urls')),
     path('psa-filter/', PSAFilterView.as_view()),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
-    re_path(r'^thredds/(?P<path>.*)$', ThreddsProxy.as_view(upstream=settings.THREDDS_URL)),
+    re_path(r'^opendap/(?P<path>.*)$', OpenDapProxy.as_view(upstream=settings.OPENDAP_URL)),
 ]
 
 # serving media in dev only

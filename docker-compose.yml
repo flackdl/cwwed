@@ -9,17 +9,13 @@ services:
     volumes:
       - cwwed-postgresql:/var/lib/postgresql/data
 
-  thredds:
-    image: unidata/thredds-docker:4.6.11
+  opendap:
+    image: opendap/hyrax:1.15.1
     ports:
       - "9000:8080"
-    container_name: thredds
+    container_name: opendap
     volumes:
-      - ./configs/thredds/catalog.xml:/usr/local/tomcat/content/thredds/catalog.xml:ro
-      - ./configs/thredds/threddsConfig.xml:/usr/local/tomcat/content/thredds/threddsConfig.xml:ro
-      - /media/bucket/cwwed:/usr/local/tomcat/content/thredds/public:ro
-    env_file:
-      - "compose.thredds.env"
+      - /media/bucket/cwwed/OPENDAP/:/usr/share/hyrax
 
   rabbitmq:
     image: rabbitmq
@@ -38,7 +34,7 @@ services:
   #    DATABASE_URL: postgis://postgres@postgis:5432/postgres
   #  depends_on:
   #    - postgis
-  #    - thredds
+  #    - opendap
   #    - rabbitmq
 
 volumes:

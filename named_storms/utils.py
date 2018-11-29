@@ -66,7 +66,7 @@ def named_storm_path(named_storm: NamedStorm) -> str:
     """
     return os.path.join(
         root_data_path(),
-        settings.CWWED_THREDDS_DIR,
+        settings.CWWED_OPENDAP_DIR,
         named_storm.name,
     )
 
@@ -143,57 +143,55 @@ def get_superuser_emails():
     return [u.email for u in User.objects.filter(is_superuser=True) if u.email]
 
 
-def get_thredds_url_root(request: HttpRequest) -> str:
+def get_opendap_url_root(request: HttpRequest) -> str:
     return '{}://{}'.format(
         request.scheme,
         os.path.join(
             request.get_host(),
-            'thredds',
-            'catalog',
-            'cwwed',
+            'opendap',
         ))
 
 
-def get_thredds_url_named_storm_root(request: HttpRequest, named_storm: NamedStorm) -> str:
+def get_opendap_url_named_storm_root(request: HttpRequest, named_storm: NamedStorm) -> str:
     return os.path.join(
-        get_thredds_url_root(request),
+        get_opendap_url_root(request),
         parse.quote(named_storm.name),
     )
 
 
-def get_thredds_url_nsem_root(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_root(request: HttpRequest, nsem: NSEM) -> str:
     return os.path.join(
-        get_thredds_url_named_storm_root(request, nsem.named_storm),
+        get_opendap_url_named_storm_root(request, nsem.named_storm),
         parse.quote(settings.CWWED_NSEM_DIR_NAME),
         'v{}'.format(nsem.id),
     )
 
 
-def get_thredds_url_nsem(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem(request: HttpRequest, nsem: NSEM) -> str:
     return os.path.join(
-        get_thredds_url_nsem_root(request, nsem),
+        get_opendap_url_nsem_root(request, nsem),
         'catalog.html',
     )
 
 
-def get_thredds_url_nsem_psa(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NSEM) -> str:
     return os.path.join(
-        get_thredds_url_nsem_root(request, nsem),
+        get_opendap_url_nsem_root(request, nsem),
         parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
         'catalog.html',
     )
 
 
-def get_thredds_url_nsem_covered_data_root(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_covered_data_root(request: HttpRequest, nsem: NSEM) -> str:
     return os.path.join(
-        get_thredds_url_nsem_root(request, nsem),
+        get_opendap_url_nsem_root(request, nsem),
         parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
     )
 
 
-def get_thredds_url_nsem_covered_data(request: HttpRequest, nsem: NSEM, covered_data: CoveredData) -> str:
+def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NSEM, covered_data: CoveredData) -> str:
     return os.path.join(
-        get_thredds_url_nsem_covered_data_root(request, nsem),
+        get_opendap_url_nsem_covered_data_root(request, nsem),
         parse.quote(covered_data.name),
         'catalog.html',
     )

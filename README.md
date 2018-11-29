@@ -17,7 +17,7 @@ https://www.weather.gov/sti/coastalact_cwwed
 
 ### Running via Docker Compose
    
-    # start PostGIS/THREDDS/RabbitMQ via Docker
+    # start PostGIS/OPeNDAP/RabbitMQ via Docker
     docker-compose up
     
     # start server
@@ -70,7 +70,6 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
     # build images
     docker build -t cwwed-app .
-    docker build -t cwwed-thredds configs/thredds
     
     # create secrets
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
@@ -97,7 +96,7 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # create services individually
     kubectl apply -f configs/service-cwwed.yml
     kubectl apply -f configs/local_service-postgis.yml
-    kubectl apply -f configs/service-thredds.yml
+    kubectl apply -f configs/service-opendap.yml
     kubectl apply -f configs/service-rabbitmq.yml
     kubectl apply -f configs/service-celery-flower.yml
     
@@ -107,7 +106,7 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     
     # create deployments individually
     kubectl apply -f configs/deployment-cwwed.yml
-    kubectl apply -f configs/deployment-thredds.yml
+    kubectl apply -f configs/deployment-opendap.yml
     kubectl apply -f configs/deployment-rabbitmq.yml
     kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml

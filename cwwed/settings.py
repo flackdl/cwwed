@@ -281,7 +281,7 @@ DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 
 CWWED_ARCHIVE_EXTENSION = 'tgz'
 CWWED_DATA_DIR = MEDIA_ROOT
-CWWED_THREDDS_DIR = 'THREDDS'
+CWWED_OPENDAP_DIR = 'OPENDAP'
 
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
 CWWED_COVERED_ARCHIVE_DIR_NAME = 'Covered Data Archive'
@@ -298,6 +298,6 @@ CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD')
 CWWED_ARCHIVES_ACCESS_KEY_ID = os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID']
 CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY']
 
-THREDDS_URL = 'http://{}:9000/thredds/'.format(os.environ.get('THREDDS_HOST', 'localhost'))
+OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 
 SLACK_BOT_TOKEN = os.environ['SLACK_BOT_TOKEN']

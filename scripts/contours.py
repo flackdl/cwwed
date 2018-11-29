@@ -105,7 +105,7 @@ def build_geojson_contours(data, ax: Axes):
 
 if __name__ == '__main__':
 
-    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/THREDDS/PSA_demo/Sandy_DBay/DBay-run_map.nc'
+    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
 
     # open the dataset
     dataset = xarray.open_dataset(dataset_path)

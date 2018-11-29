@@ -37,7 +37,7 @@ spec:
           - name: CELERY_BACKEND
             value: rabbitmq-service
           - name: THREDDS_HOST
-            value: thredds-service
+            value: opendap-service
         # secrets
         envFrom:
           - secretRef:

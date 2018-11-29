@@ -59,7 +59,7 @@ class NSEMViewset(viewsets.ModelViewSet):
             link=[
                 # send an email to the "nsem" user when the archival is complete
                 email_nsem_covered_data_complete_task.s(base_url),
-                # download and extract archives into file storage so they're available for discovery (i.e thredds)
+                # download and extract archives into file storage so they're available for discovery (i.e opendap)
                 extract_nsem_covered_data_task.s()
             ],
         )

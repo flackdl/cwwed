@@ -2,15 +2,15 @@ from urllib.parse import quote
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from revproxy.views import ProxyView, QUOTE_SAFE
-from audit.models import ThreddsRequestLog
+from audit.models import OpenDapRequestLog
 
 
-class ThreddsProxy(ProxyView):
+class OpenDapProxy(ProxyView):
 
     @method_decorator(login_required)
     def dispatch(self, request, path):
         if self._should_log():
-            ThreddsRequestLog(
+            OpenDapRequestLog(
                 user=request.user,
                 path=request.get_full_path(),
             ).save()
@@ -27,7 +27,8 @@ class ThreddsProxy(ProxyView):
         return self.request.META['QUERY_STRING']
 
     def get_quoted_path(self, path):
-        # overridden to use quote vs quote_plus because THREDDS chokes on the plus characters
+        # TODO - is this relevant now that we switched from THREDDS to Hyrax (OPeNDAP)?
+        # overridden to use quote vs quote_plus because OPeNDAP chokes on the plus characters
         return quote(path.encode('utf8'), QUOTE_SAFE)
 
     def _should_log(self) -> bool:

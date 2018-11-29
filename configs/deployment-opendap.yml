@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: thredds-deployment
+  name: opendap-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: thredds-container
+      app: opendap-container
   template:
     metadata:
       labels:
-        app: thredds-container
+        app: opendap-container
     spec:
       volumes:
       - name: cwwed-volume-storage
@@ -19,13 +19,13 @@ spec:
         #claimName: cwwed-volume-claim
          claimName: efs
       containers:
-      - name: thredds-container
-        image: flackdl/thredds
+      - name: opendap-container
+        image: opendap/hyrax:1.15.1
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
         volumeMounts:
-        - mountPath: "/usr/local/tomcat/content/thredds/public"
+        - mountPath: "/usr/share/hyrax"
           name: cwwed-volume-storage
           readOnly: true
         resources:
