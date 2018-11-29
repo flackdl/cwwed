@@ -16,18 +16,6 @@
   background: rgba(6, 136, 5, 0.7);
 }
 
-#map-controls {
-  z-index: 1;
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  margin: 0;
-  background: white;
-  color: black;
-  border: 0;
-}
-
-
 .ol-popup {
   position: absolute;
   background-color: white;
@@ -62,11 +50,7 @@
   margin-left: -11px;
 }
 .ol-popup-closer {
-  text-decoration: none;
   position: absolute;
   top: 2px;
   right: 8px;
-}
-.ol-popup-closer:after {
-  content: "✖";
 }

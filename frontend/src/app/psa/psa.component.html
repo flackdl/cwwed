@@ -16,6 +16,8 @@
       <div class="row">
 
 				<div class="col-lg-4 mt-3">
+
+          <!-- map controls -->
           <ngb-accordion #acc="ngbAccordion" activeIds="map-layers">
             <ngb-panel title="Map Layers" id="map-layers">
               <ng-template ngbPanelContent>
@@ -75,18 +77,19 @@
               </ng-template>
             </ngb-panel>
           </ngb-accordion>
+
         </div>
 
         <div class="col mt-3">
 
+          <!-- map -->
           <div id="map" class="position-relative">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
-            <div #popup class="ol-popup">
-              <div class="position-relative">
-                <ngx-loading [show]="!popupContent"></ngx-loading>
+            <div #popup>
+              <div class="ol-popup" [class.d-none]="!popupContent">
+                <button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
+                <div>{{ popupContent }}</div>
               </div>
-              <button (click)="closePopup()" class="ol-popup-closer"></button>
-              <div>{{ popupContent }}</div>
             </div>
             <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
               {{ currentFeature.title }} {{ variableUnit() }} ({{ currentConfidence }}% confidence)
@@ -96,15 +99,16 @@
           <small class="d-block"><sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.</small>
           <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
 
-          <p>
-						<button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Watch Time Series Video</button>
+          <p class="mt-3">
+						<button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Time Series Video</button>
           </p>
-
         </div>
+
       </div>
     </div>
   </div>
 
+  <!-- video modal -->
   <ng-template #content let-modal>
     <div class="modal-header">
       <h4 class="modal-title">Time Series Video</h4>
