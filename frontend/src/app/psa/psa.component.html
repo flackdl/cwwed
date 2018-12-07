@@ -70,8 +70,11 @@
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
-                    <a *ngIf="extentCoords" [href]="filteredDownloadURL()">Download</a>
                     <i *ngIf="!extentCoords">(none selected)</i>
+                    <!-- TODO - need grid dataset to use geogrid() feature -->
+                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.ascii?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">ASCII</a>
+                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.nc?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">NetCDF</a>
+                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.csv?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">CSV</a>
                   </dd>
                 </dl>
               </ng-template>
