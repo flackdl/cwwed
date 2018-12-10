@@ -27,8 +27,9 @@ class PSAFilterView(View):
     @method_decorator(login_required)
     def get(self, request):
         path = request.GET.get('path')
+        absolute_path = os.path.join(settings.CWWED_OPENDAP_DIR, path)
         extent = request.GET.getlist('extent')
-        if not path or not os.path.exists(path):
+        if not absolute_path or not os.path.exists(absolute_path):
             raise Http404('Path does not exist')
         elif not extent or not len(extent) == 4:
             raise Http404('Extent bounds (4) not supplied')
@@ -42,7 +43,7 @@ class PSAFilterView(View):
         lat_start = extent[1]
         lat_end = extent[3]
 
-        self._dataset = xr.open_dataset(path)
+        self._dataset = xr.open_dataset(absolute_path)
 
         mask = (
                 (self._dataset.nmesh2d_face.mesh2d_face_x >= lon_start)

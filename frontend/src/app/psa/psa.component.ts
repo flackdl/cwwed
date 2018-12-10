@@ -43,8 +43,8 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
-  public demoDataURL = "https://dev.cwwed-staging.com/opendap/delaware.nc.html";
-  public demoDataPath = "/media/bucket/cwwed/OPENDAP/delaware.nc";
+  public demoDataURL = "/opendap/delaware.nc.html";
+  public demoDataPath = "delaware.nc";
   public isLoading = true;
   public isLoadingMap = true;
   public map: any; // ol.Map
