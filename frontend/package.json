@@ -24,6 +24,7 @@
     "@angular/router": "^7.0.0",
     "@icon/open-iconic": "^1.1.1-2",
     "@ng-bootstrap/ng-bootstrap": "^3.0.0",
+    "@swimlane/ngx-charts": "^10.0.0",
     "@types/lodash": "^4.14.117",
     "aws-sdk": "^2.344.0",
     "bootstrap": "^4.1.3",

@@ -65,8 +65,136 @@ export class PsaComponent implements OnInit {
   public currentVariable: string = 'mesh2d_waterdepth';
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
-  public popupContent: String;
+  public featureGraphResults = [
+    {
+      "name": "Indonesia",
+      "series": [
+        {
+          "value": 3641,
+          "name": "2016-09-15T23:12:42.172Z"
+        },
+        {
+          "value": 4043,
+          "name": "2016-09-23T12:55:51.176Z"
+        },
+        {
+          "value": 5874,
+          "name": "2016-09-18T23:12:36.756Z"
+        },
+        {
+          "value": 5540,
+          "name": "2016-09-23T22:59:07.274Z"
+        },
+        {
+          "value": 2256,
+          "name": "2016-09-20T04:28:04.669Z"
+        }
+      ]
+    },
+    {
+      "name": "Bonaire, Sint Eustatius and Saba",
+      "series": [
+        {
+          "value": 6855,
+          "name": "2016-09-15T23:12:42.172Z"
+        },
+        {
+          "value": 4024,
+          "name": "2016-09-23T12:55:51.176Z"
+        },
+        {
+          "value": 5365,
+          "name": "2016-09-18T23:12:36.756Z"
+        },
+        {
+          "value": 4283,
+          "name": "2016-09-23T22:59:07.274Z"
+        },
+        {
+          "value": 5830,
+          "name": "2016-09-20T04:28:04.669Z"
+        }
+      ]
+    },
+    {
+      "name": "Guernsey",
+      "series": [
+        {
+          "value": 4302,
+          "name": "2016-09-15T23:12:42.172Z"
+        },
+        {
+          "value": 2825,
+          "name": "2016-09-23T12:55:51.176Z"
+        },
+        {
+          "value": 2025,
+          "name": "2016-09-18T23:12:36.756Z"
+        },
+        {
+          "value": 6300,
+          "name": "2016-09-23T22:59:07.274Z"
+        },
+        {
+          "value": 3765,
+          "name": "2016-09-20T04:28:04.669Z"
+        }
+      ]
+    },
+    {
+      "name": "United Arab Emirates",
+      "series": [
+        {
+          "value": 4815,
+          "name": "2016-09-15T23:12:42.172Z"
+        },
+        {
+          "value": 2074,
+          "name": "2016-09-23T12:55:51.176Z"
+        },
+        {
+          "value": 4193,
+          "name": "2016-09-18T23:12:36.756Z"
+        },
+        {
+          "value": 4184,
+          "name": "2016-09-23T22:59:07.274Z"
+        },
+        {
+          "value": 4614,
+          "name": "2016-09-20T04:28:04.669Z"
+        }
+      ]
+    },
+    {
+      "name": "France",
+      "series": [
+        {
+          "value": 4224,
+          "name": "2016-09-15T23:12:42.172Z"
+        },
+        {
+          "value": 6745,
+          "name": "2016-09-23T12:55:51.176Z"
+        },
+        {
+          "value": 6216,
+          "name": "2016-09-18T23:12:36.756Z"
+        },
+        {
+          "value": 5457,
+          "name": "2016-09-23T22:59:07.274Z"
+        },
+        {
+          "value": 3802,
+          "name": "2016-09-20T04:28:04.669Z"
+        }
+      ]
+    }
+  ];
   @ViewChild('popup') popupEl: ElementRef;
+
+  protected _extentInteraction: ExtentInteraction;
 
   constructor(
     private route: ActivatedRoute,
@@ -247,6 +375,28 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(undefined);
   }
 
+  public variableUnit() {
+    // TODO - this is temporary and should not be hardcoded
+    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
+  }
+
+  public filteredDownloadURL() {
+    const params = {
+      path: this.demoDataPath,
+    };
+    if (this.extentCoords) {
+      params['extent'] = this.extentCoords;
+    }
+    const httpParams = new HttpParams({fromObject: params});
+    return `/psa-filter/?${httpParams.toString()}`;
+  }
+
+  public currentAnimationURL() {
+    // TODO - clean this up
+    // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
+    return `${this.S3_BUCKET_BASE_URL}contours/${this.currentVariable}.mp4`;
+  }
+
   protected _buildMap() {
 
     const mapBoxToken = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
@@ -331,42 +481,11 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('singleclick', (event) => {
-
       // configure popup overlay
       this.popupOverlay.setPosition(event.coordinate);
-      const coordinate = toLonLat(event.coordinate);
-      const lat = coordinate[0];
-      const lon = coordinate[1];
-      this.popupContent = `${lat} ${lon}`;
     });
 
-    // configure box extent selection
-    const extent = new ExtentInteraction({
-      condition: platformModifierKeyOnly,
-    });
-    this.map.addInteraction(extent);
-    extent.setActive(false);
-
-    // enable geo box interaction by holding shift
-    window.addEventListener('keydown', (event: any) => {
-      if (event.keyCode == 16) {
-        extent.setActive(true);
-      }
-    });
-
-    // disable geo box interaction and catpure extent box
-    window.addEventListener('keyup', (event: any) => {
-      if (event.keyCode == 16) {
-        const extentCoords = extent.getExtent();
-        if (extentCoords && extentCoords.length === 4) {
-            this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
-              toLonLat(<any>[extentCoords[2], extentCoords[3]]));
-        } else {
-          this.extentCoords = null;
-        }
-        extent.setActive(false);
-      }
-    });
+    this._configureMapExtentInteraction();
 
     // highlight current feature
     this.map.on('pointermove', (event) => {
@@ -395,25 +514,34 @@ export class PsaComponent implements OnInit {
 
   }
 
-  public variableUnit() {
-    // TODO - this is temporary and should not be hardcoded
-    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
-  }
+  protected _configureMapExtentInteraction() {
 
-  public filteredDownloadURL() {
-    const params = {
-      path: this.demoDataPath,
-    };
-    if (this.extentCoords) {
-      params['extent'] = this.extentCoords;
-    }
-    const httpParams = new HttpParams({fromObject: params});
-    return `/psa-filter/?${httpParams.toString()}`;
-  }
+    // configure box extent selection
+    this._extentInteraction = new ExtentInteraction({
+      condition: platformModifierKeyOnly,
+    });
+    this.map.addInteraction(this._extentInteraction);
+    this._extentInteraction.setActive(false);
 
-  public currentAnimationURL() {
-    // TODO - clean this up
-    // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
-    return `${this.S3_BUCKET_BASE_URL}contours/${this.currentVariable}.mp4`;
+    // enable geo box interaction by holding shift
+    window.addEventListener('keydown', (event: any) => {
+      if (event.keyCode == 16) {
+        this._extentInteraction.setActive(true);
+      }
+    });
+
+    // disable geo box interaction and catpure extent box
+    window.addEventListener('keyup', (event: any) => {
+      if (event.keyCode == 16) {
+        const extentCoords = this._extentInteraction.getExtent();
+        if (extentCoords && extentCoords.length === 4) {
+            this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
+              toLonLat(<any>[extentCoords[2], extentCoords[3]]));
+        } else {
+          this.extentCoords = null;
+        }
+        this._extentInteraction.setActive(false);
+      }
+    });
   }
 }

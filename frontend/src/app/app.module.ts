@@ -6,6 +6,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
+import { NgxChartsModule } from '@swimlane/ngx-charts';
 
 
 import { AppComponent } from './app.component';
@@ -72,6 +73,7 @@ const appRoutes: Routes = [
     HttpClientModule,
     NgxLoadingModule,
     ReactiveFormsModule,
+    NgxChartsModule,
   ],
   entryComponents: [],
   providers: [],
