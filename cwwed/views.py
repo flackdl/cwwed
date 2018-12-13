@@ -28,20 +28,23 @@ class PSAFilterView(View):
     def get(self, request):
         path = request.GET.get('path')
         absolute_path = os.path.join(settings.CWWED_OPENDAP_DIR, path)
-        extent = request.GET.getlist('extent')
+        coordinate = request.GET.getlist('coordinate')
         if not absolute_path or not os.path.exists(absolute_path):
             raise Http404('Path does not exist')
-        elif not extent or not len(extent) == 4:
-            raise Http404('Extent bounds (4) not supplied')
+        elif not coordinate or not len(coordinate) == 4:
+            raise Http404('Coordinates (2) not supplied')
         try:
-            extent = list(map(float, extent))
+            coordinate = list(map(float, coordinate))
         except ValueError:
-            raise Http404('Extent bounds should be floats')
+            raise Http404('Coordinate should be floats')
 
-        lon_start = extent[0]
-        lon_end = extent[2]
-        lat_start = extent[1]
-        lat_end = extent[3]
+        lon = coordinate[0]
+        lat = coordinate[1]
+
+        lon_start = int(lon * 10 * 3) / (10.0 * 3)
+        lon_end = int(lon * 10 * 5) / (10.0 * 5)
+        lat_start = int(lat * 10 * 3) / (10.0 * 3)
+        lat_end = int(lat * 10 * 5) / (10.0 * 5)
 
         self._dataset = xr.open_dataset(absolute_path)
 
