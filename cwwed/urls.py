@@ -19,7 +19,7 @@ from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.conf.urls.static import static
 
-from cwwed.views import AngularStaticAssetsRedirectView, PSAFilterView
+from cwwed.views import AngularStaticAssetsRedirectView
 from audit.proxy import OpenDapProxy
 
 
@@ -28,7 +28,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('api/', include('cwwed.api.urls')),
-    path('psa-filter/', PSAFilterView.as_view()),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^opendap/(?P<path>.*)$', OpenDapProxy.as_view(upstream=settings.OPENDAP_URL)),
 ]

@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
 from named_storms.tasks import (
@@ -34,6 +35,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     """
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
+    permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
     filter_fields = ('named_storm__id', 'model_output_snapshot_extracted')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
