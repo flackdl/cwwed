@@ -43,7 +43,7 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
-  public demoDataURL = "/opendap/PSA_demo/Sandy_DBay/DBay-run_map.nc.html";
+  public demoDataURL = "/opendap/PSA_demo/Sandy_DBay/DBay-run_map.nc";
   public demoDataPath = "PSA_demo/Sandy_DBay/DBay-run_map.nc";
   public isLoading = true;
   public isLoadingMap = true;
@@ -252,7 +252,11 @@ export class PsaComponent implements OnInit {
 
   public variableUnit() {
     // TODO - this is temporary and should not be hardcoded
-    return this.currentVariable === 'mesh2d_waterdepth' ? 'meters': 'm/s';
+    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
+  }
+
+  public getDataUrl(format: string): string {
+    return `${this.demoDataURL}.${format}`;
   }
 
   public currentAnimationURL() {

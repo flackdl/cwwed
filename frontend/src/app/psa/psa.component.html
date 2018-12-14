@@ -64,15 +64,15 @@
                 <dl class="row">
                   <dt class="col-sm-6">OPeNDAP</dt>
                   <dd class="col-sm-6">
-                    <a [href]="demoDataURL" target="_blank">
+                    <a [href]="getDataUrl('html')" target="_blank">
                       <span class="oi oi-cloud-download"></span>
                     </a>
                   </dd>
                   <dt class="col-sm-6">All Data</dt>
                   <dd class="col-sm-6">
-                    <a target="_blank" class="d-block" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.ascii">ASCII</a>
-                    <a target="_blank" class="d-block" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.nc">NetCDF</a>
-                    <a target="_blank" class="d-block" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.csv">CSV</a>
+                    <a target="_blank" class="d-block" [href]="getDataUrl('ascii')">ASCII</a>
+                    <a target="_blank" class="d-block" [href]="getDataUrl('nc')">NetCDF</a>
+                    <a target="_blank" class="d-block" [href]="getDataUrl('csv')">CSV</a>
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
@@ -104,7 +104,7 @@
               <ngx-loading [show]="isLoadingOverlay"></ngx-loading>
               <div *ngIf="coordinateData">
 								<button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [showYAxisLabel]="true" [yAxisLabel]="variableUnit()"></ngx-charts-line-chart>
+								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [showYAxisLabel]="true" yAxisLabel="Water Depth (m)"></ngx-charts-line-chart>
               </div>
             </div>
 
