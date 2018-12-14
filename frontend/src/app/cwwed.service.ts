@@ -11,6 +11,7 @@ let API_COVERED_DATA = `${API_ROOT}/covered-data/`;
 let API_NAMED_STORMS = `${API_ROOT}/named-storms/`;
 let API_NSEM_PER_STORM = `${API_ROOT}/nsem/per-storm/`;
 let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-projects/`;
+let API_PSA_COORDINATE_DATA = `${API_ROOT}/psa-filter/`;
 
 @Injectable({
   providedIn: 'root'
@@ -77,6 +78,19 @@ export class CwwedService {
       map((data) => {
         this.coastalActProjects = data;
         return this.coastalActProjects;
+      }),
+    );
+  }
+
+  public fetchPSACoordinateData(datasetPath: string, coordinate: string[]) {
+    const params = {
+      dataset_path: datasetPath,
+      coordinate: coordinate,
+    };
+    const httpParams = new HttpParams({fromObject: params});
+    return this.http.get(API_PSA_COORDINATE_DATA, {params: httpParams}).pipe(
+      map((data) => {
+        return data;
       }),
     );
   }

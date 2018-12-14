@@ -13,12 +13,11 @@ class PSAFilterView(views.APIView):
     _dataset: xr.Dataset = None
 
     def get(self, request):
-        path = request.GET.get('path')
-        absolute_path = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR, path)
+        dataset_path = request.GET.get('dataset_path', '')
+        absolute_path = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR, dataset_path)
         coordinate = request.GET.getlist('coordinate')
-        coordinate = coordinate[1], coordinate[0]  # swap to lat, lon
         if not absolute_path or not os.path.exists(absolute_path):
-            raise exceptions.NotFound('Path does not exist: {}'.format(absolute_path))
+            raise exceptions.NotFound('Dataset Path does not exist: {}'.format(absolute_path))
         elif not coordinate or not len(coordinate) == 2:
             raise exceptions.NotFound('Coordinate (2) not supplied')
         try:
@@ -40,7 +39,7 @@ class PSAFilterView(views.APIView):
             depth_date = parse_datetime(str(data.time.values))
             depths.append({
                 'name': depth_date.isoformat(),
-                'series': data[nearest_index].values,
+                'value': data[nearest_index].values,
             })
 
         response = Response({
@@ -50,7 +49,7 @@ class PSAFilterView(views.APIView):
         return response
 
     def _nearest_node_index(self, point: tuple):
-        coords = numpy.column_stack([self._dataset.nmesh2d_face.mesh2d_face_x, self._dataset.nmesh2d_face.mesh2d_face_y])
+        coords = numpy.column_stack([self._dataset.nmesh2d_face.mesh2d_face_y, self._dataset.nmesh2d_face.mesh2d_face_x])
         nearest = coords[spatial.KDTree(coords).query(point)[1]]
         found = numpy.where(coords == nearest)
         if found and found[0].any():

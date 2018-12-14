@@ -43,10 +43,11 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
-  public demoDataURL = "/opendap/delaware.nc.html";
-  public demoDataPath = "delaware.nc";
+  public demoDataURL = "/opendap/PSA_demo/Sandy_DBay/DBay-run_map.nc.html";
+  public demoDataPath = "PSA_demo/Sandy_DBay/DBay-run_map.nc";
   public isLoading = true;
   public isLoadingMap = true;
+  public isLoadingOverlay = false;
   public map: any; // ol.Map
   public nsemId: number;
   public namedStorms: any;
@@ -65,133 +66,7 @@ export class PsaComponent implements OnInit {
   public currentVariable: string = 'mesh2d_waterdepth';
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
-  public featureGraphResults = [
-    {
-      "name": "Indonesia",
-      "series": [
-        {
-          "value": 3641,
-          "name": "2016-09-15T23:12:42.172Z"
-        },
-        {
-          "value": 4043,
-          "name": "2016-09-23T12:55:51.176Z"
-        },
-        {
-          "value": 5874,
-          "name": "2016-09-18T23:12:36.756Z"
-        },
-        {
-          "value": 5540,
-          "name": "2016-09-23T22:59:07.274Z"
-        },
-        {
-          "value": 2256,
-          "name": "2016-09-20T04:28:04.669Z"
-        }
-      ]
-    },
-    {
-      "name": "Bonaire, Sint Eustatius and Saba",
-      "series": [
-        {
-          "value": 6855,
-          "name": "2016-09-15T23:12:42.172Z"
-        },
-        {
-          "value": 4024,
-          "name": "2016-09-23T12:55:51.176Z"
-        },
-        {
-          "value": 5365,
-          "name": "2016-09-18T23:12:36.756Z"
-        },
-        {
-          "value": 4283,
-          "name": "2016-09-23T22:59:07.274Z"
-        },
-        {
-          "value": 5830,
-          "name": "2016-09-20T04:28:04.669Z"
-        }
-      ]
-    },
-    {
-      "name": "Guernsey",
-      "series": [
-        {
-          "value": 4302,
-          "name": "2016-09-15T23:12:42.172Z"
-        },
-        {
-          "value": 2825,
-          "name": "2016-09-23T12:55:51.176Z"
-        },
-        {
-          "value": 2025,
-          "name": "2016-09-18T23:12:36.756Z"
-        },
-        {
-          "value": 6300,
-          "name": "2016-09-23T22:59:07.274Z"
-        },
-        {
-          "value": 3765,
-          "name": "2016-09-20T04:28:04.669Z"
-        }
-      ]
-    },
-    {
-      "name": "United Arab Emirates",
-      "series": [
-        {
-          "value": 4815,
-          "name": "2016-09-15T23:12:42.172Z"
-        },
-        {
-          "value": 2074,
-          "name": "2016-09-23T12:55:51.176Z"
-        },
-        {
-          "value": 4193,
-          "name": "2016-09-18T23:12:36.756Z"
-        },
-        {
-          "value": 4184,
-          "name": "2016-09-23T22:59:07.274Z"
-        },
-        {
-          "value": 4614,
-          "name": "2016-09-20T04:28:04.669Z"
-        }
-      ]
-    },
-    {
-      "name": "France",
-      "series": [
-        {
-          "value": 4224,
-          "name": "2016-09-15T23:12:42.172Z"
-        },
-        {
-          "value": 6745,
-          "name": "2016-09-23T12:55:51.176Z"
-        },
-        {
-          "value": 6216,
-          "name": "2016-09-18T23:12:36.756Z"
-        },
-        {
-          "value": 5457,
-          "name": "2016-09-23T22:59:07.274Z"
-        },
-        {
-          "value": 3802,
-          "name": "2016-09-20T04:28:04.669Z"
-        }
-      ]
-    }
-  ];
+  public coordinateData: any[] = [];
   @ViewChild('popup') popupEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
@@ -377,24 +252,20 @@ export class PsaComponent implements OnInit {
 
   public variableUnit() {
     // TODO - this is temporary and should not be hardcoded
-    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
-  }
-
-  public filteredDownloadURL() {
-    const params = {
-      path: this.demoDataPath,
-    };
-    if (this.extentCoords) {
-      params['extent'] = this.extentCoords;
-    }
-    const httpParams = new HttpParams({fromObject: params});
-    return `/psa-filter/?${httpParams.toString()}`;
+    return this.currentVariable === 'mesh2d_waterdepth' ? 'meters': 'm/s';
   }
 
   public currentAnimationURL() {
     // TODO - clean this up
     // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
     return `${this.S3_BUCKET_BASE_URL}contours/${this.currentVariable}.mp4`;
+  }
+  
+  public xAxisTickFormatting(value: string) {
+    const date = new Date(value);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}`;
   }
 
   protected _buildMap() {
@@ -481,8 +352,9 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('singleclick', (event) => {
-      // configure popup overlay
-      this.popupOverlay.setPosition(event.coordinate);
+
+      // configure graph overlay
+      this._configureGraphOverlay(event);
     });
 
     this._configureMapExtentInteraction();
@@ -512,6 +384,36 @@ export class PsaComponent implements OnInit {
       this.currentFeature = features[0].getProperties();
     });
 
+  }
+
+  protected _configureGraphOverlay(event) {
+    this.isLoadingOverlay = true;
+    this.popupOverlay.setPosition(event.coordinate);
+    this.coordinateData = null;
+
+    // verify there is data at this location
+    const features = this.map.getFeaturesAtPixel(event.pixel);
+    if (!features) {
+      this.isLoadingOverlay = false;
+      return;
+    }
+
+    const latLon = toLonLat(event.coordinate).reverse();
+    this.cwwedService.fetchPSACoordinateData(this.demoDataPath, latLon).subscribe(
+      (data: any) => {
+        this.isLoadingOverlay = false;
+        this.coordinateData = [
+          {
+            name: 'Water Depth',
+            series: data.water_depth,
+          }
+        ];
+      },
+      (error) => {
+        console.error(error);
+        this.isLoadingOverlay = false;
+      }
+    );
   }
 
   protected _configureMapExtentInteraction() {
