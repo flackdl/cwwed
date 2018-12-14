@@ -66,7 +66,7 @@ export class PsaComponent implements OnInit {
   public currentVariable: string = 'mesh2d_waterdepth';
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
-  public coordinateData: any[] = [];
+  public coordinateData: any[];
   @ViewChild('popup') popupEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
@@ -388,7 +388,6 @@ export class PsaComponent implements OnInit {
 
   protected _configureGraphOverlay(event) {
     this.isLoadingOverlay = true;
-    this.popupOverlay.setPosition(event.coordinate);
     this.coordinateData = null;
 
     // verify there is data at this location
@@ -397,6 +396,8 @@ export class PsaComponent implements OnInit {
       this.isLoadingOverlay = false;
       return;
     }
+
+    this.popupOverlay.setPosition(event.coordinate);
 
     const latLon = toLonLat(event.coordinate).reverse();
     this.cwwedService.fetchPSACoordinateData(this.demoDataPath, latLon).subscribe(
