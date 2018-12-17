@@ -27,6 +27,7 @@ spec:
         volumeMounts:
         - mountPath: "/usr/share/hyrax"
           name: cwwed-volume-storage
+          subPath: OPENDAP
           readOnly: true
         resources:
           requests:
