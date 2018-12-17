@@ -59,23 +59,23 @@ class NSEMSerializer(serializers.ModelSerializer):
 
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
-    thredds_url = serializers.SerializerMethodField()
-    thredds_url_psa = serializers.SerializerMethodField()
-    thredds_url_covered_data = serializers.SerializerMethodField()
+    opendap_url = serializers.SerializerMethodField()
+    opendap_url_psa = serializers.SerializerMethodField()
+    opendap_url_covered_data = serializers.SerializerMethodField()
 
-    def get_thredds_url_psa(self, obj: NSEM):
+    def get_opendap_url_psa(self, obj: NSEM):
         if 'request' not in self.context:
             return None
         return get_opendap_url_nsem_psa(self.context['request'], obj)
 
-    def get_thredds_url_covered_data(self, obj: NSEM):
+    def get_opendap_url_covered_data(self, obj: NSEM):
         if 'request' not in self.context:
             return None
         if not obj.covered_data_snapshot:
             return None
         return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_logs.all())
 
-    def get_thredds_url(self, obj: NSEM):
+    def get_opendap_url(self, obj: NSEM):
         if 'request' not in self.context:
             return None
         if not obj.model_output_snapshot_extracted:

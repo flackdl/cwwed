@@ -27,8 +27,7 @@ class OpenDapProxy(ProxyView):
         return self.request.META['QUERY_STRING']
 
     def get_quoted_path(self, path):
-        # TODO - is this relevant now that we switched from THREDDS to Hyrax (OPeNDAP)?
-        # overridden to use quote vs quote_plus because OPeNDAP chokes on the plus characters
+        # overridden to use quote vs quote_plus
         return quote(path.encode('utf8'), QUOTE_SAFE)
 
     def _should_log(self) -> bool:
