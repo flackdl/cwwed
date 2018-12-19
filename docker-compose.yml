@@ -10,7 +10,7 @@ services:
       - cwwed-postgresql:/var/lib/postgresql/data
 
   opendap:
-    image: opendap/hyrax:1.15.1
+    image: opendap/hyrax:1.15.2
     ports:
       - "9000:8080"
     container_name: opendap
