@@ -272,6 +272,22 @@ export class PsaComponent implements OnInit {
     return `${month}/${day}`;
   }
 
+  public hasExtentSelection(): boolean {
+    return this._extentInteraction && this._extentInteraction.getExtent();
+  }
+
+  public resetExtentInteraction() {
+
+    // reset extent selection and captured coordinates
+    if (this._extentInteraction) {
+      this.map.removeInteraction(this._extentInteraction);
+    }
+    this.extentCoords = null;
+
+    // reconfigure extent
+    this._configureMapExtentInteraction();
+  }
+
   protected _buildMap() {
 
     const mapBoxToken = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
@@ -437,7 +453,7 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    // disable geo box interaction and catpure extent box
+    // disable geo box interaction and capture extent box
     window.addEventListener('keyup', (event: any) => {
       if (event.keyCode == 16) {
         const extentCoords = this._extentInteraction.getExtent();

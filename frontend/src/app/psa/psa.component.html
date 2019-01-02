@@ -113,7 +113,10 @@
           </div>
 
           <div class="d-none d-md-block">
-						<small class="d-block"><sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.</small>
+						<small class="d-inline-block">
+              <sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.
+              <button class="btn btn-link btn-xs" *ngIf="hasExtentSelection()" (click)="resetExtentInteraction()"><span class="oi oi-x"></span> Reset selection</button>
+            </small>
 						<small class="d-block"><sup>2</sup>Hover to see feature information.</small>
           </div>
 
