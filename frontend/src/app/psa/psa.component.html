@@ -22,12 +22,18 @@
             <ngb-panel title="Map Layers" id="map-layers">
               <ng-template ngbPanelContent>
                 <div class="form-group">
-                  <label>Variable</label>
-                  <select [formControl]="contourVariableInput" class="form-control">
-                    <option value="mesh2d_waterdepth">Water Depth</option>
-                    <option value="mesh2d_windx">Wind X</option>
-                    <option value="mesh2d_windy">Wind Y</option>
-                  </select>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterDepthInput" id="water_depth">
+                    <label class="form-check-label" for="water_depth">
+                      Water Depth
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWindInput" id="wind">
+                    <label class="form-check-label" for="wind">
+                      Wind
+                    </label>
+                  </div>
                 </div>
                 <div class="form-group">
                   <label>Data Opacity</label>
@@ -98,7 +104,7 @@
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
-              {{ currentFeature.title }} {{ variableUnit() }} ({{ currentConfidence }}% confidence)
+              {{ currentFeature.title }}m ({{ currentConfidence }}% confidence)
             </div>
 
             <!-- overlay graph -->
@@ -121,7 +127,9 @@
           </div>
 
           <p class="mt-3">
+            <!-- TODO
 						<button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Time Series Video</button>
+						-->
           </p>
         </div>
 

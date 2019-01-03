@@ -116,22 +116,22 @@ if __name__ == '__main__':
     # water depth geojson and time series animation
     #
 
-    #fig, ax = plt.subplots()
-    #anim = animation.FuncAnimation(
-    #    fig,
-    #    build_geojson_contours,
-    #    frames=dataset['mesh2d_waterdepth'],
-    #    fargs=[ax],
-    #)
-    #anim.save('/tmp/mesh2d_waterdepth.mp4', writer=FFMpegWriter())
+    fig, ax = plt.subplots()
+    anim = animation.FuncAnimation(
+        fig,
+        build_geojson_contours,
+        frames=dataset['mesh2d_waterdepth'],
+        fargs=[ax],
+    )
+    anim.save('/tmp/mesh2d_waterdepth.mp4', writer=FFMpegWriter())
 
     #
     # wind speed/direction
     #
 
-    wind_speeds = np.hypot(dataset['mesh2d_windx'][0][:5], dataset['mesh2d_windy'][0][:5]).values
-    wind_directions = np.rad2deg(np.arctan2(dataset['mesh2d_windx'][0][:5], dataset['mesh2d_windy'][0][:5])).values
-    wind_coords = np.column_stack([dataset.mesh2d_face_x[:5].values, dataset.mesh2d_face_y[:5].values])
+    wind_speeds = np.hypot(dataset['mesh2d_windx'][0][:50], dataset['mesh2d_windy'][0][:50]).values
+    wind_directions = np.rad2deg(np.arctan2(dataset['mesh2d_windx'][0][:50], dataset['mesh2d_windy'][0][:50])).values
+    wind_coords = np.column_stack([dataset.mesh2d_face_x[:50].values, dataset.mesh2d_face_y[:50].values])
     wind_points = [Point(coord.tolist(), properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, coord in enumerate(wind_coords)]
     wind_geojson = GeometryCollection(geometries=wind_points)
     json.dump(wind_geojson, open('/tmp/wind.json', 'w'))

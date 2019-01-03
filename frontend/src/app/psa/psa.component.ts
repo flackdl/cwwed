@@ -2,7 +2,6 @@ import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute } from "@angular/router";
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
-import { HttpParams } from "@angular/common/http";
 import { FormControl } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
@@ -48,7 +47,7 @@ export class PsaComponent implements OnInit {
   public isLoading = true;
   public isLoadingMap = true;
   public isLoadingOverlay = false;
-  public map: any; // ol.Map
+  public map: Map;
   public nsemId: number;
   public namedStorms: any;
   public nsemList: any;
@@ -59,11 +58,11 @@ export class PsaComponent implements OnInit {
   } = {};
   public currentContour: String;
   public currentConfidence: Number;
-  public contourDateInput = new FormControl(0);
+  public contourDateInput = new FormControl(0); // first date in the list
   public mapDataOpacityInput = new FormControl(.5);
   public contourLayer: any;  // VectorLayer
-  public contourVariableInput = new FormControl('mesh2d_waterdepth');
-  public currentVariable: string = 'mesh2d_waterdepth';
+  public mapLayerWaterDepthInput = new FormControl(true);
+  public mapLayerWindInput = new FormControl(true);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public coordinateData: any[];
@@ -98,27 +97,27 @@ export class PsaComponent implements OnInit {
 
   public getContourDateFormatted(dateIndex: number) {
     // extract the date from the file name
-    if (this.contourSourcePaths[this.currentVariable]) {
-      let currentContour = this.contourSourcePaths[this.currentVariable][dateIndex];
+    if (this.contourSourcePaths['mesh2d_waterdepth']) {
+      let currentContour = this.contourSourcePaths['mesh2d_waterdepth'][dateIndex];
       return currentContour ? currentContour.replace(/.*__(.*).json$/, "$1") : '';
     }
     return '';
   }
 
   public getDateMin() {
-    return this.contourSourcePaths[this.currentVariable] ?
+    return this.contourSourcePaths['mesh2d_waterdepth'] ?
       this.getContourDateFormatted(0) :
       null;
   }
 
   public getDateMax() {
-    return this.contourSourcePaths[this.currentVariable] ?
-      this.getContourDateFormatted(this.contourSourcePaths[this.currentVariable].length - 1) :
+    return this.contourSourcePaths['mesh2d_waterdepth'] ?
+      this.getContourDateFormatted(this.contourSourcePaths['mesh2d_waterdepth'].length - 1) :
       null;
   }
 
   public getDateInputMax() {
-    return this.contourSourcePaths[this.currentVariable] ? this.contourSourcePaths[this.currentVariable].length - 1 : 0;
+    return this.contourSourcePaths['mesh2d_waterdepth'] ? this.contourSourcePaths['mesh2d_waterdepth'].length - 1 : 0;
   }
 
   protected _listenForInputChanges() {
@@ -145,15 +144,31 @@ export class PsaComponent implements OnInit {
     );
 
     // listen for variable input changes
-    this.contourVariableInput.valueChanges.pipe(
+    this.mapLayerWaterDepthInput.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
       }),
     ).subscribe(
       (value) => {
-        this.currentVariable = value;
-        this.currentContour = this.contourSourcePaths[this.currentVariable][this.contourDateInput.value];
-        this.contourLayer.setSource(this._getContourSource());
+        if (!value) {
+          this.map.removeLayer(this.contourLayer);
+        } else {
+          this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][this.contourDateInput.value];
+          this.contourLayer.setSource(this._getContourSource());
+          this.map.addLayer(this.contourLayer);
+        }
+      }
+    );
+
+    this.mapLayerWindInput.valueChanges.pipe(
+      tap(() => {
+        // TODO - enable
+        //this.isLoadingMap = true;
+      }),
+    ).subscribe(
+      (value) => {
+        // TODO
+        console.log('wind', value);
       }
     );
 
@@ -165,7 +180,7 @@ export class PsaComponent implements OnInit {
       debounceTime(1000),
     ).subscribe((value) => {
       // update the map's contour source
-      this.currentContour = this.contourSourcePaths[this.currentVariable][value];
+      this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][value];
       this.contourLayer.setSource(this._getContourSource());
     });
   }
@@ -225,7 +240,7 @@ export class PsaComponent implements OnInit {
             contours.sort();
           });
           // use the first contour date as the initial
-          this.currentContour = this.contourSourcePaths[this.currentVariable][0];
+          this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][0];
           // build the map
           this._buildMap();
         } else {
@@ -238,7 +253,7 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _contourStyle (feature) {
+  protected _contourStyle(feature) {
     return new Style({
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.mapDataOpacityInput.value),
@@ -250,11 +265,6 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(undefined);
   }
 
-  public variableUnit() {
-    // TODO - this is temporary and should not be hardcoded
-    return this.currentVariable === 'mesh2d_waterdepth' ? 'm': 'm/s';
-  }
-
   public getDataUrl(format: string): string {
     return `${this.demoDataURL}.${format}`;
   }
@@ -262,7 +272,7 @@ export class PsaComponent implements OnInit {
   public currentAnimationURL() {
     // TODO - clean this up
     // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
-    return `${this.S3_BUCKET_BASE_URL}contours/${this.currentVariable}.mp4`;
+    return `${this.S3_BUCKET_BASE_URL}contours/mesh2d_waterdepth.mp4`;
   }
   
   public xAxisTickFormatting(value: string) {
