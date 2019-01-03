@@ -1,7 +1,9 @@
+import json
 import math
 import sys
 from datetime import datetime
 import xarray
+from geojson import Point, MultiPoint, Feature, GeometryCollection
 from matplotlib import animation
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -110,19 +112,26 @@ if __name__ == '__main__':
     # open the dataset
     dataset = xarray.open_dataset(dataset_path)
 
-    fig, ax = plt.subplots()
+    #
+    # water depth geojson and time series animation
+    #
 
-    variables = ['mesh2d_waterdepth', 'mesh2d_windx', 'mesh2d_windy']
+    #fig, ax = plt.subplots()
+    #anim = animation.FuncAnimation(
+    #    fig,
+    #    build_geojson_contours,
+    #    frames=dataset['mesh2d_waterdepth'],
+    #    fargs=[ax],
+    #)
+    #anim.save('/tmp/mesh2d_waterdepth.mp4', writer=FFMpegWriter())
 
-    for variable in variables:
+    #
+    # wind speed/direction
+    #
 
-        print(variable)
-
-        # build geojson outputs and video animation over time series
-        anim = animation.FuncAnimation(
-            fig,
-            build_geojson_contours,
-            frames=dataset[variable],
-            fargs=[ax],
-        )
-        anim.save('/tmp/{}.mp4'.format(variable), writer=FFMpegWriter())
+    wind_speeds = np.hypot(dataset['mesh2d_windx'][0][:5], dataset['mesh2d_windy'][0][:5]).values
+    wind_directions = np.rad2deg(np.arctan2(dataset['mesh2d_windx'][0][:5], dataset['mesh2d_windy'][0][:5])).values
+    wind_coords = np.column_stack([dataset.mesh2d_face_x[:5].values, dataset.mesh2d_face_y[:5].values])
+    wind_points = [Point(coord.tolist(), properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, coord in enumerate(wind_coords)]
+    wind_geojson = GeometryCollection(geometries=wind_points)
+    json.dump(wind_geojson, open('/tmp/wind.json', 'w'))
