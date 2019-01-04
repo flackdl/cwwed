@@ -368,7 +368,7 @@ export class PsaComponent implements OnInit {
         }
         return new Style({
           image: new Icon({
-            rotation: feature.get('direction'),  // value is in radians
+            rotation: -feature.get('direction'),  // value is in radians and rotates clockwise
             src: icon,
             opacity: .5,
           }),
@@ -446,24 +446,35 @@ export class PsaComponent implements OnInit {
 
     this._configureMapExtentInteraction();
 
+    this._configureFeatureHover();
+
+  }
+
+  protected _getConfidenceValueAtPixel(pixel) {
+    // TODO - generating random confidence using a consistent seed of the current pixel
+    const rand = seedrandom(pixel.reduce(
+      (p1, p2) => {
+        return Math.round(p1) + Math.round(p2);
+      }));
+    const randValue = Math.round(rand() * 100);
+    if (randValue < 50) {
+      return randValue + 50;
+    } else {
+      return randValue;
+    }
+  }
+
+  protected _configureFeatureHover() {
+
     // highlight current feature
     this.map.on('pointermove', (event) => {
 
-
-      //
-      // TODO - generating random confidence using a consistent seed of the current pixel
-      //
-      const rand = seedrandom(event.pixel.reduce(
-        (p1, p2) => {
-          return Math.round(p1) + Math.round(p2);
-        }));
-      const randValue = Math.round(rand() * 100);
-      if (randValue < 50) {
-        this.currentConfidence = randValue + 50;
-      } else {
-        this.currentConfidence = randValue;
+      // don't show feature details if there's any popup overlay already present
+      if (this.popupOverlay && this.popupOverlay.rendered.visible) {
+        return;
       }
 
+      this.currentConfidence = this._getConfidenceValueAtPixel(event.pixel);
 
       const currentFeature = {};
       this.map.forEachFeatureAtPixel(event.pixel, (feature) => {
@@ -484,7 +495,6 @@ export class PsaComponent implements OnInit {
       }
       this.currentFeature = currentFeature;
     });
-
   }
 
   protected _configureGraphOverlay(event) {
