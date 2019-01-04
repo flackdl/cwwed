@@ -448,7 +448,7 @@ export class PsaComponent implements OnInit {
 
     // highlight current feature
     this.map.on('pointermove', (event) => {
-      const features = this.map.getFeaturesAtPixel(event.pixel);
+
 
       //
       // TODO - generating random confidence using a consistent seed of the current pixel
@@ -464,11 +464,25 @@ export class PsaComponent implements OnInit {
         this.currentConfidence = randValue;
       }
 
-      if (!features) {
+
+      const currentFeature = {};
+      this.map.forEachFeatureAtPixel(event.pixel, (feature) => {
+        if (feature.get('direction')) {
+          currentFeature['direction'] = feature.get('direction');
+        }
+        if (feature.get('speed')) {
+          currentFeature['speed'] = feature.get('speed');
+        }
+        if (feature.get('title')) { // TODO "title" should be correctly labeled as water depth
+          currentFeature['title'] = feature.get('title');
+        }
+      });
+
+      if (!Object.keys(currentFeature).length) {
         this.currentFeature = undefined;
         return;
       }
-      this.currentFeature = features[0].getProperties();
+      this.currentFeature = currentFeature;
     });
 
   }
