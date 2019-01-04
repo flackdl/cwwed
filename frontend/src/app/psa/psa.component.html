@@ -114,7 +114,7 @@
               <ngx-loading [show]="isLoadingOverlay"></ngx-loading>
               <div *ngIf="coordinateData">
 								<button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [legend]="true" legendPosition="below" legendTitle=""></ngx-charts-line-chart>
+								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
               </div>
             </div>
 
