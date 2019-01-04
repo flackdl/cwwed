@@ -105,8 +105,8 @@
 
             <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
               <div>Water Depth: {{ currentFeature.title }} m ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0' }} m/s ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.direction >= 0">Wind Direction: {{ currentFeature.direction| number:'1.0' }} radians ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.direction >= 0">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} radians ({{ currentConfidence }}% confidence)</div>
             </div>
 
             <!-- overlay graph -->
@@ -114,7 +114,7 @@
               <ngx-loading [show]="isLoadingOverlay"></ngx-loading>
               <div *ngIf="coordinateData">
 								<button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [showYAxisLabel]="true" yAxisLabel="Water Depth (m)"></ngx-charts-line-chart>
+								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [legend]="true" legendPosition="below" legendTitle=""></ngx-charts-line-chart>
               </div>
             </div>
 

@@ -368,7 +368,7 @@ export class PsaComponent implements OnInit {
         }
         return new Style({
           image: new Icon({
-            rotation: feature.get('direction'),
+            rotation: feature.get('direction'),  // value is in radians
             src: icon,
             opacity: .5,
           }),
@@ -508,7 +508,11 @@ export class PsaComponent implements OnInit {
           {
             name: 'Water Depth',
             series: data.water_depth,
-          }
+          },
+          {
+            name: 'Wind Speed',
+            series: data.wind_speed,
+          },
         ];
       },
       (error) => {

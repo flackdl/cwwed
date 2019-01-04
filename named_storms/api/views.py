@@ -26,24 +26,37 @@ class PSAFilterView(views.APIView):
             raise exceptions.NotFound('Coordinate should be floats')
 
         self._dataset = xr.open_dataset(absolute_path)
-        depths = []
 
         nearest_index = self._nearest_node_index(coordinate)
 
         if nearest_index is None:
             raise exceptions.NotFound('No data found at this location')
 
+        depths = []
         for data in self._dataset.mesh2d_waterdepth:
             # afaik you shouldn't have to manually call load() but it throws an exception otherwise
             data.load()
-            depth_date = parse_datetime(str(data.time.values))
+            data_date = parse_datetime(str(data.time.values))
             depths.append({
-                'name': depth_date.isoformat(),
+                'name': data_date.isoformat(),
                 'value': data[nearest_index].values,
+            })
+
+        wind_speeds = []
+        for idx, data_windx in enumerate(self._dataset.mesh2d_windx):  # arbitrarily using windx as it's symmetrical with windy
+            speeds = numpy.arctan2(
+                data_windx[nearest_index].values,
+                self._dataset['mesh2d_windy'][idx][nearest_index].values,
+            )
+            data_date = parse_datetime(str(data_windx.time.values))
+            wind_speeds.append({
+                'name': data_date.isoformat(),
+                'value': speeds,
             })
 
         response = Response({
             'water_depth': depths,
+            'wind_speed': wind_speeds,
         })
 
         return response
