@@ -12,7 +12,7 @@ import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
-import { Fill, Style } from 'ol/style.js';
+import { Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
@@ -61,8 +61,9 @@ export class PsaComponent implements OnInit {
   public contourDateInput = new FormControl(0); // first date in the list
   public mapDataOpacityInput = new FormControl(.5);
   public contourLayer: any;  // VectorLayer
+  public windLayer: any;  // VectorLayer
   public mapLayerWaterDepthInput = new FormControl(true);
-  public mapLayerWindInput = new FormControl(true);
+  public mapLayerWindInput = new FormControl(false);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public coordinateData: any[];
@@ -162,13 +163,15 @@ export class PsaComponent implements OnInit {
 
     this.mapLayerWindInput.valueChanges.pipe(
       tap(() => {
-        // TODO - enable
-        //this.isLoadingMap = true;
+        this.isLoadingMap = true;
       }),
     ).subscribe(
       (value) => {
-        // TODO
-        console.log('wind', value);
+        if (!value) {
+          this.map.removeLayer(this.windLayer);
+        } else {
+          this.map.addLayer(this.windLayer);
+        }
       }
     );
 
@@ -316,6 +319,60 @@ export class PsaComponent implements OnInit {
       source: this._getContourSource(),
       style: (feature) => {
         return this._contourStyle(feature);
+      },
+    });
+
+    // create a vector layer with the wind data
+    this.windLayer = new VectorLayer({
+      source: new VectorSource({
+        url: `${this.S3_BUCKET_BASE_URL}wind.json`,
+        format: new GeoJSON(),
+      }),
+      style: (feature) => {
+        let icon;
+        const speed = feature.get('speed') || 0; // m/s
+        const knots = speed * 1.94384;
+        // https://commons.wikimedia.org/wiki/Wind_speed
+        if (_.inRange(knots, 0, 2)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_00.svg.png';
+        } else if (_.inRange(knots, 2, 7)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_01.svg.png';
+        } else if (_.inRange(knots, 7, 12)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_02.svg.png';
+        } else if (_.inRange(knots, 12, 17)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_03.svg.png';
+        } else if (_.inRange(knots, 17, 22)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_04.svg.png';
+        } else if (_.inRange(knots, 22, 27)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_05.svg.png';
+        } else if (_.inRange(knots, 27, 32)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_06.svg.png';
+        } else if (_.inRange(knots, 32, 37)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_07.svg.png';
+        } else if (_.inRange(knots, 37, 42)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_08.svg.png';
+        } else if (_.inRange(knots, 42, 47)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_09.svg.png';
+        } else if (_.inRange(knots, 47, 52)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_10.svg.png';
+        } else if (_.inRange(knots, 52, 57)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_11.svg.png';
+        } else if (_.inRange(knots, 57, 62)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_12.svg.png';
+        } else if (_.inRange(knots, 62, 83)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_13.svg.png';
+        } else if (_.inRange(knots, 83, 102)) {
+          icon = '/assets/psa/50px-Symbol_wind_speed_14.svg.png';
+        } else {
+          icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
+        }
+        return new Style({
+          image: new Icon({
+            rotation: feature.get('direction'),
+            src: icon,
+            opacity: .5,
+          }),
+        })
       },
     });
 

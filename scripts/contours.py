@@ -3,7 +3,7 @@ import math
 import sys
 from datetime import datetime
 import xarray
-from geojson import Point, MultiPoint, Feature, GeometryCollection
+from geojson import Point, Feature, FeatureCollection
 from matplotlib import animation
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -129,9 +129,18 @@ if __name__ == '__main__':
     # wind speed/direction
     #
 
-    wind_speeds = np.hypot(dataset['mesh2d_windx'][0][:50], dataset['mesh2d_windy'][0][:50]).values
-    wind_directions = np.rad2deg(np.arctan2(dataset['mesh2d_windx'][0][:50], dataset['mesh2d_windy'][0][:50])).values
-    wind_coords = np.column_stack([dataset.mesh2d_face_x[:50].values, dataset.mesh2d_face_y[:50].values])
-    wind_points = [Point(coord.tolist(), properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, coord in enumerate(wind_coords)]
-    wind_geojson = GeometryCollection(geometries=wind_points)
+    # TODO - save wind barb animation (not through the contour function, obviously)
+    # TODO - handle all times
+    # TODO - should use manifest file which better specifies the outputs so the PSA component doesn't have to crawl S3
+
+    windx_values = dataset['mesh2d_windx'][0][::100]
+    windy_values = dataset['mesh2d_windy'][0][::100]
+    facex_values = dataset.mesh2d_face_x[::100].values
+    facey_values = dataset.mesh2d_face_y[::100].values
+
+    wind_speeds = np.hypot(windx_values, windy_values).values
+    wind_directions = np.arctan2(windx_values, windy_values).values
+    wind_coords = np.column_stack([facex_values, facey_values])
+    wind_points = [Point(coord.tolist()) for idx, coord in enumerate(wind_coords)]
+    wind_geojson = FeatureCollection(features=[Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(wind_points)])
     json.dump(wind_geojson, open('/tmp/wind.json', 'w'))
