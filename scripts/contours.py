@@ -1,3 +1,4 @@
+import os
 import json
 import math
 import sys
@@ -46,13 +47,15 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(data, ax: Axes):
+def build_geojson_contours(data, ax: Axes, manifest: dict):
 
     ax.clear()
 
     z = data
     x = z.mesh2d_face_x[:len(z)]
     y = z.mesh2d_face_y[:len(z)]
+
+    variable_name = z.name
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(z.time)
@@ -61,7 +64,7 @@ def build_geojson_contours(data, ax: Axes):
     ax.set_title(dt.isoformat())
 
     # build json file name output
-    file_name = '{}__{}'.format(z.name, dt.isoformat())
+    file_name = '{}.json'.format(dt.isoformat())
 
     # convert to numpy arrays
     z = z.values
@@ -92,6 +95,11 @@ def build_geojson_contours(data, ax: Axes):
 
     contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=plt.cm.jet)
 
+    # create output directory if it doesn't exist
+    output_path = '/tmp/{}'.format(variable_name)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
     # convert matplotlib contourf to geojson
     geojsoncontour.contourf_to_geojson(
         contourf=contourf,
@@ -99,48 +107,90 @@ def build_geojson_contours(data, ax: Axes):
         ndigits=5,
         stroke_width=2,
         fill_opacity=0.5,
-        geojson_filepath='/tmp/{}.json'.format(file_name),
+        geojson_filepath=os.path.join(output_path, file_name),
     )
+
+    # update the manifest with the geojson output
+    manifest_entry = {
+        'date': dt.isoformat(),
+        'path': os.path.join(variable_name, file_name),
+    }
+    if variable_name not in manifest:
+        manifest[variable_name] = {'geojson': []}
+    manifest[variable_name]['geojson'].append(manifest_entry)
 
     return contourf
 
 
 if __name__ == '__main__':
 
-    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
-
     # open the dataset
+    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
     dataset = xarray.open_dataset(dataset_path)
 
+    manifest = {}
+
     #
-    # water depth geojson and time series animation
+    # water depth contours and time series animation
     #
 
     fig, ax = plt.subplots()
     anim = animation.FuncAnimation(
         fig,
-        build_geojson_contours,
+        # use init_func to prevent func from being called an extra initial time
+        # https://stackoverflow.com/a/42993500
+        # https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+        init_func=lambda: None,
+        func=build_geojson_contours,
         frames=dataset['mesh2d_waterdepth'],
-        fargs=[ax],
+        fargs=[ax, manifest],
     )
-    anim.save('/tmp/mesh2d_waterdepth.mp4', writer=FFMpegWriter())
+    video_name = 'mesh2d_waterdepth.mp4'
+    anim.save(os.path.join('/tmp/mesh2d_waterdepth', video_name), writer=FFMpegWriter())
+
+    # update manifest with video
+    manifest['mesh2d_waterdepth']['video'] = os.path.join('mesh2d_waterdepth', video_name)
 
     #
     # wind speed/direction
     #
 
     # TODO - save wind barb animation (not through the contour function, obviously)
-    # TODO - handle all times
-    # TODO - should use manifest file which better specifies the outputs so the PSA component doesn't have to crawl S3
 
-    windx_values = dataset['mesh2d_windx'][0][::100]
-    windy_values = dataset['mesh2d_windy'][0][::100]
-    facex_values = dataset.mesh2d_face_x[::100].values
-    facey_values = dataset.mesh2d_face_y[::100].values
+    for time_index, windx in enumerate(dataset['mesh2d_windx']):
 
-    wind_speeds = np.hypot(windx_values, windy_values).values
-    wind_directions = np.arctan2(windx_values, windy_values).values
-    wind_coords = np.column_stack([facex_values, facey_values])
-    wind_points = [Point(coord.tolist()) for idx, coord in enumerate(wind_coords)]
-    wind_geojson = FeatureCollection(features=[Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(wind_points)])
-    json.dump(wind_geojson, open('/tmp/wind.json', 'w'))
+        # get a subset of datapoints since we don't want to display a wind barb at every point
+        windx_values = windx[::100].values
+        windy_values = dataset['mesh2d_windy'][time_index][::100].values
+        facex_values = dataset.mesh2d_face_x[::100].values
+        facey_values = dataset.mesh2d_face_y[::100].values
+
+        # capture date and convert to datetime
+        dt = datetime64_to_datetime(windx.time)
+
+        wind_speeds = np.abs(np.hypot(windx_values, windy_values))
+        wind_directions = np.arctan2(windx_values, windy_values)
+        coords = np.column_stack([facex_values, facey_values])
+        points = [Point(coord.tolist()) for idx, coord in enumerate(coords)]
+        features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(points)]
+        wind_geojson = FeatureCollection(features=features)
+
+        # create output directory if it doesn't exist
+        output_path = '/tmp/wind'
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
+        file_name = '{}.json'.format(dt.isoformat())
+
+        # save output file
+        json.dump(wind_geojson, open(os.path.join(output_path, file_name), 'w'))
+
+        # update manifest
+        if 'wind' not in manifest:
+            manifest['wind'] = {'geojson': []}
+        manifest['wind']['geojson'].append({
+            'date': dt.isoformat(),
+            'path': os.path.join('wind', file_name),
+        })
+
+    json.dump(manifest, open('/tmp/manifest.json', 'w'))

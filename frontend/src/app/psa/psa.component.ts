@@ -1,5 +1,6 @@
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute } from "@angular/router";
+import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormControl } from "@angular/forms";
@@ -14,7 +15,6 @@ import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
-import * as AWS from 'aws-sdk';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 
@@ -28,7 +28,7 @@ const hexToRgba = require("hex-to-rgba");
   styleUrls: ['./psa.component.scss'],
 })
 export class PsaComponent implements OnInit {
-  public S3_BUCKET_BASE_URL = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/';
+  public S3_PSA_BUCKET_BASE_URL = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/psa/';
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
@@ -53,9 +53,7 @@ export class PsaComponent implements OnInit {
   public nsemList: any;
   public currentFeature: any;
   public extentCoords: Number[];
-  public contourSourcePaths: {
-    [variable_name: string]: String[],
-  } = {};
+  public geojsonManifest: any;
   public currentContour: String;
   public currentConfidence: Number;
   public contourDateInput = new FormControl(0); // first date in the list
@@ -72,6 +70,7 @@ export class PsaComponent implements OnInit {
   protected _extentInteraction: ExtentInteraction;
 
   constructor(
+    private http: HttpClient,
     private route: ActivatedRoute,
     private cwwedService: CwwedService,
     private modalService: NgbModal,
@@ -83,7 +82,7 @@ export class PsaComponent implements OnInit {
 
     this._listenForInputChanges();
 
-    this._fetchContourDataAndBuildMap();
+    this._fetchDataAndBuildMap();
 
     this.route.params.subscribe((data) => {
       if (data.id) {
@@ -97,28 +96,19 @@ export class PsaComponent implements OnInit {
   }
 
   public getContourDateFormatted(dateIndex: number) {
-    // extract the date from the file name
-    if (this.contourSourcePaths['mesh2d_waterdepth']) {
-      let currentContour = this.contourSourcePaths['mesh2d_waterdepth'][dateIndex];
-      return currentContour ? currentContour.replace(/.*__(.*).json$/, "$1") : '';
-    }
-    return '';
+    return this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date;
   }
 
   public getDateMin() {
-    return this.contourSourcePaths['mesh2d_waterdepth'] ?
-      this.getContourDateFormatted(0) :
-      null;
+    return this.getContourDateFormatted(0);
   }
 
   public getDateMax() {
-    return this.contourSourcePaths['mesh2d_waterdepth'] ?
-      this.getContourDateFormatted(this.contourSourcePaths['mesh2d_waterdepth'].length - 1) :
-      null;
+    return this.getContourDateFormatted(this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1);
   }
 
   public getDateInputMax() {
-    return this.contourSourcePaths['mesh2d_waterdepth'] ? this.contourSourcePaths['mesh2d_waterdepth'].length - 1 : 0;
+    return this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1;
   }
 
   protected _listenForInputChanges() {
@@ -128,6 +118,9 @@ export class PsaComponent implements OnInit {
       (data) => {
         this.contourLayer.setStyle((feature) => {
           return this._contourStyle(feature);
+        });
+        this.windLayer.setStyle((feature) => {
+          return this._getWindStyle(feature);
         });
       }
     );
@@ -144,23 +137,24 @@ export class PsaComponent implements OnInit {
       }
     );
 
-    // listen for variable input changes
+    // listen for layer input changes
     this.mapLayerWaterDepthInput.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
-      }),
+      })
     ).subscribe(
       (value) => {
         if (!value) {
           this.map.removeLayer(this.contourLayer);
         } else {
-          this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][this.contourDateInput.value];
+          this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.contourDateInput.value].path;
           this.contourLayer.setSource(this._getContourSource());
           this.map.addLayer(this.contourLayer);
         }
       }
     );
 
+    // listen for layer input changes
     this.mapLayerWindInput.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
@@ -182,78 +176,93 @@ export class PsaComponent implements OnInit {
       }),
       debounceTime(1000),
     ).subscribe((value) => {
-      // update the map's contour source
-      this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][value];
+      // update the map's layer's sources
+      this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][value].path;
       this.contourLayer.setSource(this._getContourSource());
+      this.windLayer.setSource(this._getWindSource());
     });
   }
 
   protected _getContourSource(): VectorSource {
-
     return new VectorSource({
-      url: `${this.S3_BUCKET_BASE_URL}${this.currentContour}`,
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.currentContour}`,
       format: new GeoJSON()
     });
   }
 
-  protected _fetchContourDataAndBuildMap() {
+  protected _getWindSource(): VectorSource {
+    return new VectorSource({
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['wind']['geojson'][this.contourDateInput.value].path}`,
+      format: new GeoJSON(),
+    })
+  }
 
-    const S3 = new AWS.S3();
-    let params = {
-      Bucket: 'cwwed-static-assets-frontend',
-      Prefix: 'contours/',
-      Delimiter: '/',
-    };
+  protected _getWindStyle(feature): Style {
+    let icon;
 
-    // TODO handle paging
-    // https://github.com/awslabs/aws-js-s3-explorer/blob/master/index.html
+    const speed = feature.get('speed') || 0; // m/s
+    const knots = speed * 1.94384;
 
-    S3.makeUnauthenticatedRequest('listObjectsV2', params, (error, data) => {
-      if (error) {
-        console.error('error', error);
-        this.isLoading = false;
-      } else {
+    // https://commons.wikimedia.org/wiki/Wind_speed
+    if (_.inRange(knots, 0, 2)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_00.svg.png';
+    } else if (_.inRange(knots, 2, 7)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_01.svg.png';
+    } else if (_.inRange(knots, 7, 12)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_02.svg.png';
+    } else if (_.inRange(knots, 12, 17)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_03.svg.png';
+    } else if (_.inRange(knots, 17, 22)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_04.svg.png';
+    } else if (_.inRange(knots, 22, 27)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_05.svg.png';
+    } else if (_.inRange(knots, 27, 32)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_06.svg.png';
+    } else if (_.inRange(knots, 32, 37)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_07.svg.png';
+    } else if (_.inRange(knots, 37, 42)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_08.svg.png';
+    } else if (_.inRange(knots, 42, 47)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_09.svg.png';
+    } else if (_.inRange(knots, 47, 52)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_10.svg.png';
+    } else if (_.inRange(knots, 52, 57)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_11.svg.png';
+    } else if (_.inRange(knots, 57, 62)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_12.svg.png';
+    } else if (_.inRange(knots, 62, 83)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_13.svg.png';
+    } else if (_.inRange(knots, 83, 102)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_14.svg.png';
+    } else {
+      icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
+    }
 
-        // retrieve and sort the objects (dated)
-        data.Contents.forEach((value: any) => {
-
-          // extract variable and file name from name, i.e "mesh2d_waterdepth__2012-10-22T07:00:00.json"
-          let path: string = value.Key;
-          let fileName: string = path.replace(data.Prefix, '');
-
-          let contourVariable: string = fileName.replace(/(.*)__.*$/, '$1');
-          let contourMatch = /.*.json$/.test(fileName);
-
-          let animationMatch = /.*.mp4$/.test(fileName);
-          let animationVariable: string = fileName.replace(/(.*).*$/, '$1');
-
-          if (contourMatch && contourVariable) {
-            if (!this.contourSourcePaths[contourVariable]) {
-              this.contourSourcePaths[contourVariable] = [];
-            }
-            this.contourSourcePaths[contourVariable].push(path);
-          } else if (animationMatch && animationVariable) {
-            // TODO
-          }
-        });
-
-        if (Object.keys(this.contourSourcePaths).length > 0) {
-          // sort each contour path set
-          _.each(this.contourSourcePaths, (contours) => {
-            contours.sort();
-          });
-          // use the first contour date as the initial
-          this.currentContour = this.contourSourcePaths['mesh2d_waterdepth'][0];
-          // build the map
-          this._buildMap();
-        } else {
-          console.error('Error: No contours retrieved');
-        }
-
-        this.isLoading = false;
-        console.log('finished loading initial data');
-      }
+    return new Style({
+      image: new Icon({
+        rotation: -feature.get('direction'),  // direction is in radians and rotates clockwise
+        src: icon,
+        opacity: this.mapDataOpacityInput.value,
+      }),
     });
+  }
+
+  protected _fetchDataAndBuildMap() {
+
+    this.http.get(`${this.S3_PSA_BUCKET_BASE_URL}manifest.json`).subscribe(
+      (data) => {
+        this.isLoading = false;
+        this.geojsonManifest = data;
+        // use the first contour date as the initial
+        this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][0].path;
+        // build the map
+        this._buildMap();
+      },
+      (error) => {
+        console.error(error);
+        this.isLoading = false;
+      }
+    )
   }
 
   protected _contourStyle(feature) {
@@ -275,7 +284,7 @@ export class PsaComponent implements OnInit {
   public currentAnimationURL() {
     // TODO - clean this up
     // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
-    return `${this.S3_BUCKET_BASE_URL}contours/mesh2d_waterdepth.mp4`;
+    return `${this.S3_PSA_BUCKET_BASE_URL}contours/mesh2d_waterdepth.mp4`;
   }
   
   public xAxisTickFormatting(value: string) {
@@ -324,55 +333,9 @@ export class PsaComponent implements OnInit {
 
     // create a vector layer with the wind data
     this.windLayer = new VectorLayer({
-      source: new VectorSource({
-        url: `${this.S3_BUCKET_BASE_URL}wind.json`,
-        format: new GeoJSON(),
-      }),
+      source: this._getWindSource(),
       style: (feature) => {
-        let icon;
-        const speed = feature.get('speed') || 0; // m/s
-        const knots = speed * 1.94384;
-        // https://commons.wikimedia.org/wiki/Wind_speed
-        if (_.inRange(knots, 0, 2)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_00.svg.png';
-        } else if (_.inRange(knots, 2, 7)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_01.svg.png';
-        } else if (_.inRange(knots, 7, 12)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_02.svg.png';
-        } else if (_.inRange(knots, 12, 17)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_03.svg.png';
-        } else if (_.inRange(knots, 17, 22)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_04.svg.png';
-        } else if (_.inRange(knots, 22, 27)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_05.svg.png';
-        } else if (_.inRange(knots, 27, 32)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_06.svg.png';
-        } else if (_.inRange(knots, 32, 37)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_07.svg.png';
-        } else if (_.inRange(knots, 37, 42)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_08.svg.png';
-        } else if (_.inRange(knots, 42, 47)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_09.svg.png';
-        } else if (_.inRange(knots, 47, 52)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_10.svg.png';
-        } else if (_.inRange(knots, 52, 57)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_11.svg.png';
-        } else if (_.inRange(knots, 57, 62)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_12.svg.png';
-        } else if (_.inRange(knots, 62, 83)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_13.svg.png';
-        } else if (_.inRange(knots, 83, 102)) {
-          icon = '/assets/psa/50px-Symbol_wind_speed_14.svg.png';
-        } else {
-          icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
-        }
-        return new Style({
-          image: new Icon({
-            rotation: -feature.get('direction'),  // value is in radians and rotates clockwise
-            src: icon,
-            opacity: .5,
-          }),
-        })
+        return this._getWindStyle(feature);
       },
     });
 
@@ -439,7 +402,6 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('singleclick', (event) => {
-
       // configure graph overlay
       this._configureGraphOverlay(event);
     });
