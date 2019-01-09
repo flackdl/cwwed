@@ -106,7 +106,7 @@
             <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
               <div>Water Depth: {{ currentFeature.title }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.direction >= 0">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
             </div>
 
             <!-- overlay graph -->
