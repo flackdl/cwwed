@@ -7,6 +7,7 @@ import { FormControl } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
+import {defaults as defaultControls, FullScreen} from 'ol/control.js';
 import { platformModifierKeyOnly } from 'ol/events/condition.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
@@ -333,6 +334,9 @@ export class PsaComponent implements OnInit {
     });
 
     this.map = new Map({
+      controls: defaultControls().extend([
+        new FullScreen()
+      ]),
       layers: [
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
