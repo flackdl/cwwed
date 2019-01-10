@@ -54,11 +54,10 @@ export class PsaComponent implements OnInit {
   public currentFeature: any;
   public extentCoords: Number[];
   public geojsonManifest: any;
-  public currentContour: String;
   public currentConfidence: Number;
-  public contourDateInput = new FormControl(0); // first date in the list
-  public mapDataOpacityInput = new FormControl(.5);
-  public contourLayer: any;  // VectorLayer
+  public dateInputControl = new FormControl(0); // first date in the list
+  public dataOpacityInput = new FormControl(.5);
+  public waterDepthLayer: any;  // VectorLayer
   public windLayer: any;  // VectorLayer
   public mapLayerWaterDepthInput = new FormControl(true);
   public mapLayerWindInput = new FormControl(false);
@@ -95,16 +94,16 @@ export class PsaComponent implements OnInit {
     this.modalService.open(content);
   }
 
-  public getContourDateFormatted(dateIndex: number) {
+  public getDateInputFormatted(dateIndex: number) {
     return this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date;
   }
 
   public getDateMin() {
-    return this.getContourDateFormatted(0);
+    return this.getDateInputFormatted(0);
   }
 
   public getDateMax() {
-    return this.getContourDateFormatted(this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1);
+    return this.getDateInputFormatted(this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1);
   }
 
   public getDateInputMax() {
@@ -114,10 +113,10 @@ export class PsaComponent implements OnInit {
   protected _listenForInputChanges() {
 
     // update map data opacity
-    this.mapDataOpacityInput.valueChanges.subscribe(
+    this.dataOpacityInput.valueChanges.subscribe(
       (data) => {
-        this.contourLayer.setStyle((feature) => {
-          return this._contourStyle(feature);
+        this.waterDepthLayer.setStyle((feature) => {
+          return this._waterDepthStyle(feature);
         });
         this.windLayer.setStyle((feature) => {
           return this._getWindStyle(feature);
@@ -145,11 +144,10 @@ export class PsaComponent implements OnInit {
     ).subscribe(
       (value) => {
         if (!value) {
-          this.map.removeLayer(this.contourLayer);
+          this.map.removeLayer(this.waterDepthLayer);
         } else {
-          this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.contourDateInput.value].path;
-          this.contourLayer.setSource(this._getContourSource());
-          this.map.addLayer(this.contourLayer);
+          this.waterDepthLayer.setSource(this._getWaterDepthSource());
+          this.map.addLayer(this.waterDepthLayer);
         }
       }
     );
@@ -170,29 +168,28 @@ export class PsaComponent implements OnInit {
     );
 
     // listen for date input changes
-    this.contourDateInput.valueChanges.pipe(
+    this.dateInputControl.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
       }),
       debounceTime(1000),
     ).subscribe((value) => {
       // update the map's layer's sources
-      this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][value].path;
-      this.contourLayer.setSource(this._getContourSource());
+      this.waterDepthLayer.setSource(this._getWaterDepthSource());
       this.windLayer.setSource(this._getWindSource());
     });
   }
 
-  protected _getContourSource(): VectorSource {
+  protected _getWaterDepthSource(): VectorSource {
     return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.currentContour}`,
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value].path}`,
       format: new GeoJSON()
     });
   }
 
   protected _getWindSource(): VectorSource {
     return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['wind']['geojson'][this.contourDateInput.value].path}`,
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['wind']['geojson'][this.dateInputControl.value].path}`,
       format: new GeoJSON(),
     })
   }
@@ -242,7 +239,7 @@ export class PsaComponent implements OnInit {
       image: new Icon({
         rotation: -feature.get('direction'),  // direction is in radians and rotates clockwise
         src: icon,
-        opacity: this.mapDataOpacityInput.value,
+        opacity: this.dataOpacityInput.value,
       }),
     });
   }
@@ -253,8 +250,6 @@ export class PsaComponent implements OnInit {
       (data) => {
         this.isLoading = false;
         this.geojsonManifest = data;
-        // use the first contour date as the initial
-        this.currentContour = this.geojsonManifest['mesh2d_waterdepth']['geojson'][0].path;
         // build the map
         this._buildMap();
       },
@@ -265,10 +260,10 @@ export class PsaComponent implements OnInit {
     )
   }
 
-  protected _contourStyle(feature) {
+  protected _waterDepthStyle(feature) {
     return new Style({
       fill: new Fill({
-        color: hexToRgba(feature.get('fill'), this.mapDataOpacityInput.value),
+        color: hexToRgba(feature.get('fill'), this.dataOpacityInput.value),
       }),
     })
   }
@@ -282,9 +277,7 @@ export class PsaComponent implements OnInit {
   }
 
   public currentAnimationURL() {
-    // TODO - clean this up
-    // https://s3.amazonaws.com/cwwed-static-assets-frontend/contours/mesh2d_waterdepth.mp4
-    return `${this.S3_PSA_BUCKET_BASE_URL}contours/mesh2d_waterdepth.mp4`;
+    return `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_waterdepth']['video']}`;
   }
   
   public xAxisTickFormatting(value: string) {
@@ -324,10 +317,10 @@ export class PsaComponent implements OnInit {
     });
 
     // create a vector layer with the contour data
-    this.contourLayer = new VectorLayer({
-      source: this._getContourSource(),
+    this.waterDepthLayer = new VectorLayer({
+      source: this._getWaterDepthSource(),
       style: (feature) => {
-        return this._contourStyle(feature);
+        return this._waterDepthStyle(feature);
       },
     });
 
@@ -373,7 +366,7 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        this.contourLayer,
+        this.waterDepthLayer,
       ],
       target: 'map',
       overlays: [this.popupOverlay],
