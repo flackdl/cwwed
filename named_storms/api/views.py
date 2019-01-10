@@ -45,8 +45,8 @@ class PSAFilterView(views.APIView):
         wind_speeds = []
         for idx, data_windx in enumerate(self._dataset.mesh2d_windx):  # arbitrarily using windx as it's symmetrical with windy
             speeds = numpy.arctan2(
-                data_windx[nearest_index].values,
-                self._dataset['mesh2d_windy'][idx][nearest_index].values,
+                numpy.abs(data_windx[nearest_index].values),
+                numpy.abs(self._dataset['mesh2d_windy'][idx][nearest_index].values),
             )
             data_date = parse_datetime(str(data_windx.time.values))
             wind_speeds.append({
