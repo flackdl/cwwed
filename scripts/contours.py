@@ -122,6 +122,54 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     return contourf
 
 
+def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manifest: dict):
+
+    # capture date and convert to datetime
+    dt = datetime64_to_datetime(date)
+
+    # get a subset of data points since we don't want to display a wind barb at every point
+    windx_values = ds.sel(time=date)['mesh2d_windx'][::100].values
+    windy_values = ds.sel(time=date)['mesh2d_windy'][::100].values
+    facex_values = ds.mesh2d_face_x[::100].values
+    facey_values = ds.mesh2d_face_y[::100].values
+
+    #
+    # plot barbs
+    #
+
+    ax.clear()
+    ax.barbs(facex_values, facey_values, windx_values, windy_values)
+
+    #
+    # generate geojson
+    #
+
+    wind_speeds = np.abs(np.hypot(windx_values, windy_values))
+    wind_directions = np.arctan2(windx_values, windy_values)
+    coords = np.column_stack([facex_values, facey_values])
+    points = [Point(coord.tolist()) for idx, coord in enumerate(coords)]
+    features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(points)]
+    wind_geojson = FeatureCollection(features=features)
+
+    # create output directory if it doesn't exist
+    output_path = '/tmp/wind'
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    file_name = '{}.json'.format(dt.isoformat())
+
+    # save output file
+    json.dump(wind_geojson, open(os.path.join(output_path, file_name), 'w'))
+
+    # update manifest
+    if 'wind' not in manifest:
+        manifest['wind'] = {'geojson': []}
+    manifest['wind']['geojson'].append({
+        'date': dt.isoformat(),
+        'path': os.path.join('wind', file_name),
+    })
+
+
 if __name__ == '__main__':
 
     # open the dataset
@@ -137,7 +185,7 @@ if __name__ == '__main__':
     fig, ax = plt.subplots()
     anim = animation.FuncAnimation(
         fig,
-        # use init_func to prevent func from being called an extra initial time
+        # use init_func to prevent func from being called an extra/initial time
         # https://stackoverflow.com/a/42993500
         # https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
         init_func=lambda: None,
@@ -155,42 +203,18 @@ if __name__ == '__main__':
     # wind speed/direction
     #
 
-    # TODO - save wind barb animation (not through the contour function, obviously)
+    fig, ax = plt.subplots()
+    anim = animation.FuncAnimation(
+        fig,
+        init_func=lambda: None,
+        func=build_wind_barbs,
+        frames=dataset['time'],
+        fargs=[dataset, ax, manifest],
+    )
+    video_name = 'wind.mp4'
+    anim.save(os.path.join('/tmp/wind', video_name), writer=FFMpegWriter())
 
-    for time_index, windx in enumerate(dataset['mesh2d_windx']):
-
-        # get a subset of datapoints since we don't want to display a wind barb at every point
-        windx_values = windx[::100].values
-        windy_values = dataset['mesh2d_windy'][time_index][::100].values
-        facex_values = dataset.mesh2d_face_x[::100].values
-        facey_values = dataset.mesh2d_face_y[::100].values
-
-        # capture date and convert to datetime
-        dt = datetime64_to_datetime(windx.time)
-
-        wind_speeds = np.abs(np.hypot(windx_values, windy_values))
-        wind_directions = np.arctan2(windx_values, windy_values)
-        coords = np.column_stack([facex_values, facey_values])
-        points = [Point(coord.tolist()) for idx, coord in enumerate(coords)]
-        features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(points)]
-        wind_geojson = FeatureCollection(features=features)
-
-        # create output directory if it doesn't exist
-        output_path = '/tmp/wind'
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-
-        file_name = '{}.json'.format(dt.isoformat())
-
-        # save output file
-        json.dump(wind_geojson, open(os.path.join(output_path, file_name), 'w'))
-
-        # update manifest
-        if 'wind' not in manifest:
-            manifest['wind'] = {'geojson': []}
-        manifest['wind']['geojson'].append({
-            'date': dt.isoformat(),
-            'path': os.path.join('wind', file_name),
-        })
+    # update manifest with video
+    manifest['wind']['video'] = os.path.join('wind', video_name)
 
     json.dump(manifest, open('/tmp/manifest.json', 'w'))

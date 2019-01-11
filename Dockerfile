@@ -19,6 +19,7 @@ RUN echo "Installing dependencies and building application" \
         libgdal-dev \
         nodejs \
         ffmpeg \
+        python3-tk \
     && pip install -r requirements.txt \
     && npm --prefix frontend install \
     && npm --prefix frontend run build-prod \
