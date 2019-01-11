@@ -15,7 +15,7 @@
       </div>
       <div class="row">
 
-				<div class="col-lg-4 mt-3">
+        <div class="col-lg-4 col-xl-3 mt-3">
 
           <!-- map controls -->
           <ngb-accordion #acc="ngbAccordion" activeIds="map-layers">
@@ -113,23 +113,23 @@
             <div #popup class="ol-popup" [class.invisible]="!coordinateData && !isLoadingOverlay">
               <ngx-loading [show]="isLoadingOverlay"></ngx-loading>
               <div *ngIf="coordinateData">
-								<button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-								<ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
+                <button (click)="closePopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
+                <ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
               </div>
             </div>
 
           </div>
 
           <div class="d-none d-md-block">
-						<small class="d-inline-block">
+            <small class="d-inline-block">
               <sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.
               <button class="btn btn-link btn-xs" *ngIf="hasExtentSelection()" (click)="resetExtentInteraction()"><span class="oi oi-x"></span> Reset selection</button>
             </small>
-						<small class="d-block"><sup>2</sup>Hover to see feature information.</small>
+            <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
           </div>
 
           <p class="mt-3">
-						<button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Time Series Video</button>
+            <button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Time Series Video</button>
           </p>
         </div>
 

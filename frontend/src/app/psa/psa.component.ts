@@ -335,7 +335,9 @@ export class PsaComponent implements OnInit {
 
     this.map = new Map({
       controls: defaultControls().extend([
-        new FullScreen()
+        new FullScreen({
+          'source': document.getElementsByTagName('app-root')[0],
+        })
       ]),
       layers: [
         new TileLayer({
