@@ -122,8 +122,6 @@ export class PsaComponent implements OnInit {
   }
 
   public animationVideoURL(variable: string) {
-    console.log(variable);
-    console.log(this.geojsonManifest);
     return `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest[variable]['video']}`;
   }
 
