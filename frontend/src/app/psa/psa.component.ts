@@ -91,7 +91,9 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  public openModal(content) {
+  public openVideoModal(content, variable: string) {
+    // attaching which dataset variable to display onto the template ref "content" (somewhat messy)
+    content.variable = variable;
     this.modalService.open(content);
   }
 
@@ -109,6 +111,43 @@ export class PsaComponent implements OnInit {
 
   public getDateInputMax() {
     return this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1;
+  }
+
+  public closePopup() {
+    this.popupOverlay.setPosition(undefined);
+  }
+
+  public getDataUrl(format: string): string {
+    return `${this.demoDataURL}.${format}`;
+  }
+
+  public animationVideoURL(variable: string) {
+    console.log(variable);
+    console.log(this.geojsonManifest);
+    return `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest[variable]['video']}`;
+  }
+
+  public xAxisTickFormatting(value: string) {
+    const date = new Date(value);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}`;
+  }
+
+  public hasExtentSelection(): boolean {
+    return this._extentInteraction && this._extentInteraction.getExtent();
+  }
+
+  public resetExtentInteraction() {
+
+    // reset extent selection and captured coordinates
+    if (this._extentInteraction) {
+      this.map.removeInteraction(this._extentInteraction);
+    }
+    this.extentCoords = null;
+
+    // reconfigure extent
+    this._configureMapExtentInteraction();
   }
 
   protected _listenForInputChanges() {
@@ -267,41 +306,6 @@ export class PsaComponent implements OnInit {
         color: hexToRgba(feature.get('fill'), this.dataOpacityInput.value),
       }),
     })
-  }
-
-  public closePopup() {
-    this.popupOverlay.setPosition(undefined);
-  }
-
-  public getDataUrl(format: string): string {
-    return `${this.demoDataURL}.${format}`;
-  }
-
-  public currentAnimationURL() {
-    return `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_waterdepth']['video']}`;
-  }
-  
-  public xAxisTickFormatting(value: string) {
-    const date = new Date(value);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}/${day}`;
-  }
-
-  public hasExtentSelection(): boolean {
-    return this._extentInteraction && this._extentInteraction.getExtent();
-  }
-
-  public resetExtentInteraction() {
-
-    // reset extent selection and captured coordinates
-    if (this._extentInteraction) {
-      this.map.removeInteraction(this._extentInteraction);
-    }
-    this.extentCoords = null;
-
-    // reconfigure extent
-    this._configureMapExtentInteraction();
   }
 
   protected _buildMap() {

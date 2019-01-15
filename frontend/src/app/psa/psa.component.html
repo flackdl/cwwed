@@ -128,9 +128,14 @@
             <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
           </div>
 
-          <p class="mt-3">
-            <button class="btn btn-outline-info btn-sm" (click)="openModal(content)"><span class="oi oi-video"></span> Time Series Video</button>
-          </p>
+          <div class="mt-3">
+            <p>
+							<button class="btn btn-outline-info btn-sm" (click)="openVideoModal(content, 'mesh2d_waterdepth')"><span class="oi oi-video"></span> Water Depth</button>
+            </p>
+            <p>
+              <button class="btn btn-outline-info btn-sm" (click)="openVideoModal(content, 'wind')"><span class="oi oi-video"></span> Wind</button>
+            </p>
+          </div>
         </div>
 
       </div>
@@ -147,7 +152,7 @@
     </div>
     <div class="modal-body">
       <video controls class="w-100">
-        <source [src]="currentAnimationURL()" type="video/mp4">
+        <source [src]="animationVideoURL(content.variable)" type="video/mp4">
         Your browser does not support the video tag.
       </video>
     </div>

@@ -124,8 +124,13 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
 
 def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manifest: dict):
 
+    ax.clear()
+
     # capture date and convert to datetime
     dt = datetime64_to_datetime(date)
+
+    # set title on figure
+    ax.set_title(dt.isoformat())
 
     # get a subset of data points since we don't want to display a wind barb at every point
     windx_values = ds.sel(time=date)['mesh2d_windx'][::100].values
@@ -137,7 +142,6 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
     # plot barbs
     #
 
-    ax.clear()
     ax.barbs(facex_values, facey_values, windx_values, windy_values)
 
     #
