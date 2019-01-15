@@ -16,7 +16,7 @@ class PSAFilterView(views.APIView):
         dataset_path = request.GET.get('dataset_path', '')
         absolute_path = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR, dataset_path)
         coordinate = request.GET.getlist('coordinate')
-        if not absolute_path or not os.path.exists(absolute_path):
+        if not os.path.exists(absolute_path):
             raise exceptions.NotFound('Dataset Path does not exist: {}'.format(absolute_path))
         elif not coordinate or not len(coordinate) == 2:
             raise exceptions.NotFound('Coordinate (2) not supplied')
