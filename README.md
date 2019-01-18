@@ -139,14 +139,6 @@ Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
     # delete minikube cluster
     minikube delete
     
-#### Load Balancing
-*TODO* (currently using Amazon's ELB which costs $20/month per service)
-
-Options:
-    1) https://www.getambassador.io/
-    2) Nginx (ingress)
-    3) Traefik (ingress)
-    
 #### Monitoring
 
 *NOTE: This takes up a lot of resources and is not in use.*
@@ -158,7 +150,6 @@ User:admin
 
     # port forward grafana to local
     kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
-    
     
 ### Build front-end app
 
@@ -204,12 +195,30 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     # patch (after RBAC stuff)
     kubectl patch deployment efs-provisioner -p '{"spec":{"template":{"spec":{"serviceAccount":"efs-provisioner"}}}}'
     
+#### Load Balancing
+
+Install [Ambassador](https://www.getambassador.io) for load balancing.
+It avoids AWS's $20/month Elastic Load Balancing services which we would need for each exposed service.
+
+    kubectl apply -f https://getambassador.io/yaml/ambassador/ambassador-rbac.yaml
+    
+Monitor the new external Load Balancer and get it's external IP address:
+
+    kubectl get service -o wide
+    
+Use that IP and configure DNS via Cloudflare.
+
+
+#### Install all the services, volumes, deployments etc.
+    
     # create everything all at once (in the right order: services, volumes then deployments)
     ls -1 configs/service-*.yml configs/volume-* configs/deployment-* | xargs -L 1 kubectl apply -f
     
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    
+#### Helpers
     
     # collect covered data via job
     kubectl apply -f configs/job-collect-covered-data.yml
@@ -222,6 +231,8 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     kubectl exec -it ${CWWED_POD} -- python manage.py drf_create_token -r ${API_USER}
     
 ### Celery dashboard (Flower)
+
+*TODO - use ambassador*
 
     The celery flower dashboard is setup as a kubernetes `NodePort` which means it's not load balanced and is only accessible on the node itself.
     

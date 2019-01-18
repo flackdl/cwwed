@@ -1,12 +1,19 @@
-kind: Service
+---
 apiVersion: v1
+kind: Service
 metadata:
-  name: cwwed-app-service
+  name: cwwed-service
+  annotations:
+    getambassador.io/config: |
+      ---
+      apiVersion: ambassador/v0
+      kind:  Mapping
+      name:  cwwed_mapping
+      prefix: /
+      service: cwwed-service
 spec:
   selector:
     app: cwwed-container
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
-  type: LoadBalancer
+    - port: 80
+      targetPort: 80
