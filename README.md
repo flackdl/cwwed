@@ -198,11 +198,13 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 #### Load Balancing
 
 Install [Ambassador](https://www.getambassador.io) for load balancing.
+
 It avoids AWS's $20/month Elastic Load Balancing services which we would need for each exposed service.
 
-    kubectl apply -f https://getambassador.io/yaml/ambassador/ambassador-rbac.yaml
+    kubectl apply -f configs/ambassador-rbac.yaml
+    kubectl apply -f configs/service-ambassador.yml
     
-Monitor the new external Load Balancer and get it's external IP address:
+Monitor the new external Load Balancer and get it's external IP address.
 
     kubectl get service -o wide
     
@@ -230,21 +232,12 @@ Use that IP and configure DNS via Cloudflare.
     CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
     kubectl exec -it ${CWWED_POD} -- python manage.py drf_create_token -r ${API_USER}
     
-### Celery dashboard (Flower)
+#### Celery dashboard (Flower)
 
-*TODO - use ambassador*
-
-    The celery flower dashboard is setup as a kubernetes `NodePort` which means it's not load balanced and is only accessible on the node itself.
-    
-    Do the following to access the dashboard:
-    
-    - Describe the kubernetes service to find the dynamic port it was assigned on the node
-    - Locate the node that the container is running on to get the ip address
-    - Make sure the node's aws security group permits that port for your ip address
+    - Go to the configured domain in Cloudflare
     - Use the user/password saved in the secrets file
-
    
-Kubernetes Dashboard
+#### Kubernetes Dashboard
     
     # create kubernetes dashboard
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml

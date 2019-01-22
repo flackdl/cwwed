@@ -9,7 +9,5 @@ spec:
   ports:
    - port: 80
      name: web
-   - port: 5555
-     name: flower
   selector:
     service: ambassador
