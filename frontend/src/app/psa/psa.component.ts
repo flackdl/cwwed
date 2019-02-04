@@ -338,7 +338,10 @@ export class PsaComponent implements OnInit {
     this.map = new Map({
       controls: defaultControls().extend([
         new FullScreen({
-          'source': document.getElementsByTagName('app-root')[0],
+          // TODO - fix ngx-charts hover issue when in full screen, a workaround would be something like the following
+          //      - where we fullscreen a parent element which contains the ngx-charts tooltip element, but then we lose
+          //      - full-screening the entire map because it's now including the parent container
+          //'source': document.getElementsByTagName('html')[0],
         })
       ]),
       layers: [
