@@ -63,7 +63,7 @@ const appRoutes: Routes = [
     RouterModule.forRoot(
       appRoutes,
       {
-        //enableTracing: true, // <-- debugging purposes only
+        scrollPositionRestoration: 'enabled',  // scroll to top on navigation change and remember position when going back
         useHash: true,
       }
     ),
