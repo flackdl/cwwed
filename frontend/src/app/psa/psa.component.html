@@ -121,11 +121,12 @@
           </div>
 
           <div class="d-none d-md-block">
-            <small class="d-inline-block">
-              <sup>1</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download.
-              <button class="btn btn-link btn-xs" *ngIf="hasExtentSelection()" (click)="resetExtentInteraction()"><span class="oi oi-x"></span> Reset selection</button>
-            </small>
-            <small class="d-block"><sup>2</sup>Hover to see feature information.</small>
+            <small class="d-block"><sup>1</sup>Click on a map feature to see a time series graph for a specific location</small>
+            <div>
+              <small><sup>2</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download</small>
+              <button class="btn btn-link btn-sm" *ngIf="hasExtentSelection()" (click)="resetExtentInteraction()"><span class="oi oi-x"></span> Reset selection</button>
+            </div>
+            <small class="d-block"><sup>3</sup>Hover to see feature information</small>
           </div>
 
           <div class="mt-3">
