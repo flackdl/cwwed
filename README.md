@@ -55,90 +55,6 @@ Purge Celery
 
     celery -A cwwed purge -f
     
-    
-### Running via Kubernetes
-
-Using [Minikube](https://github.com/kubernetes/minikube) for local cluster.
-
-    # start cluster in vm
-    # NOTE: this automatically configures the docker & kubectl environments to point to the minikube cluster
-    minikube start --memory 8192
-    
-    # run if you want the docker & kubectl environments in a different terminal
-    eval $(minikube docker-env)
-    kubectl config use-context minikube
-    
-    # build images
-    docker build -t cwwed-app .
-    
-    # create secrets
-    # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
-    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
-    kubectl create secret generic cwwed-secrets \
-        --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
-        --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
-        --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \
-        --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) \
-        --from-literal=CWWED_ARCHIVES_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/cwwed_archives_access_key_id.txt) \
-        --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt) \
-        --from-literal=CELERY_FLOWER_USER=$(cat ~/Documents/cwwed/secrets/celery_flower_user.txt) \
-        --from-literal=CELERY_FLOWER_PASSWORD=$(cat ~/Documents/cwwed/secrets/celery_flower_password.txt) \
-        --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt) \
-        --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
-        && true
-    
-    # create everything all at once (in the right order: services, local volumes then deployments)
-    ls -1 configs/local_service-*.yml configs/service-*.yml configs/local_volume-* configs/local_deployment-* configs/deployment-* | xargs -L 1 kubectl apply -f
-    
-    # delete everything
-    ls -1 configs/*.yml | xargs -L 1 kubectl delete -f
-    
-    # create services individually
-    kubectl apply -f configs/service-cwwed.yml
-    kubectl apply -f configs/local_service-postgis.yml
-    kubectl apply -f configs/service-opendap.yml
-    kubectl apply -f configs/service-rabbitmq.yml
-    kubectl apply -f configs/service-celery-flower.yml
-    
-    # create volumes individually
-    kubectl apply -f configs/local_volume-cwwed.yml
-    kubectl apply -f configs/local_volume-postgis.yml
-    
-    # create deployments individually
-    kubectl apply -f configs/deployment-cwwed.yml
-    kubectl apply -f configs/deployment-opendap.yml
-    kubectl apply -f configs/deployment-rabbitmq.yml
-    kubectl apply -f configs/deployment-celery.yml
-    kubectl apply -f configs/deployment-celery-flower.yml
-    kubectl apply -f configs/local_deployment-postgis.yml
-    
-    # get pod name
-    CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
-    
-    # connect to pod
-    kubectl exec -it $CWWED_POD bash
-    
-    # initializations
-    kubectl exec -it $CWWED_POD python manage.py migrate
-    kubectl exec -it $CWWED_POD python manage.py createsuperuser
-    kubectl exec -it $CWWED_POD python manage.py cwwed-init
-    kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
-    
-    # alternatively exectute commands from local environment using production settings
-    DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) DEPLOY_STAGE=prod python manage.py dbshell
-    
-    # collect covered data
-    kubectl exec -it $CWWED_POD python manage.py collect_covered_data
-    
-    # get minikube/vm cwwed url
-    minikube service cwwed-app-service --url
-    
-    # get minikube/vm celery/flower url
-    minikube service celery-flower-service --url
-    
-    # delete minikube cluster
-    minikube delete
-    
 #### Monitoring
 
 *NOTE: This takes up a lot of resources and is not in use.*
@@ -156,27 +72,16 @@ User:admin
     # copies output to a sub-folder which django includes as a "static" directory
     npm --prefix frontend run build-prod
     
-## Production *-TODO-*
-Setup RDS with proper VPC and security group permissions.
+## Production
 
-EFS:
+Setup RDS (relational database service) with proper VPC and security group permissions.
+
+EFS (elastic file system):
 - Create EFS instance
 - Assign EFS security group to EC2 instance(s).  (TODO - figure out how auto scaling default security groups work)
-
-Environment variables
-- `SECRET_KEY`
-- `DJANGO_SETTINGS_MODULE`
-- `DATABASE_URL`
-- `SLACK_BOT_TOKEN`
-- `CWWED_NSEM_PASSWORD`
-
-Configure Django "Sites" (in admin)
-
-    For example, log into the admin and create a site as `dev.cwwed-staging.com`.
     
-Create AWS user *cwwed-archives* and assign the following polices:
- - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.
-    
+### Create Kubernetes cluster
+
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
     # create cluster (dev)
@@ -185,15 +90,31 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
     # (if necessary) configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
     
-    # create secrets (REFER to secrets in dev instructions)
-    
-    # create EFS and make sure it's in the same VPC as the cluster, along with the node's security group
+Create EFS and make sure it's in the same VPC as the cluster, along with the node's security group.
     
     # create efs volume (can take a couple minutes to create the provisioner pod)
     # https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
     kubectl apply -f configs/volume-efs.yml
     # patch (after RBAC stuff)
     kubectl patch deployment efs-provisioner -p '{"spec":{"template":{"spec":{"serviceAccount":"efs-provisioner"}}}}'
+    
+### Secrets
+    
+    # create secrets
+    # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
+    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
+    kubectl create secret generic cwwed-secrets \
+        --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
+        --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
+        --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \
+        --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) \
+        --from-literal=CWWED_ARCHIVES_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/cwwed_archives_access_key_id.txt) \
+        --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt) \
+        --from-literal=CELERY_FLOWER_USER=$(cat ~/Documents/cwwed/secrets/celery_flower_user.txt) \
+        --from-literal=CELERY_FLOWER_PASSWORD=$(cat ~/Documents/cwwed/secrets/celery_flower_password.txt) \
+        --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt) \
+        --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
+        && true
     
 #### Load Balancing
 
@@ -213,29 +134,65 @@ Use that IP and configure DNS via Cloudflare.
 
 #### Install all the services, volumes, deployments etc.
     
-    # create everything all at once (in the right order: services, volumes then deployments)
-    ls -1 configs/service-*.yml configs/volume-* configs/deployment-* | xargs -L 1 kubectl apply -f
+
+Create everything all at once (services and deployments):
+
+    ls -1 configs/service-*.yml configs/deployment-* | xargs -L 1 kubectl apply -f
+    
+Or individually:
+
+    # create services individually
+    kubectl apply -f configs/service-cwwed.yml
+    kubectl apply -f configs/service-opendap.yml
+    kubectl apply -f configs/service-rabbitmq.yml
+    kubectl apply -f configs/service-celery-flower.yml
+    
+    # create deployments individually
+    kubectl apply -f configs/deployment-cwwed.yml
+    kubectl apply -f configs/deployment-opendap.yml
+    kubectl apply -f configs/deployment-rabbitmq.yml
+    kubectl apply -f configs/deployment-celery.yml
+    kubectl apply -f configs/deployment-celery-flower.yml
     
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    
+#### Initializations
+
+    kubectl exec -it $CWWED_POD python manage.py createsuperuser
+    kubectl exec -it $CWWED_POD python manage.py cwwed-init
+    
+    # alternatively exectute commands from local environment using production settings
+    DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) DEPLOY_STAGE=prod python manage.py dbshell
     
 #### Helpers
     
     # collect covered data via job
     kubectl apply -f configs/job-collect-covered-data.yml
     
-    # force a rolling update (to repull images)
+    # patch to force a rolling update (to repull images)
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
-    # generate new api token for a user
+    # get pod name
     CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
+    
+    # load demo data
+    kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
+    
+    # collect covered data by connecting directly to a pod
+    kubectl exec -it $CWWED_POD python manage.py collect_covered_data
+    
+    # generate new api token for a user
     kubectl exec -it ${CWWED_POD} -- python manage.py drf_create_token -r ${API_USER}
+    
+    # connect to pod
+    kubectl exec -it $CWWED_POD bash
     
 #### Celery dashboard (Flower)
 
     - Go to the configured domain in Cloudflare
-    - Use the user/password saved in the secrets file
+    - Use the user/password saved in the secrets file when prompted via basic authorization
    
 #### Kubernetes Dashboard
     
@@ -251,6 +208,12 @@ Use that IP and configure DNS via Cloudflare.
     
     # start proxy
     kubectl proxy
+    
+#### Social auth (WIP)
+
+Configure Django "Sites" (in admin)
+
+    For example, log into the admin and create a site as `dev.cwwed-staging.com`.
 
     
 ## NSEM process
@@ -320,7 +283,10 @@ The `model_output_snapshot_extracted` field will initially be `false` until a ba
 
 ## NSEM AWS policies
 
-Create AWS user "nsem" and assign the following polices:
+Create AWS user *nsem* and assign the following polices:
 
  - `configs/aws/s3-policy-nsem-shared.json` and they'll be able to upload to `s3://cwwed-shared/nsem/`.  See the [wiki instructions](https://github.com/CWWED/cwwed/wiki/NSEM-Shared-Storage-(AWS-S3))
  - `configs/aws/s3-policy-nsem-upload.json` and they'll be able to read everything in `s3://cwwed-archives/NSEM/` and upload to `s3://cwwed-archives/NSEM/upload/`.
+    
+Create AWS user *cwwed-archives* and assign the following polices:
+ - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.
