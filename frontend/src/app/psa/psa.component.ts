@@ -48,7 +48,7 @@ export class PsaComponent implements OnInit {
   public demoDataPath = "PSA_demo/Sandy_DBay/DBay-run_map.nc";
   public isLoading = true;
   public isLoadingMap = true;
-  public isLoadingOverlay = false;
+  public isLoadingOverlayPopup = false;
   public map: Map;
   public nsemId: number;
   public namedStorms: any;
@@ -119,7 +119,7 @@ export class PsaComponent implements OnInit {
     return this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1;
   }
 
-  public closePopup() {
+  public closeOverlayPopup() {
     this.popupOverlay.setPosition(undefined);
   }
 
@@ -465,13 +465,14 @@ export class PsaComponent implements OnInit {
   }
 
   protected _configureGraphOverlay(event) {
-    this.isLoadingOverlay = true;
+    this.isLoadingOverlayPopup = true;
     this.coordinateData = null;
 
     // verify there is data at this location
     const features = this.map.getFeaturesAtPixel(event.pixel);
     if (!features) {
-      this.isLoadingOverlay = false;
+      this.closeOverlayPopup();
+      this.isLoadingOverlayPopup = false;
       return;
     }
 
@@ -480,7 +481,7 @@ export class PsaComponent implements OnInit {
     const latLon = toLonLat(event.coordinate).reverse();
     this.cwwedService.fetchPSACoordinateData(this.demoDataPath, latLon).subscribe(
       (data: any) => {
-        this.isLoadingOverlay = false;
+        this.isLoadingOverlayPopup = false;
         this.coordinateData = [
           {
             name: 'Water Depth',
@@ -494,7 +495,7 @@ export class PsaComponent implements OnInit {
       },
       (error) => {
         console.error(error);
-        this.isLoadingOverlay = false;
+        this.isLoadingOverlayPopup = false;
       }
     );
   }
