@@ -18,6 +18,7 @@ import { Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
+import { InjectionService } from "../../ngx-charts/common/tooltip/injection.service";
 
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
@@ -66,6 +67,7 @@ export class PsaComponent implements OnInit {
   public popupOverlay: Overlay;
   public coordinateData: any[];
   @ViewChild('popup') popupEl: ElementRef;
+  @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
 
@@ -74,9 +76,13 @@ export class PsaComponent implements OnInit {
     private route: ActivatedRoute,
     private cwwedService: CwwedService,
     private modalService: NgbModal,
+    private chartTooltipInjectionService: InjectionService,
   ) {}
 
   ngOnInit() {
+    // override chart tooltip container so it works in fullscreen
+    this.chartTooltipInjectionService.setContainerElement(this.mapEl.nativeElement);
+
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorms = this.cwwedService.namedStorms;
 
@@ -337,12 +343,7 @@ export class PsaComponent implements OnInit {
 
     this.map = new Map({
       controls: defaultControls().extend([
-        new FullScreen({
-          // TODO - fix ngx-charts hover issue when in full screen, a workaround would be something like the following
-          //      - where we fullscreen a parent element which contains the ngx-charts tooltip element, but then we lose
-          //      - full-screening the entire map because it's now including the parent container
-          //'source': document.getElementsByTagName('html')[0],
-        })
+        new FullScreen(),
       ]),
       layers: [
         new TileLayer({
@@ -379,7 +380,7 @@ export class PsaComponent implements OnInit {
         }),
         this.waterDepthLayer,
       ],
-      target: 'map',
+      target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
       view: new View({
         center: fromLonLat(<any>[-75.249730, 39.153332]),

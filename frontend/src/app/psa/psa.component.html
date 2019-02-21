@@ -100,7 +100,7 @@
         <div class="col mt-3">
 
           <!-- map -->
-          <div id="map" class="position-relative">
+          <div #map class="position-relative">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
