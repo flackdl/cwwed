@@ -12,7 +12,7 @@ https://www.weather.gov/sti/coastalact_cwwed
     # install requirements
     pip install -r requirements.txt
     
-    # activate environment if in a new shell
+    # activate environment when entering a new shell
     workon cwwed-env
 
 ### Running via Docker Compose
@@ -20,13 +20,13 @@ https://www.weather.gov/sti/coastalact_cwwed
     # start PostGIS/OPeNDAP/RabbitMQ via Docker
     docker-compose up
     
-    # start server
+    # start django server
     python manage.py runserver
     
     # start Celery and Flower (celery web management)
     python manage.py celery
     
-Initial Setup
+### Initial Setup
 
     # migrate/create tables
     python manage.py migrate
@@ -40,12 +40,16 @@ Initial Setup
     # create "nsem" user & model permissions
     python manage.py cwwed-init
     
-    
 Collect Covered Data
 
     python manage.py collect_covered_data
     
-##### Helpers
+### Build front-end app
+
+    # copies output to a sub-folder which django includes as a "static" directory
+    npm --prefix frontend run build-prod
+    
+### Helpers
 
 Purge RabbitMQ
 
@@ -54,23 +58,6 @@ Purge RabbitMQ
 Purge Celery
 
     celery -A cwwed purge -f
-    
-#### Monitoring
-
-*NOTE: This takes up a lot of resources and is not in use.*
-
-Monitoring via Prometheus/Grafana.
-[Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
-
-User:admin
-
-    # port forward grafana to local
-    kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
-    
-### Build front-end app
-
-    # copies output to a sub-folder which django includes as a "static" directory
-    npm --prefix frontend run build-prod
     
 ## Production
 
@@ -116,7 +103,7 @@ Create EFS and make sure it's in the same VPC as the cluster, along with the nod
         --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
         && true
     
-#### Load Balancing
+### Load Balancing
 
 Install [Ambassador](https://www.getambassador.io) for load balancing.
 
@@ -132,7 +119,7 @@ Monitor the new external Load Balancer and get it's external IP address.
 Use that IP and configure DNS via Cloudflare.
 
 
-#### Install all the services, volumes, deployments etc.
+### Install all the services, volumes, deployments etc.
     
 
 Create everything all at once (services and deployments):
@@ -158,7 +145,7 @@ Or individually:
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     
-#### Initializations
+### Initializations
 
     kubectl exec -it $CWWED_POD python manage.py createsuperuser
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
@@ -166,7 +153,7 @@ Or individually:
     # alternatively exectute commands from local environment using production settings
     DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) DEPLOY_STAGE=prod python manage.py dbshell
     
-#### Helpers
+### Helpers
     
     # collect covered data via job
     kubectl apply -f configs/job-collect-covered-data.yml
@@ -189,12 +176,12 @@ Or individually:
     # connect to pod
     kubectl exec -it $CWWED_POD bash
     
-#### Celery dashboard (Flower)
+### Celery dashboard (Flower)
 
     - Go to the configured domain in Cloudflare
     - Use the user/password saved in the secrets file when prompted via basic authorization
    
-#### Kubernetes Dashboard
+### Kubernetes Dashboard
     
     # create kubernetes dashboard
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
@@ -209,11 +196,24 @@ Or individually:
     # start proxy
     kubectl proxy
     
-#### Social auth (WIP)
+### Social auth (WIP)
 
 Configure Django "Sites" (in admin)
 
     For example, log into the admin and create a site as `dev.cwwed-staging.com`.
+    
+    
+### Monitoring
+
+*NOTE: This takes up a lot of resources and is not in use.*
+
+Monitoring via Prometheus/Grafana.
+[Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
+
+User:admin
+
+    # port forward grafana to local
+    kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
 
     
 ## NSEM process
