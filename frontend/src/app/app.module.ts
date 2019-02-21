@@ -1,12 +1,13 @@
 import { ReactiveFormsModule } from '@angular/forms';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { NgModule} from '@angular/core';
+import { ErrorHandler, Injectable, NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
 import { NgxChartsModule } from '../ngx-charts';
+import * as Sentry from "@sentry/browser";
 
 
 import { AppComponent } from './app.component';
@@ -18,6 +19,19 @@ import { MainComponent } from './main/main.component';
 import { CoastalActComponent } from './coastal-act/coastal-act.component';
 import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-projects.component';
 import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
+
+Sentry.init({
+  dsn: "https://80b326e2a7fa4e6abf9d3a9d19481c40@sentry.io/1281345",
+});
+
+@Injectable()
+export class SentryErrorHandler implements ErrorHandler {
+  constructor() {}
+  handleError(error) {
+    Sentry.captureException(error.originalError || error);
+    throw error;
+  }
+}
 
 const appRoutes: Routes = [
   { path: '',   redirectTo: '/home', pathMatch: 'full' },
@@ -76,7 +90,7 @@ const appRoutes: Routes = [
     NgxChartsModule,
   ],
   entryComponents: [],
-  providers: [],
+  providers: [{ provide: ErrorHandler, useClass: SentryErrorHandler }],
   bootstrap: [AppComponent]
 })
 export class AppModule {
