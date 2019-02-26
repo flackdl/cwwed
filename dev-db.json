@@ -98,7 +98,7 @@
     "name": "National Land Cover Database 2011",
     "description": "National Land Cover Database 2011 (NLCD 2011) is the most recent national land cover product created by the Multi-Resolution Land Characteristics (MRLC) Consortium. NLCD 2011 provides - for the first time - the capability to assess wall-to-wall, spatially explicit, national land cover changes and trends across the United States from 2001 to 2011. As with two previous NLCD land cover products NLCD 2011 keeps the same 16-class land cover classification scheme that has been applied consistently across the United States at a spatial resolution of 30 meters. NLCD 2011 is based primarily on a decision-tree classification of circa 2011 Landsat satellite data.",
     "active": true,
-    "url": "https://www.mrlc.gov/nlcd11_data.php"
+    "url": "https://www.mrlc.gov/data?f%5B0%5D=category%3Aland%20cover"
   }
 },
 {
@@ -388,7 +388,7 @@
     "dates_required": true,
     "geo": "SRID=4326;POLYGON ((-95.712890625 25.751953125, -90.703125 27.59765625, -84.7265625 28.65234375, -81.9140625 24.609375, -81.298828125 31.201171875, -88.681640625 32.080078125, -99.580078125 28.30078125, -98.26171875 26.806640625, -95.712890625 25.751953125))",
     "external_storm_id": "",
-    "date_collected": "2018-09-24"
+    "date_collected": "2018-10-18"
   }
 },
 {
@@ -402,7 +402,7 @@
     "dates_required": true,
     "geo": "SRID=4326;POLYGON ((-96.328125 26.455078125, -92.63671875 28.65234375, -84.90234375 29.091796875, -82.353515625 25.927734375, -83.408203125 31.81640625, -98.0859375 30.146484375, -96.328125 26.455078125))",
     "external_storm_id": "",
-    "date_collected": null
+    "date_collected": "2018-11-29"
   }
 },
 {
