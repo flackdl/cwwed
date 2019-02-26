@@ -4,32 +4,23 @@
 </div>
 <div *ngIf="data">
   <div class="card">
-    <h5 class="card-header">
-      <div class="row">
-        <div class="col-md">
-           <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
-        </div>
-        <div class="col-md">
-          <div *ngFor="let provider of data.providers">
-            <a [href]="provider.url" target="_blank">
-              <span class="oi oi-external-link"></span> {{ provider.name }} Data
-            </a>
-          </div>
-        </div>
-        <div class="col-md">
-          <div ngbDropdown class="d-inline-block">
-            <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
-            <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-              <div *ngFor="let storm of namedStorms" class="dropdown-item">
-                <a [href]="stormCoveredDataUrl(storm)" target="_blank" *ngIf="stormCoveredDataUrl(storm)">
-                  <span class="oi oi-cloud-download"></span>
-                  <span class="pl-2">{{ storm.name }}</span>
-                </a>
-                <span class="muted" *ngIf="!stormCoveredDataUrl(storm)">
+    <h5 class="card-header d-flex justify-content-between">
+      <div>
+        <a [href]="data.url" target="_blank"><span class="oi oi-document"></span> Source</a>
+      </div>
+      <div>
+        <div ngbDropdown class="d-inline-block">
+          <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
+          <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+            <div *ngFor="let storm of namedStorms" class="dropdown-item">
+              <a [href]="stormCoveredDataUrl(storm)" target="_blank" *ngIf="stormCoveredDataUrl(storm)">
+                <span class="oi oi-cloud-download"></span>
+                <span class="pl-2">{{ storm.name }}</span>
+              </a>
+              <span class="muted" *ngIf="!stormCoveredDataUrl(storm)">
                   <span class="oi oi-warning"></span>
-                  {{ storm.name }}
+                {{ storm.name }}
                 </span>
-              </div>
             </div>
           </div>
         </div>
