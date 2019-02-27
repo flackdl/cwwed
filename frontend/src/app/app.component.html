@@ -1,76 +1,78 @@
-<header class="py-3">
-  <div class="row flex-nowrap justify-content-between align-items-center">
-    <div class="col-12 col-md-8">
-      <img class="img-fluid" src="assets/header.png" />
-    </div>
-    <div class="col-md-4 text-right">
-      <img class="img-fluid" src="assets/header_doc.png" />
-    </div>
-  </div>
-  <div class="row border-bottom m-0"></div>
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <a class="navbar-brand" routerLink="">CWWED</a>
-    <button class="navbar-toggler" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
-      <ul class="navbar-nav mr-auto">
-        <li class="nav-item">
-          <a class="nav-link" routerLink="coastal-act" routerLinkActive="active" (click)="navCollapse()">COASTAL Act</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="coastal-act-projects" routerLinkActive="active" (click)="navCollapse()">COASTAL Act Projects</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active" (click)="navCollapse()">Post Storm Assessment</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="covered-data" routerLinkActive="active" (click)="navCollapse()">Covered Data</a>
-        </li>
-      </ul>
-      <div ngbDropdown class="d-inline-block">
-        <button class="btn btn-outline-secondary" id="dropdownBasic1" ngbDropdownToggle>
-          <span class="oi oi-person"></span>
-        </button>
-        <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
-          <li *ngIf="isLoggedIn()" class="dropdown-item disabled">{{ userName() }}</li>
-          <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item">
-            Sign In
-          </a>
-          <a *ngIf="isLoggedIn()" href="/accounts/logout" class="dropdown-item">
-            Sign Out
-          </a>
-        </div>
+<div class="container">
+  <header class="py-3">
+    <div class="row flex-nowrap justify-content-between align-items-center">
+      <div class="col-12 col-md-8">
+        <img class="img-fluid" src="assets/header.png" />
+      </div>
+      <div class="col-md-4 text-right">
+        <img class="img-fluid" src="assets/header_doc.png" />
       </div>
     </div>
-  </nav>
-</header>
+    <div class="row border-bottom m-0"></div>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+      <a class="navbar-brand" routerLink="">CWWED</a>
+      <button class="navbar-toggler" type="button" (click)="toggleNavCollapse()" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="coastal-act" routerLinkActive="active" (click)="navCollapse()">COASTAL Act</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="coastal-act-projects" routerLinkActive="active" (click)="navCollapse()">COASTAL Act Projects</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="post-storm-assessment" routerLinkActive="active" (click)="navCollapse()">Post Storm Assessment</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="covered-data" routerLinkActive="active" (click)="navCollapse()">Covered Data</a>
+          </li>
+        </ul>
+        <div ngbDropdown class="d-inline-block">
+          <button class="btn btn-outline-secondary" id="dropdownBasic1" ngbDropdownToggle>
+            <span class="oi oi-person"></span>
+          </button>
+          <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+            <li *ngIf="isLoggedIn()" class="dropdown-item disabled">{{ userName() }}</li>
+            <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item">
+              Sign In
+            </a>
+            <a *ngIf="isLoggedIn()" href="/accounts/logout" class="dropdown-item">
+              Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
 
-<div class="position-relative">
-  <ngx-loading [show]="isLoading"></ngx-loading>
-  <router-outlet *ngIf="!isLoading"></router-outlet>
-</div>
-
-<footer class="pt-4 my-md-5 pt-md-5 border-top">
-  <div class="row">
-    <div class="col-12 col-md">
-      <img class="mb-2" src="assets/noaa-logo.svg" alt="" width="24" height="24">
-      <small class="d-block mb-3 text-muted">CWWED</small>
-    </div>
-    <div class="col-6 col-md">
-      <h5>About</h5>
-      <ul class="list-unstyled text-small">
-        <li><a class="text-muted" routerLink="home">CWWED</a></li>
-        <li><a class="text-muted" routerLink="coastal-act">The COASTAL Act</a></li>
-        <li><a class="text-muted" routerLink="coastal-act-projects">COASTAL Act Projects</a></li>
-      </ul>
-    </div>
-    <div class="col-6 col-md">
-      <h5>Features</h5>
-      <ul class="list-unstyled text-small">
-        <li><a class="text-muted" routerLink="covered-data">Covered Data</a></li>
-        <li><a class="text-muted" routerLink="post-storm-assessment">Post Storm Assessment</a></li>
-      </ul>
-    </div>
+  <div class="position-relative">
+    <ngx-loading [show]="isLoading"></ngx-loading>
+    <router-outlet *ngIf="!isLoading"></router-outlet>
   </div>
-</footer>
+
+  <footer class="pt-4 my-md-5 pt-md-5 border-top">
+    <div class="row">
+      <div class="col-12 col-md">
+        <img class="mb-2" src="assets/noaa-logo.svg" alt="" width="24" height="24">
+        <small class="d-block mb-3 text-muted">CWWED</small>
+      </div>
+      <div class="col-6 col-md">
+        <h5>About</h5>
+        <ul class="list-unstyled text-small">
+          <li><a class="text-muted" routerLink="home">CWWED</a></li>
+          <li><a class="text-muted" routerLink="coastal-act">The COASTAL Act</a></li>
+          <li><a class="text-muted" routerLink="coastal-act-projects">COASTAL Act Projects</a></li>
+        </ul>
+      </div>
+      <div class="col-6 col-md">
+        <h5>Features</h5>
+        <ul class="list-unstyled text-small">
+          <li><a class="text-muted" routerLink="covered-data">Covered Data</a></li>
+          <li><a class="text-muted" routerLink="post-storm-assessment">Post Storm Assessment</a></li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+</div>

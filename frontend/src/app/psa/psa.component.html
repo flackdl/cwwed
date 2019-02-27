@@ -18,8 +18,8 @@
         <div class="col-lg-4 col-xl-3 mt-3">
 
           <!-- map controls -->
-          <ngb-accordion #acc="ngbAccordion" activeIds="map-layers">
-            <ngb-panel title="Map Layers" id="map-layers">
+          <ngb-accordion #acc="ngbAccordion" activeIds="map-filters">
+            <ngb-panel title="Map Filters" id="map-filters">
               <ng-template ngbPanelContent>
                 <div class="form-group">
                   <div class="form-check">
@@ -39,6 +39,16 @@
                   <label>Data Opacity</label>
                   <input type="number" step=".1" min=".1" max="1" [formControl]="dataOpacityInput" class="form-control form-control-sm">
                 </div>
+                <div class="form-group">
+                  <label>Date: <small>{{ getDateInputFormatted(dateInputControl.value) }}</small></label>
+                  <input type="range" [formControl]="dateInputControl" min="0" [max]="getDateInputMax()" class="w-100">
+                </div>
+                <div>
+                  <small class="form-text text-muted">Start: {{ getDateMin() }}</small>
+                </div>
+                <div>
+                  <small class="form-text text-muted">End: {{ getDateMax() }}</small>
+                </div>
               </ng-template>
             </ngb-panel>
             <ngb-panel title="Base Maps">
@@ -48,20 +58,6 @@
                   <label class="form-check-label" [for]="'base-map-'+option.value">
                     {{ option.name }}
                   </label>
-                </div>
-              </ng-template>
-            </ngb-panel>
-            <ngb-panel title="Map Filters">
-              <ng-template ngbPanelContent>
-                <div class="form-group">
-                  <label>Date: {{ getDateInputFormatted(dateInputControl.value) }}</label>
-                  <input type="range" [formControl]="dateInputControl" min="0" [max]="getDateInputMax()" class="w-100">
-                </div>
-                <div>
-                  <small>Start: {{ getDateMin() }}</small>
-                </div>
-                <div>
-                  <small>End: {{ getDateMax() }}</small>
                 </div>
               </ng-template>
             </ngb-panel>

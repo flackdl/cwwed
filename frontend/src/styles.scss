@@ -3,7 +3,8 @@
 @import "~ol/ol.css";
 @import "~ol-geocoder/dist/ol-geocoder.css";
 
-app-root {
-  // necessary when entering full screen on app-root
-  background-color: white;
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1300px;
+  }
 }

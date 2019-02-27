@@ -104,7 +104,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateInputFormatted(dateIndex: number) {
-    return this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date;
+    return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date : '';
   }
 
   public getDateMin() {
@@ -112,11 +112,11 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateMax() {
-    return this.getDateInputFormatted(this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1);
+    return this.geojsonManifest ? this.getDateInputFormatted(this.getDateInputMax()) : '';
   }
 
   public getDateInputMax() {
-    return this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1;
+    return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1 : 0;
   }
 
   public closeOverlayPopup() {
