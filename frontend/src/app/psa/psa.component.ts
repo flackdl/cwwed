@@ -447,20 +447,21 @@ export class PsaComponent implements OnInit {
       const features = this.map.getFeaturesAtPixel(event.pixel);
 
       if (features) {
-        const feature = features[0];
-        if (feature.get('direction')) {
-          currentFeature['direction'] = feature.get('direction');
-        }
-        if (feature.get('speed')) {
-          currentFeature['speed'] = feature.get('speed');
-        }
-        if (feature.get('title')) { // TODO "title" should be correctly labeled as water depth
-          currentFeature['title'] = feature.get('title');
-        }
+        features.forEach((feature) => {
+          // include all the feature's details but don't overwrite an existing value from an overlapping feature
+          if (!_.has(currentFeature, 'direction') && feature.get('direction') !== undefined) {
+            currentFeature['direction'] = feature.get('direction');
+          }
+          if (!_.has(currentFeature, 'speed') && feature.get('speed') !== undefined) {
+            currentFeature['speed'] = feature.get('speed');
+          }
+          if (!_.has(currentFeature, 'title') && feature.get('title') !== undefined) { // TODO "title" should be correctly labeled as water depth
+            currentFeature['title'] = feature.get('title');
+          }
+        });
       }
 
-
-      if (!Object.keys(currentFeature).length) {
+      if (!_.keys(currentFeature).length) {
         this.currentFeature = undefined;
         return;
       }
