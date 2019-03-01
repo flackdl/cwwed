@@ -444,7 +444,10 @@ export class PsaComponent implements OnInit {
       this.currentConfidence = this._getConfidenceValueAtPixel(event.pixel);
 
       const currentFeature = {};
-      this.map.forEachFeatureAtPixel(event.pixel, (feature) => {
+      const features = this.map.getFeaturesAtPixel(event.pixel);
+
+      if (features) {
+        const feature = features[0];
         if (feature.get('direction')) {
           currentFeature['direction'] = feature.get('direction');
         }
@@ -454,7 +457,8 @@ export class PsaComponent implements OnInit {
         if (feature.get('title')) { // TODO "title" should be correctly labeled as water depth
           currentFeature['title'] = feature.get('title');
         }
-      });
+      }
+
 
       if (!Object.keys(currentFeature).length) {
         this.currentFeature = undefined;
