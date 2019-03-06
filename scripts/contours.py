@@ -1,4 +1,5 @@
 import os
+import gzip
 import json
 import math
 import sys
@@ -101,14 +102,17 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
         os.makedirs(output_path)
 
     # convert matplotlib contourf to geojson
-    geojsoncontour.contourf_to_geojson(
+    geojson_result = geojsoncontour.contourf_to_geojson(
         contourf=contourf,
         min_angle_deg=3.0,
         ndigits=5,
         stroke_width=2,
         fill_opacity=0.5,
-        geojson_filepath=os.path.join(output_path, file_name),
     )
+
+    # gzip compress geojson output and save to file
+    with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
+        fh.write(geojson_result.encode('utf-8'))
 
     # update the manifest with the geojson output
     manifest_entry = {
@@ -162,8 +166,9 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
 
     file_name = '{}.json'.format(dt.isoformat())
 
-    # save output file
-    json.dump(wind_geojson, open(os.path.join(output_path, file_name), 'w'))
+    # gzip compress geojson output and save to file
+    with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
+        fh.write(json.dumps(wind_geojson).encode('utf-8'))
 
     # update manifest
     if 'wind' not in manifest:
@@ -220,5 +225,9 @@ if __name__ == '__main__':
 
     # update manifest with video
     manifest['wind']['video'] = os.path.join('wind', video_name)
+
+    #
+    # write manifest
+    #
 
     json.dump(manifest, open('/tmp/manifest.json', 'w'))
