@@ -6,19 +6,23 @@ import sys
 from datetime import datetime
 import xarray
 from geojson import Point, Feature, FeatureCollection
-from matplotlib import animation
+import matplotlib
+from matplotlib import cm, colors, animation
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
-import numpy as np
-import geojsoncontour
 from matplotlib.animation import FFMpegWriter
 from matplotlib.axes import Axes
+import numpy as np
+import geojsoncontour
 
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 1000
 MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
 LEVELS = 30
+
+# color bar range
+COLOR_INTERVAL = 10
 
 
 def datetime64_to_datetime(dt64):
@@ -94,7 +98,11 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
-    contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=plt.cm.jet)
+    # define the color map
+    cmap = matplotlib.cm.get_cmap('jet')
+
+    # create the contour
+    contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=cmap)
 
     # create output directory if it doesn't exist
     output_path = '/tmp/{}'.format(variable_name)
@@ -114,10 +122,27 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
         fh.write(geojson_result.encode('utf-8'))
 
+    #
+    # build color values
+    #
+
+    color_values = []
+
+    color_norm = matplotlib.colors.Normalize(vmin=z.min(), vmax=z.max())
+    step_intervals = np.linspace(z.min(), z.max(), COLOR_INTERVAL)
+
+    for step_value in step_intervals:
+        # round the step value for ranges greater than COLOR_INTERVAL
+        if z.max() - z.min() >= COLOR_INTERVAL:
+            step_value = math.ceil(step_value)
+        hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
+        color_values.append((step_value, hex_value))
+
     # update the manifest with the geojson output
     manifest_entry = {
         'date': dt.isoformat(),
         'path': os.path.join(variable_name, file_name),
+        'color_bar': color_values,
     }
     if variable_name not in manifest:
         manifest[variable_name] = {'geojson': []}
