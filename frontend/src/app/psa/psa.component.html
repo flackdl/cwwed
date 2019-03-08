@@ -105,6 +105,12 @@
               <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
             </div>
 
+            <div id="color-bar">
+              <div *ngFor="let color_values of getWaterDepthColorBarValues()" [style.background-color]="color_values[1]">
+                <span>{{ color_values[0] }}</span>
+              </div>
+            </div>
+
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!coordinateData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>

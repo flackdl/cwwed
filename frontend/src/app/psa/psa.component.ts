@@ -154,6 +154,11 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
+  public getWaterDepthColorBarValues() {
+    return this.geojsonManifest ?
+      this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value]['color_bar'] : [];
+  }
+
   protected _listenForInputChanges() {
 
     // update map data opacity
