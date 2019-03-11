@@ -106,8 +106,8 @@
             </div>
 
             <div id="color-bar">
-              <div *ngFor="let color_values of getWaterDepthColorBarValues()" [style.background-color]="color_values[1]">
-                <span>{{ color_values[0] }}</span>
+              <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues()" [style.background-color]="color_values[1]">
+                <span class="color-bar-value">{{ color_values[0] }}'</span>
               </div>
             </div>
 

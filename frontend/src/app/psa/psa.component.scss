@@ -1,5 +1,9 @@
+@import "~bootstrap/scss/bootstrap";
+@import "~bootstrap/scss/mixins";
+@import "~bootstrap/scss/variables";
+
 #map-info {
-  z-index: 1;
+  z-index: 2;
   position: absolute;
   bottom: 0;
   left: 0;
@@ -24,13 +28,30 @@
   padding-top: 1.5em;
   display: flex;
   background-color: white;
+  border: 1px solid black;
 
-  div {
+  .color-bar-color {
+    flex-grow: 1;
     width: 10%;
     text-align: center;
-    span {
-      position: relative;;
-      bottom: 1.5em;
+  }
+
+  .color-bar-value {
+    position: relative;
+
+    @include media-breakpoint-up(xs) {
+      font-size: .6rem;
+      bottom: 2.8em;
+    }
+
+    @include media-breakpoint-up(sm) {
+      font-size: .6rem;
+      bottom: 2.6em;
+    }
+
+    @include media-breakpoint-up(md) {
+      font-size: .8rem;
+      bottom: 1.8em;
     }
   }
 }
