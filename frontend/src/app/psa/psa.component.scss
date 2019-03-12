@@ -25,10 +25,11 @@
   right: 50px;
   width: 40%;
   margin: 0;
-  padding-top: 1.5em;
+  padding-top: 1em;
   display: flex;
   background-color: white;
   border: 1px solid black;
+  height: 2em;
 
   .color-bar-color {
     flex-grow: 1;
@@ -38,20 +39,21 @@
 
   .color-bar-value {
     position: relative;
+    font-size: .4rem;
+    bottom: 3.2em;
+  }
 
-    @include media-breakpoint-up(xs) {
+  @include media-breakpoint-up(sm) {
+    .color-bar-value {
       font-size: .6rem;
-      bottom: 2.8em;
+      bottom: 2.4em;
     }
+  }
 
-    @include media-breakpoint-up(sm) {
-      font-size: .6rem;
-      bottom: 2.6em;
-    }
-
-    @include media-breakpoint-up(md) {
+  @include media-breakpoint-up(md) {
+    .color-bar-value {
       font-size: .8rem;
-      bottom: 1.8em;
+      bottom: 1.65em;
     }
   }
 }
@@ -61,13 +63,13 @@
   background-color: white;
   -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
   filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
-  padding: 15px;
+  padding: 10px;
   border-radius: 10px;
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 340px;
-  min-height: 200px;
+  min-width: 170px;
+  min-height: 100px;
 }
 .ol-popup:after, .ol-popup:before {
   top: 100%;

@@ -1,7 +1,7 @@
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormControl } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
@@ -66,6 +66,8 @@ export class PsaComponent implements OnInit {
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public coordinateData: any[];
+  public chartWidth: number;
+  public chartHeight: number;
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
@@ -119,6 +121,10 @@ export class PsaComponent implements OnInit {
     return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1 : 0;
   }
 
+  public isOverlayVisible(): boolean {
+    return this.popupOverlay.getPosition() !== undefined;
+  }
+
   public closeOverlayPopup() {
     this.popupOverlay.setPosition(undefined);
   }
@@ -157,6 +163,16 @@ export class PsaComponent implements OnInit {
   public getWaterDepthColorBarValues() {
     return this.geojsonManifest ?
       this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value]['color_bar'] : [];
+  }
+
+  @HostListener('window:resize', ['$event'])
+  protected _setMapWidth() {
+    this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
+  }
+
+  @HostListener('window:resize', ['$event'])
+  protected _setMapHeight() {
+    this.chartHeight = this.mapEl.nativeElement.offsetHeight * .5;
   }
 
   protected _listenForInputChanges() {
@@ -409,6 +425,8 @@ export class PsaComponent implements OnInit {
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
       this.isLoadingMap = false;
+      this._setMapHeight();
+      this._setMapWidth();
     });
 
     this.map.on('singleclick', (event) => {
@@ -470,6 +488,10 @@ export class PsaComponent implements OnInit {
         this.currentFeature = undefined;
         return;
       }
+
+      // include the current coordinates
+      currentFeature['coordinate'] = toLonLat(event.coordinate).reverse();
+
       this.currentFeature = currentFeature;
     });
   }

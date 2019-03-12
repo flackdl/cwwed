@@ -99,10 +99,12 @@
           <div #map class="position-relative">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
-            <div id="map-info" *ngIf="currentFeature && !extentCoords" [class.confident]="currentConfidence >= 90">
+            <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div>Water Depth: {{ currentFeature.title }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
+              <div><hr></div>
+              <div><small><em>{{ currentFeature.coordinate }}</em></small></div>
             </div>
 
             <div id="color-bar">
@@ -116,7 +118,7 @@
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
               <div *ngIf="coordinateData">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-                <ngx-charts-line-chart [view]="[320, 170]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
+                <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
               </div>
             </div>
 
