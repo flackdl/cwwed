@@ -14,6 +14,7 @@ from matplotlib.animation import FFMpegWriter
 from matplotlib.axes import Axes
 import numpy as np
 import geojsoncontour
+from typing import Callable
 
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -22,7 +23,7 @@ MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
 LEVELS = 30
 
 # color bar range
-COLOR_INTERVAL = 10
+COLOR_STEPS = 10
 
 
 def datetime64_to_datetime(dt64):
@@ -52,15 +53,15 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_geojson_contours(data, ax: Axes, manifest: dict):
+def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojson: Callable = None):
 
     ax.clear()
+
+    variable_name = data.name
 
     z = data
     x = z.mesh2d_face_x[:len(z)]
     y = z.mesh2d_face_y[:len(z)]
-
-    variable_name = z.name
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(z.time)
@@ -76,10 +77,6 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     x = x.values
     y = y.values
 
-    # build grid constraints
-    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
-
     # build delaunay triangles
     triang = tri.Triangulation(x, y)
 
@@ -93,6 +90,10 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     mask = [i in large_triangles for i, _ in enumerate(triang.triangles)]
     triang.set_mask(mask)
 
+    # build grid constraints
+    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
     # interpolate values from triangle data and build a mesh of data
     interpolator = tri.LinearTriInterpolator(triang, z)
     Xi, Yi = np.meshgrid(xi, yi)
@@ -104,23 +105,29 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     # create the contour
     contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=cmap)
 
-    # create output directory if it doesn't exist
-    output_path = '/tmp/{}'.format(variable_name)
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
     # convert matplotlib contourf to geojson
-    geojson_result = geojsoncontour.contourf_to_geojson(
+    geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
         contourf=contourf,
         min_angle_deg=3.0,
         ndigits=5,
         stroke_width=2,
         fill_opacity=0.5,
-    )
+    ))
+
+    # mask regions
+    if mask_geojson is not None:
+        mask_geojson(geojson_result)
+
+    json.dump(geojson_result, open('/tmp/b.json', 'w'))
+
+    # create output directory if it doesn't exist
+    output_path = '/tmp/{}'.format(variable_name)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
 
     # gzip compress geojson output and save to file
     with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
-        fh.write(geojson_result.encode('utf-8'))
+        fh.write(json.dumps(geojson_result).encode('utf-8'))
 
     #
     # build color values
@@ -129,11 +136,11 @@ def build_geojson_contours(data, ax: Axes, manifest: dict):
     color_values = []
 
     color_norm = matplotlib.colors.Normalize(vmin=z.min(), vmax=z.max())
-    step_intervals = np.linspace(z.min(), z.max(), COLOR_INTERVAL)
+    step_intervals = np.linspace(z.min(), z.max(), COLOR_STEPS)
 
     for step_value in step_intervals:
-        # round the step value for ranges greater than COLOR_INTERVAL
-        if z.max() - z.min() >= COLOR_INTERVAL:
+        # round the step value for ranges greater than COLOR_STEPS
+        if z.max() - z.min() >= COLOR_STEPS:
             step_value = math.ceil(step_value)
         hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
         color_values.append((step_value, hex_value))
@@ -161,15 +168,15 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
     # set title on figure
     ax.set_title(dt.isoformat())
 
+    #
+    # plot barbs
+    #
+
     # get a subset of data points since we don't want to display a wind barb at every point
     windx_values = ds.sel(time=date)['mesh2d_windx'][::100].values
     windy_values = ds.sel(time=date)['mesh2d_windy'][::100].values
     facex_values = ds.mesh2d_face_x[::100].values
     facey_values = ds.mesh2d_face_y[::100].values
-
-    #
-    # plot barbs
-    #
 
     ax.barbs(facex_values, facey_values, windx_values, windy_values)
 
@@ -204,7 +211,7 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
     })
 
 
-if __name__ == '__main__':
+def init():
 
     # open the dataset
     dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
@@ -213,25 +220,37 @@ if __name__ == '__main__':
     manifest = {}
 
     #
-    # water depth contours and time series animation
+    # contours
     #
 
-    fig, ax = plt.subplots()
-    anim = animation.FuncAnimation(
-        fig,
-        # use init_func to prevent func from being called an extra/initial time
-        # https://stackoverflow.com/a/42993500
-        # https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
-        init_func=lambda: None,
-        func=build_geojson_contours,
-        frames=dataset['mesh2d_waterdepth'],
-        fargs=[ax, manifest],
-    )
-    video_name = 'mesh2d_waterdepth.mp4'
-    anim.save(os.path.join('/tmp/mesh2d_waterdepth', video_name), writer=FFMpegWriter())
+    for variable in ['mesh2d_waterdepth', 'mesh2d_s1']:
 
-    # update manifest with video
-    manifest['mesh2d_waterdepth']['video'] = os.path.join('mesh2d_waterdepth', video_name)
+        mask_geojson = None
+
+        if variable == 'mesh2d_s1':
+
+            # for sea surface height, mask values not greater than zero
+            def mask_geojson(geojson_result):
+                for feature in geojson_result['features'][:]:
+                    if float(feature['properties']['title']) <= 0:
+                        geojson_result['features'].remove(feature)
+
+        fig, ax = plt.subplots()
+        anim = animation.FuncAnimation(
+            fig,
+            # use init_func to prevent func from being called an extra/initial time
+            # https://stackoverflow.com/a/42993500
+            # https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+            init_func=lambda: None,
+            func=build_contours,
+            frames=dataset[variable],
+            fargs=[ax, manifest, mask_geojson],
+        )
+        video_name = '{}.mp4'.format(variable)
+        anim.save(os.path.join('/tmp/{}'.format(variable), video_name), writer=FFMpegWriter())
+
+        # update manifest with video
+        manifest[variable]['video'] = os.path.join(variable, video_name)
 
     #
     # wind speed/direction
@@ -256,3 +275,7 @@ if __name__ == '__main__':
     #
 
     json.dump(manifest, open('/tmp/manifest.json', 'w'))
+
+
+if __name__ == '__main__':
+    init()
