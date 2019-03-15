@@ -60,8 +60,10 @@ export class PsaComponent implements OnInit {
   public dateInputControl = new FormControl(0); // first date in the list
   public dataOpacityInput = new FormControl(.5);
   public waterDepthLayer: any;  // VectorLayer
+  public seaSurfaceLayer: any;  // VectorLayer
   public windLayer: any;  // VectorLayer
-  public mapLayerWaterDepthInput = new FormControl(true);
+  public mapLayerSeaSurfaceInput = new FormControl(true);
+  public mapLayerWaterDepthInput = new FormControl(false);
   public mapLayerWindInput = new FormControl(false);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
@@ -99,12 +101,6 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  public openVideoModal(content, variable: string) {
-    // attaching which dataset variable to display onto the template ref "content" (somewhat messy)
-    content.variable = variable;
-    this.modalService.open(content);
-  }
-
   public getDateInputFormatted(dateIndex: number) {
     return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date : '';
   }
@@ -133,10 +129,6 @@ export class PsaComponent implements OnInit {
     return `${this.demoDataURL}.${format}`;
   }
 
-  public animationVideoURL(variable: string) {
-    return `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest[variable]['video']}`;
-  }
-
   public xAxisTickFormatting(value: string) {
     const date = new Date(value);
     const month = date.getMonth() + 1;
@@ -160,9 +152,9 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
-  public getWaterDepthColorBarValues() {
+  public getWaterDepthColorBarValues(variable: string) {
     return this.geojsonManifest ?
-      this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value]['color_bar'] : [];
+      this.geojsonManifest[variable]['geojson'][this.dateInputControl.value]['color_bar'] : [];
   }
 
   @HostListener('window:resize', ['$event'])
@@ -181,10 +173,10 @@ export class PsaComponent implements OnInit {
     this.dataOpacityInput.valueChanges.subscribe(
       (data) => {
         this.waterDepthLayer.setStyle((feature) => {
-          return this._waterDepthStyle(feature);
+          return this._getWaterLayerStyle(feature);
         });
         this.windLayer.setStyle((feature) => {
-          return this._getWindStyle(feature);
+          return this._getWindLayerStyle(feature);
         });
       }
     );
@@ -198,6 +190,22 @@ export class PsaComponent implements OnInit {
             layer.setVisible(mapName === value);
           }
         });
+      }
+    );
+
+    // listen for layer input changes
+    this.mapLayerSeaSurfaceInput.valueChanges.pipe(
+      tap(() => {
+        this.isLoadingMap = true;
+      })
+    ).subscribe(
+      (value) => {
+        if (!value) {
+          this.map.removeLayer(this.seaSurfaceLayer);
+        } else {
+          this.seaSurfaceLayer.setSource(this._getSeaSurfaceSource());
+          this.map.addLayer(this.seaSurfaceLayer);
+        }
       }
     );
 
@@ -245,6 +253,13 @@ export class PsaComponent implements OnInit {
     });
   }
 
+  protected _getSeaSurfaceSource(): VectorSource {
+    return new VectorSource({
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_s1']['geojson'][this.dateInputControl.value].path}`,
+      format: new GeoJSON()
+    });
+  }
+
   protected _getWaterDepthSource(): VectorSource {
     return new VectorSource({
       url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value].path}`,
@@ -259,7 +274,7 @@ export class PsaComponent implements OnInit {
     })
   }
 
-  protected _getWindStyle(feature): Style {
+  protected _getWindLayerStyle(feature): Style {
     let icon;
 
     const speed = feature.get('speed') || 0; // m/s
@@ -325,7 +340,7 @@ export class PsaComponent implements OnInit {
     )
   }
 
-  protected _waterDepthStyle(feature) {
+  protected _getWaterLayerStyle(feature) {
     return new Style({
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.dataOpacityInput.value),
@@ -347,10 +362,18 @@ export class PsaComponent implements OnInit {
     });
 
     // create a vector layer with the contour data
+    this.seaSurfaceLayer = new VectorLayer({
+      source: this._getSeaSurfaceSource(),
+      style: (feature) => {
+        return this._getWaterLayerStyle(feature);
+      },
+    });
+
+    // create a vector layer with the contour data
     this.waterDepthLayer = new VectorLayer({
       source: this._getWaterDepthSource(),
       style: (feature) => {
-        return this._waterDepthStyle(feature);
+        return this._getWaterLayerStyle(feature);
       },
     });
 
@@ -358,7 +381,7 @@ export class PsaComponent implements OnInit {
     this.windLayer = new VectorLayer({
       source: this._getWindSource(),
       style: (feature) => {
-        return this._getWindStyle(feature);
+        return this._getWindLayerStyle(feature);
       },
     });
 
@@ -399,7 +422,7 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        this.waterDepthLayer,
+        this.seaSurfaceLayer,
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],

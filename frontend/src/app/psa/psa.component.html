@@ -23,6 +23,12 @@
               <ng-template ngbPanelContent>
                 <div class="form-group">
                   <div class="form-check">
+                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerSeaSurfaceInput" id="sea_surface">
+                    <label class="form-check-label" for="sea_surface">
+                      Sea Surface Height
+                    </label>
+                  </div>
+                  <div class="form-check">
                     <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterDepthInput" id="water_depth">
                     <label class="form-check-label" for="water_depth">
                       Water Depth
@@ -48,6 +54,26 @@
                 </div>
                 <div>
                   <small class="form-text text-muted">End: {{ getDateMax() }}</small>
+                </div>
+              </ng-template>
+            </ngb-panel>
+            <ngb-panel title="Legends">
+              <ng-template ngbPanelContent>
+                <div *ngIf="mapLayerWaterDepthInput.value">
+                  <h6>Water Depth</h6>
+                  <div class="color-bar">
+                    <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_waterdepth')" [style.background-color]="color_values[1]">
+                      <span class="color-bar-value">{{ color_values[0] }}'</span>
+                    </div>
+                  </div>
+                </div>
+                <div *ngIf="mapLayerSeaSurfaceInput.value">
+                  <h6>Sea Surface Height</h6>
+									<div class="color-bar">
+										<div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_s1')" [style.background-color]="color_values[1]">
+											<span class="color-bar-value">{{ color_values[0] }}'</span>
+										</div>
+									</div>
                 </div>
               </ng-template>
             </ngb-panel>
@@ -106,13 +132,6 @@
               <div><hr></div>
               <div><small><em>{{ currentFeature.coordinate }}</em></small></div>
             </div>
-
-            <div id="color-bar">
-              <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues()" [style.background-color]="color_values[1]">
-                <span class="color-bar-value">{{ color_values[0] }}'</span>
-              </div>
-            </div>
-
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!coordinateData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
@@ -133,34 +152,10 @@
             <small class="d-block"><sup>3</sup>Hover to see feature information</small>
           </div>
 
-          <div class="mt-3">
-            <p>
-							<button class="btn btn-outline-info btn-sm" (click)="openVideoModal(content, 'mesh2d_waterdepth')"><span class="oi oi-video"></span> Water Depth</button>
-            </p>
-            <p>
-              <button class="btn btn-outline-info btn-sm" (click)="openVideoModal(content, 'wind')"><span class="oi oi-video"></span> Wind</button>
-            </p>
-          </div>
         </div>
 
       </div>
     </div>
   </div>
-
-  <!-- video modal -->
-  <ng-template #content let-modal>
-    <div class="modal-header">
-      <h4 class="modal-title">Time Series Video</h4>
-      <button type="button" class="close" aria-label="Close" (click)="modal.dismiss()">
-        <span aria-hidden="true">&times;</span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <video controls class="w-100">
-        <source [src]="animationVideoURL(content.variable)" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
-    </div>
-  </ng-template>
 
 </div>

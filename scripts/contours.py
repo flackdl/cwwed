@@ -7,14 +7,14 @@ from datetime import datetime
 import xarray
 from geojson import Point, Feature, FeatureCollection
 import matplotlib
-from matplotlib import cm, colors, animation
+from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
-from matplotlib.animation import FFMpegWriter
 from matplotlib.axes import Axes
 import numpy as np
 import geojsoncontour
 from typing import Callable
+
 
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -227,48 +227,26 @@ def init():
 
         mask_geojson = None
 
+        # sea surface height
         if variable == 'mesh2d_s1':
 
-            # for sea surface height, mask values not greater than zero
+            # mask values not greater than zero
             def mask_geojson(geojson_result):
                 for feature in geojson_result['features'][:]:
                     if float(feature['properties']['title']) <= 0:
                         geojson_result['features'].remove(feature)
 
         fig, ax = plt.subplots()
-        anim = animation.FuncAnimation(
-            fig,
-            # use init_func to prevent func from being called an extra/initial time
-            # https://stackoverflow.com/a/42993500
-            # https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
-            init_func=lambda: None,
-            func=build_contours,
-            frames=dataset[variable],
-            fargs=[ax, manifest, mask_geojson],
-        )
-        video_name = '{}.mp4'.format(variable)
-        anim.save(os.path.join('/tmp/{}'.format(variable), video_name), writer=FFMpegWriter())
 
-        # update manifest with video
-        manifest[variable]['video'] = os.path.join(variable, video_name)
+        for data in dataset[variable]:
+            build_contours(data, ax, manifest, mask_geojson)
 
     #
-    # wind speed/direction
+    # wind velocity
     #
 
     fig, ax = plt.subplots()
-    anim = animation.FuncAnimation(
-        fig,
-        init_func=lambda: None,
-        func=build_wind_barbs,
-        frames=dataset['time'],
-        fargs=[dataset, ax, manifest],
-    )
-    video_name = 'wind.mp4'
-    anim.save(os.path.join('/tmp/wind', video_name), writer=FFMpegWriter())
-
-    # update manifest with video
-    manifest['wind']['video'] = os.path.join('wind', video_name)
+    build_wind_barbs(dataset['time'], dataset, ax, manifest)
 
     #
     # write manifest

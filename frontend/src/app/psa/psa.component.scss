@@ -18,18 +18,12 @@
   background: rgba(6, 136, 5, 0.7);
 }
 
-#color-bar {
-  z-index: 1;
-  position: absolute;
-  bottom: 5px;
-  right: 50px;
-  width: 40%;
-  margin: 0;
-  padding-top: 1em;
+.color-bar {
+  width: 100%;
+  margin: 2em 0 1em 0;
   display: flex;
-  background-color: white;
   border: 1px solid black;
-  height: 2em;
+  height: 1.5em;
 
   .color-bar-color {
     flex-grow: 1;
