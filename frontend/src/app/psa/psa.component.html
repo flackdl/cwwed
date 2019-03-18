@@ -131,13 +131,16 @@
           <div #map class="position-relative">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
+            <!-- feature info -->
             <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
-              <div>Water Depth: {{ currentFeature.title }} m ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.water_depth">Water Depth: {{ currentFeature.water_depth }} m ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.sea_surface">Sea Surface: {{ currentFeature.sea_surface }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
               <div><hr></div>
               <div><small><em>{{ currentFeature.coordinate }}</em></small></div>
             </div>
+
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!coordinateData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
@@ -149,6 +152,7 @@
 
           </div>
 
+          <!-- instructions -->
           <div class="d-none d-md-block">
             <small class="d-block"><sup>1</sup>Click on a map feature to see a time series graph for a specific location</small>
             <div>

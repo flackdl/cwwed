@@ -495,15 +495,24 @@ export class PsaComponent implements OnInit {
 
       if (features) {
         features.forEach((feature) => {
-          // include all the feature's details but don't overwrite an existing value from an overlapping feature
+          // include all feature's details but don't overwrite an existing value from an overlapping feature of the same variable
+
+          // wind
           if (!_.has(currentFeature, 'direction') && feature.get('direction') !== undefined) {
             currentFeature['direction'] = feature.get('direction');
           }
           if (!_.has(currentFeature, 'speed') && feature.get('speed') !== undefined) {
             currentFeature['speed'] = feature.get('speed');
           }
-          if (!_.has(currentFeature, 'title') && feature.get('title') !== undefined) { // TODO "title" should be correctly labeled as water depth
-            currentFeature['title'] = feature.get('title');
+
+          // water depth
+          if (feature.get('variable') == 'mesh2d_waterdepth' && !_.has(currentFeature, 'water_depth')) {
+            currentFeature['water_depth'] = feature.get('title');
+          }
+
+          // sea surface
+          if (feature.get('variable') == 'mesh2d_s1' && !_.has(currentFeature, 'sea_surface')) {
+            currentFeature['sea_surface'] = feature.get('title');
           }
         });
       }

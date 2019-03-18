@@ -102,6 +102,7 @@ def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colo
         ndigits=5,
         stroke_width=2,
         fill_opacity=0.5,
+        geojson_properties={'variable': variable_name},
     ))
 
     # mask regions
