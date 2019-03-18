@@ -59,21 +59,27 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
-                <div *ngIf="mapLayerWaterDepthInput.value">
-                  <h6>Water Depth</h6>
-                  <div class="color-bar">
-                    <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_waterdepth')" [style.background-color]="color_values[1]">
-                      <span class="color-bar-value">{{ color_values[0] }}'</span>
-                    </div>
-                  </div>
-                </div>
                 <div *ngIf="mapLayerSeaSurfaceInput.value">
                   <h6>Sea Surface Height</h6>
-									<div class="color-bar">
-										<div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_s1')" [style.background-color]="color_values[1]">
-											<span class="color-bar-value">{{ color_values[0] }}'</span>
+                  <div class="d-flex justify-content-center color-bar">
+                    <div class="color-bar-legend">
+                      <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_s1')" [style.background-color]="color_values[1]">
+                        <span class="color-bar-value">{{ color_values[0] }}</span>
+                      </div>
+                    </div>
+                    <span class="pl-1">(m)</span>
+                  </div>
+                </div>
+                <div *ngIf="mapLayerWaterDepthInput.value">
+                  <h6>Water Depth</h6>
+                  <div class="d-flex justify-content-center color-bar">
+										<div class="color-bar-legend">
+											<div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_waterdepth')" [style.background-color]="color_values[1]">
+												<span class="color-bar-value">{{ color_values[0] }}</span>
+											</div>
 										</div>
-									</div>
+										<span class="pl-1">(m)</span>
+                  </div>
                 </div>
               </ng-template>
             </ngb-panel>

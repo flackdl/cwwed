@@ -10,11 +10,9 @@ import matplotlib
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
-from matplotlib.axes import Axes
 import numpy as np
 import geojsoncontour
 from typing import Callable
-
 
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
@@ -53,9 +51,7 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojson: Callable = None):
-
-    ax.clear()
+def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
 
     variable_name = data.name
 
@@ -65,9 +61,6 @@ def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojso
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(z.time)
-
-    # set title on figure
-    ax.set_title(dt.isoformat())
 
     # build json file name output
     file_name = '{}.json'.format(dt.isoformat())
@@ -99,11 +92,8 @@ def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojso
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
-    # define the color map
-    cmap = matplotlib.cm.get_cmap('jet')
-
     # create the contour
-    contourf = ax.contourf(xi, yi, zi, LEVELS, cmap=cmap)
+    contourf = plt.contourf(xi, yi, zi, LEVELS, cmap=cmap)
 
     # convert matplotlib contourf to geojson
     geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
@@ -117,8 +107,6 @@ def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojso
     # mask regions
     if mask_geojson is not None:
         mask_geojson(geojson_result)
-
-    json.dump(geojson_result, open('/tmp/b.json', 'w'))
 
     # create output directory if it doesn't exist
     output_path = '/tmp/{}'.format(variable_name)
@@ -145,7 +133,10 @@ def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojso
         hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
         color_values.append((step_value, hex_value))
 
-    # update the manifest with the geojson output
+    #
+    # write manifest
+    #
+
     manifest_entry = {
         'date': dt.isoformat(),
         'path': os.path.join(variable_name, file_name),
@@ -158,15 +149,10 @@ def build_contours(data: xarray.DataArray, ax: Axes, manifest: dict, mask_geojso
     return contourf
 
 
-def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manifest: dict):
-
-    ax.clear()
+def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, manifest: dict):
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(date)
-
-    # set title on figure
-    ax.set_title(dt.isoformat())
 
     #
     # plot barbs
@@ -178,7 +164,7 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
     facex_values = ds.mesh2d_face_x[::100].values
     facey_values = ds.mesh2d_face_y[::100].values
 
-    ax.barbs(facex_values, facey_values, windx_values, windy_values)
+    plt.barbs(facex_values, facey_values, windx_values, windy_values)
 
     #
     # generate geojson
@@ -211,7 +197,14 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, ax: Axes, manif
     })
 
 
-def init():
+def sea_surface_mask_geojson(geojson_result: dict):
+    # mask values not greater than zero
+    for feature in geojson_result['features'][:]:
+        if float(feature['properties']['title']) <= 0:
+            geojson_result['features'].remove(feature)
+
+
+def main():
 
     # open the dataset
     dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
@@ -223,30 +216,22 @@ def init():
     # contours
     #
 
-    for variable in ['mesh2d_waterdepth', 'mesh2d_s1']:
+    # water depth
+    cmap = matplotlib.cm.get_cmap('Blues')
+    for data in dataset['mesh2d_waterdepth']:
+        build_contours(data, manifest, cmap)
 
-        mask_geojson = None
-
-        # sea surface height
-        if variable == 'mesh2d_s1':
-
-            # mask values not greater than zero
-            def mask_geojson(geojson_result):
-                for feature in geojson_result['features'][:]:
-                    if float(feature['properties']['title']) <= 0:
-                        geojson_result['features'].remove(feature)
-
-        fig, ax = plt.subplots()
-
-        for data in dataset[variable]:
-            build_contours(data, ax, manifest, mask_geojson)
+    # sea surface
+    cmap = matplotlib.cm.get_cmap('jet')
+    for data in dataset['mesh2d_s1']:
+        build_contours(data, manifest, cmap, mask_geojson=sea_surface_mask_geojson)
 
     #
     # wind velocity
     #
 
-    fig, ax = plt.subplots()
-    build_wind_barbs(dataset['time'], dataset, ax, manifest)
+    for data in dataset['time']:
+        build_wind_barbs(data, dataset, manifest)
 
     #
     # write manifest
@@ -256,4 +241,4 @@ def init():
 
 
 if __name__ == '__main__':
-    init()
+    main()

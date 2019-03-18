@@ -249,6 +249,7 @@ export class PsaComponent implements OnInit {
     ).subscribe((value) => {
       // update the map's layer's sources
       this.waterDepthLayer.setSource(this._getWaterDepthSource());
+      this.seaSurfaceLayer.setSource(this._getSeaSurfaceSource());
       this.windLayer.setSource(this._getWindSource());
     });
   }
