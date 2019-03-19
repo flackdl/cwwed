@@ -175,6 +175,9 @@ export class PsaComponent implements OnInit {
         this.waterDepthLayer.setStyle((feature) => {
           return this._getWaterLayerStyle(feature);
         });
+        this.seaSurfaceLayer.setStyle((feature) => {
+          return this._getWaterLayerStyle(feature);
+        });
         this.windLayer.setStyle((feature) => {
           return this._getWindLayerStyle(feature);
         });
