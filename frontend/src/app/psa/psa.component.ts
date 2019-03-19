@@ -556,6 +556,10 @@ export class PsaComponent implements OnInit {
             name: 'Wind Speed',
             series: data.wind_speed,
           },
+          {
+            name: 'Sea Surface Height',
+            series: data.sea_surface,
+          },
         ];
       },
       (error) => {

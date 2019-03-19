@@ -32,12 +32,18 @@ class PSAFilterView(views.APIView):
         if nearest_index is None:
             raise exceptions.NotFound('No data found at this location')
 
-        depths = []
+        water_depths = []
         for data in self._dataset.mesh2d_waterdepth:
-            # afaik you shouldn't have to manually call load() but it throws an exception otherwise
-            data.load()
             data_date = parse_datetime(str(data.time.values))
-            depths.append({
+            water_depths.append({
+                'name': data_date.isoformat(),
+                'value': data[nearest_index].values,
+            })
+
+        sea_surfaces = []
+        for data in self._dataset.mesh2d_s1:
+            data_date = parse_datetime(str(data.time.values))
+            sea_surfaces.append({
                 'name': data_date.isoformat(),
                 'value': data[nearest_index].values,
             })
@@ -55,7 +61,8 @@ class PSAFilterView(views.APIView):
             })
 
         response = Response({
-            'water_depth': depths,
+            'water_depth': water_depths,
+            'sea_surface': sea_surfaces,
             'wind_speed': wind_speeds,
         })
 
