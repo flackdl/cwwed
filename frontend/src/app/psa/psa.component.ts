@@ -67,13 +67,14 @@ export class PsaComponent implements OnInit {
   public mapLayerWindInput = new FormControl(false);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
-  public coordinateData: any[];
+  public coordinateGraphData: any[];
   public chartWidth: number;
   public chartHeight: number;
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
+  protected _coordinateGraphDataAll: any[] = [];
 
   constructor(
     private http: HttpClient,
@@ -204,6 +205,7 @@ export class PsaComponent implements OnInit {
       })
     ).subscribe(
       (value) => {
+        this._updateCoordinateGraphData();
         if (!value) {
           this.map.removeLayer(this.seaSurfaceLayer);
         } else {
@@ -220,6 +222,7 @@ export class PsaComponent implements OnInit {
       })
     ).subscribe(
       (value) => {
+        this._updateCoordinateGraphData();
         if (!value) {
           this.map.removeLayer(this.waterDepthLayer);
         } else {
@@ -236,6 +239,7 @@ export class PsaComponent implements OnInit {
       }),
     ).subscribe(
       (value) => {
+        this._updateCoordinateGraphData();
         if (!value) {
           this.map.removeLayer(this.windLayer);
         } else {
@@ -560,7 +564,6 @@ export class PsaComponent implements OnInit {
 
   protected _configureGraphOverlay(event) {
     this.isLoadingOverlayPopup = true;
-    this.coordinateData = null;
 
     // verify there is data at this location
     const features = this.map.getFeaturesAtPixel(event.pixel);
@@ -573,10 +576,16 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(event.coordinate);
 
     const latLon = toLonLat(event.coordinate).reverse();
+
     this.cwwedService.fetchPSACoordinateData(this.demoDataPath, latLon).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-        this.coordinateData = [
+
+        this._coordinateGraphDataAll = [
+          {
+            name: 'Sea Surface Height',
+            series: data.sea_surface,
+          },
           {
             name: 'Water Depth',
             series: data.water_depth,
@@ -585,17 +594,55 @@ export class PsaComponent implements OnInit {
             name: 'Wind Speed',
             series: data.wind_speed,
           },
-          {
-            name: 'Sea Surface Height',
-            series: data.sea_surface,
-          },
         ];
+
+        this._updateCoordinateGraphData();
       },
       (error) => {
         console.error(error);
         this.isLoadingOverlayPopup = false;
       }
     );
+  }
+
+  protected _updateCoordinateGraphData() {
+
+    const coordinateGraphData = [];
+    let data;
+
+    if (this.mapLayerSeaSurfaceInput.value) {
+      data = this._coordinateGraphDataAll.filter((data) => {
+        return data.name === 'Sea Surface Height';
+      });
+      if (data.length) {
+        coordinateGraphData.push(data[0]);
+      }
+    }
+
+    if (this.mapLayerWaterDepthInput.value) {
+      data = this._coordinateGraphDataAll.filter((data) => {
+        return data.name === 'Water Depth';
+      });
+      if (data.length) {
+        coordinateGraphData.push(data[0]);
+      }
+    }
+
+    if (this.mapLayerWindInput.value) {
+      data = this._coordinateGraphDataAll.filter((data) => {
+        return data.name === 'Wind Speed';
+      });
+      if (data.length) {
+        coordinateGraphData.push(data[0]);
+      }
+    }
+
+    this.coordinateGraphData = coordinateGraphData;
+
+    // close graph popup if there's nothing being displayed
+    if (this.coordinateGraphData.length === 0) {
+      this.closeOverlayPopup();
+    }
   }
 
   protected _configureMapExtentInteraction() {

@@ -142,11 +142,11 @@
             </div>
 
             <!-- overlay graph -->
-            <div #popup class="ol-popup" [class.invisible]="!coordinateData && !isLoadingOverlayPopup">
+            <div #popup class="ol-popup" [class.invisible]="!coordinateGraphData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
-              <div *ngIf="coordinateData">
+              <div *ngIf="coordinateGraphData">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
-                <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
+                <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateGraphData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
               </div>
             </div>
 
