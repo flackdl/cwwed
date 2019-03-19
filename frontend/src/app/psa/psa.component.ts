@@ -1,5 +1,5 @@
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, Router } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
@@ -78,6 +78,7 @@ export class PsaComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private route: ActivatedRoute,
+    private router: Router,
     private cwwedService: CwwedService,
     private modalService: NgbModal,
     private chartTooltipInjectionService: InjectionService,
@@ -389,6 +390,19 @@ export class PsaComponent implements OnInit {
       },
     });
 
+    let zoom = 8;
+    let center = fromLonLat(<any>[-75.249730, 39.153332]);
+
+    if (this.route.snapshot.queryParams['zoom']) {
+      zoom = this.route.snapshot.queryParams['zoom'];
+    }
+    if (this.route.snapshot.queryParams['center']) {
+      let centerParams = this.route.snapshot.queryParams['center'].map((coord) => {
+        return parseFloat(coord);
+      });
+      center = fromLonLat(centerParams);
+    }
+
     this.map = new Map({
       controls: defaultControls().extend([
         new FullScreen(),
@@ -431,8 +445,8 @@ export class PsaComponent implements OnInit {
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
       view: new View({
-        center: fromLonLat(<any>[-75.249730, 39.153332]),
-        zoom: 8,
+        center: center,
+        zoom: zoom,
       })
     });
 
@@ -454,6 +468,18 @@ export class PsaComponent implements OnInit {
       this.isLoadingMap = false;
       this._setMapHeight();
       this._setMapWidth();
+    });
+
+    // update the url params when the map zooms or moves
+    this.map.on('moveend', (event: any) => {
+      const zoom = this.map.getView().getZoom();
+      const center = toLonLat(this.map.getView().getCenter());
+      this.router.navigate([], {
+        queryParams: {
+          zoom: zoom,
+          center: center,
+        }
+      });
     });
 
     this.map.on('singleclick', (event) => {
