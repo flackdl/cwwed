@@ -166,7 +166,8 @@ export class PsaComponent implements OnInit {
 
   @HostListener('window:resize', ['$event'])
   protected _setMapHeight() {
-    this.chartHeight = this.mapEl.nativeElement.offsetHeight * .5;
+    const chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
+    this.chartHeight = chartWidth / 2.0;
   }
 
   protected _listenForInputChanges() {
