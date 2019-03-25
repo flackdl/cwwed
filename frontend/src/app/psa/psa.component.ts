@@ -104,6 +104,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateInputFormatted(dateIndex: number) {
+    // TODO - shouldn't rely on specific variable
     return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date : '';
   }
 
@@ -116,6 +117,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateInputMax() {
+    // TODO - shouldn't rely on specific variable
     return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1 : 0;
   }
 

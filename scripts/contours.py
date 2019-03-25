@@ -51,13 +51,7 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
-
-    variable_name = data.name
-
-    z = data
-    x = z.mesh2d_face_x[:len(z)]
-    y = z.mesh2d_face_y[:len(z)]
+def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(z.time)
@@ -65,23 +59,10 @@ def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colo
     # build json file name output
     file_name = '{}.json'.format(dt.isoformat())
 
-    # convert to numpy arrays
-    z = z.values
-    x = x.values
-    y = y.values
+    variable_name = z.name
 
     # build delaunay triangles
     triang = tri.Triangulation(x, y)
-
-    # build a list of the triangle coordinates
-    tri_coords = []
-    for i in range(len(triang.triangles)):
-        tri_coords.append(tuple(zip(x[triang.triangles[i]], y[triang.triangles[i]])))
-
-    # filter out large triangles
-    large_triangles = [i for i, t in enumerate(tri_coords) if circum_radius(*t) > MAX_CIRCUM_RADIUS]
-    mask = [i in large_triangles for i, _ in enumerate(triang.triangles)]
-    triang.set_mask(mask)
 
     # build grid constraints
     xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
@@ -98,7 +79,7 @@ def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colo
     # convert matplotlib contourf to geojson
     geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
         contourf=contourf,
-        min_angle_deg=3.0,
+        min_angle_deg=0,
         ndigits=5,
         stroke_width=2,
         fill_opacity=0.5,
@@ -135,22 +116,17 @@ def build_contours(data: xarray.DataArray, manifest: dict, cmap: matplotlib.colo
         color_values.append((step_value, hex_value))
 
     #
-    # write manifest
+    # return manifest entry
     #
 
-    manifest_entry = {
+    return {
         'date': dt.isoformat(),
         'path': os.path.join(variable_name, file_name),
         'color_bar': color_values,
     }
-    if variable_name not in manifest:
-        manifest[variable_name] = {'geojson': []}
-    manifest[variable_name]['geojson'].append(manifest_entry)
-
-    return contourf
 
 
-def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, manifest: dict):
+def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
 
     # capture date and convert to datetime
     dt = datetime64_to_datetime(date)
@@ -190,12 +166,10 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset, manifest: dict)
         fh.write(json.dumps(wind_geojson).encode('utf-8'))
 
     # update manifest
-    if 'wind' not in manifest:
-        manifest['wind'] = {'geojson': []}
-    manifest['wind']['geojson'].append({
+    return {
         'date': dt.isoformat(),
         'path': os.path.join('wind', file_name),
-    })
+    }
 
 
 def sea_surface_mask_geojson(geojson_result: dict):
@@ -209,7 +183,8 @@ def main():
 
     # open the dataset
     dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
-    dataset = xarray.open_dataset(dataset_path)
+    #dataset = xarray.open_dataset(dataset_path)
+    dataset = xarray.open_dataset(dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
 
     manifest = {}
 
@@ -217,22 +192,40 @@ def main():
     # contours
     #
 
-    # water depth
-    cmap = matplotlib.cm.get_cmap('Blues')
-    for data in dataset['mesh2d_waterdepth']:
-        build_contours(data, manifest, cmap)
-
-    # sea surface
+    # inundation
     cmap = matplotlib.cm.get_cmap('jet')
-    for data in dataset['mesh2d_s1']:
-        build_contours(data, manifest, cmap, mask_geojson=sea_surface_mask_geojson)
+    manifest['zeta'] = {'geojson': []}
+    for z in dataset['zeta']:
+        x = z.x
+        y = z.y
+        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=sea_surface_mask_geojson)
+        manifest['zeta']['geojson'].append(manifest_entry)
+
+    ## water depth
+    #manifest['mesh2d_waterdepth'] = {'geojson': []}
+    #cmap = matplotlib.cm.get_cmap('Blues')
+    #for z in dataset['mesh2d_waterdepth']:
+    #    x = z.mesh2d_face_x
+    #    y = z.mesh2d_face_y
+    #    manifest_entry = build_contours(z, x, y, cmap)
+    #    manifest['mesh2d_waterdepth']['geojson'].append(manifest_entry)
+
+    ## sea surface
+    #cmap = matplotlib.cm.get_cmap('jet')
+    #manifest['mesh2d_s1'] = {'geojson': []}
+    #for z in dataset['mesh2d_s1']:
+    #    x = z.mesh2d_face_x
+    #    y = z.mesh2d_face_y
+    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=sea_surface_mask_geojson)
+    #    manifest['mesh2d_s1']['geojson'].append(manifest_entry)
 
     #
     # wind velocity
     #
 
-    for data in dataset['time']:
-        build_wind_barbs(data, dataset, manifest)
+    #manifest['wind'] = {'geojson': []}
+    #for data in dataset['time']:
+    #    manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
 
     #
     # write manifest
