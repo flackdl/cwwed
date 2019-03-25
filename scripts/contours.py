@@ -172,7 +172,7 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
     }
 
 
-def sea_surface_mask_geojson(geojson_result: dict):
+def water_level_mask_geojson(geojson_result: dict):
     # mask values not greater than zero
     for feature in geojson_result['features'][:]:
         if float(feature['properties']['title']) <= 0:
@@ -192,14 +192,24 @@ def main():
     # contours
     #
 
-    # inundation
+    # wave height
     cmap = matplotlib.cm.get_cmap('jet')
-    manifest['zeta'] = {'geojson': []}
-    for z in dataset['zeta']:
-        x = z.x
-        y = z.y
-        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=sea_surface_mask_geojson)
-        manifest['zeta']['geojson'].append(manifest_entry)
+    manifest['hs'] = {'geojson': []}
+    for z in dataset['hs']:
+        print(z.time.values)
+        x = dataset.longitude
+        y = dataset.latitude
+        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
+        manifest['hs']['geojson'].append(manifest_entry)
+
+    ## inundation
+    #cmap = matplotlib.cm.get_cmap('jet')
+    #manifest['zeta'] = {'geojson': []}
+    #for z in dataset['zeta']:
+    #    x = z.x
+    #    y = z.y
+    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
+    #    manifest['zeta']['geojson'].append(manifest_entry)
 
     ## water depth
     #manifest['mesh2d_waterdepth'] = {'geojson': []}
@@ -216,7 +226,7 @@ def main():
     #for z in dataset['mesh2d_s1']:
     #    x = z.mesh2d_face_x
     #    y = z.mesh2d_face_y
-    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=sea_surface_mask_geojson)
+    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
     #    manifest['mesh2d_s1']['geojson'].append(manifest_entry)
 
     #

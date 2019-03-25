@@ -23,21 +23,21 @@
               <ng-template ngbPanelContent>
                 <div class="form-group">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerSeaSurfaceInput" id="sea_surface">
-                    <label class="form-check-label" for="sea_surface">
-                      Sea Surface Height
+                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerSeaSurfaceInput" id="water_level">
+                    <label class="form-check-label" for="water_level">
+                      Water Level (from MSL)
                     </label>
                   </div>
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterDepthInput" id="water_depth">
                     <label class="form-check-label" for="water_depth">
-                      Water Depth
+                      Water Depth (DE Bay)
                     </label>
                   </div>
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" [formControl]="mapLayerWindInput" id="wind">
                     <label class="form-check-label" for="wind">
-                      Wind
+                      Wind (DE Bay)
                     </label>
                   </div>
                 </div>
@@ -60,22 +60,22 @@
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
                 <div *ngIf="mapLayerSeaSurfaceInput.value">
-                  <h6>Sea Surface Height</h6>
+                  <h6>Water Level</h6>
                   <div class="d-flex justify-content-center color-bar">
                     <div class="color-bar-legend">
-                      <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_s1')" [style.background-color]="color_values[1]">
-                        <span class="color-bar-value">{{ color_values[0] }}</span>
+                      <div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('zeta')" [style.background-color]="color_values[1]">
+                        <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
                       </div>
                     </div>
                     <span class="pl-1">(m)</span>
                   </div>
                 </div>
                 <div *ngIf="mapLayerWaterDepthInput.value">
-                  <h6>Water Depth</h6>
+                  <h6>Water Depth (DE Bay)</h6>
                   <div class="d-flex justify-content-center color-bar">
 										<div class="color-bar-legend">
 											<div class="color-bar-color" *ngFor="let color_values of getWaterDepthColorBarValues('mesh2d_waterdepth')" [style.background-color]="color_values[1]">
-												<span class="color-bar-value">{{ color_values[0] }}</span>
+												<span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
 											</div>
 										</div>
 										<span class="pl-1">(m)</span>
@@ -133,8 +133,8 @@
 
             <!-- feature info -->
             <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
+              <div *ngIf="currentFeature.water_level">Water Level: {{ currentFeature.water_level }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.water_depth">Water Depth: {{ currentFeature.water_depth }} m ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.sea_surface">Sea Surface: {{ currentFeature.sea_surface }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
               <div><hr></div>

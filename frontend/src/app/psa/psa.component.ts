@@ -267,7 +267,7 @@ export class PsaComponent implements OnInit {
 
   protected _getSeaSurfaceSource(): VectorSource {
     return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_s1']['geojson'][this.dateInputControl.value].path}`,
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['zeta']['geojson'][this.dateInputControl.value].path}`,
       format: new GeoJSON()
     });
   }
@@ -546,9 +546,9 @@ export class PsaComponent implements OnInit {
             currentFeature['water_depth'] = feature.get('title');
           }
 
-          // sea surface
-          if (feature.get('variable') == 'mesh2d_s1' && !_.has(currentFeature, 'sea_surface')) {
-            currentFeature['sea_surface'] = feature.get('title');
+          // water level
+          if (feature.get('variable') == 'zeta' && !_.has(currentFeature, 'water_level')) {
+            currentFeature['water_level'] = feature.get('title');
           }
         });
       }
@@ -586,8 +586,8 @@ export class PsaComponent implements OnInit {
 
         this._coordinateGraphDataAll = [
           {
-            name: 'Sea Surface Height',
-            series: data.sea_surface,
+            name: 'Water Level',
+            series: data.water_level,
           },
           {
             name: 'Water Depth',
@@ -615,7 +615,7 @@ export class PsaComponent implements OnInit {
 
     if (this.mapLayerSeaSurfaceInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Sea Surface Height';
+        return data.name === 'Water Level';
       });
       if (data.length) {
         coordinateGraphData.push(data[0]);
