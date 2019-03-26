@@ -59,11 +59,11 @@ export class PsaComponent implements OnInit {
   public currentConfidence: Number;
   public dateInputControl = new FormControl(0); // first date in the list
   public dataOpacityInput = new FormControl(.5);
-  public waterDepthLayer: any;  // VectorLayer
-  public seaSurfaceLayer: any;  // VectorLayer
+  public waveHeightLayer: any;  // VectorLayer
+  public waterLevelLayer: any;  // VectorLayer
   public windLayer: any;  // VectorLayer
-  public mapLayerSeaSurfaceInput = new FormControl(true);
-  public mapLayerWaterDepthInput = new FormControl(false);
+  public mapLayerWaterLevelInput = new FormControl(true);
+  public mapLayerWaveHeightInput = new FormControl(false);
   public mapLayerWindInput = new FormControl(false);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
@@ -105,7 +105,7 @@ export class PsaComponent implements OnInit {
 
   public getDateInputFormatted(dateIndex: number) {
     // TODO - shouldn't rely on specific variable
-    return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'][dateIndex].date : '';
+    return this.geojsonManifest ? this.geojsonManifest['zeta']['geojson'][dateIndex].date : '';
   }
 
   public getDateMin() {
@@ -118,7 +118,7 @@ export class PsaComponent implements OnInit {
 
   public getDateInputMax() {
     // TODO - shouldn't rely on specific variable
-    return this.geojsonManifest ? this.geojsonManifest['mesh2d_waterdepth']['geojson'].length - 1 : 0;
+    return this.geojsonManifest ? this.geojsonManifest['zeta']['geojson'].length - 1 : 0;
   }
 
   public isOverlayVisible(): boolean {
@@ -156,9 +156,17 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
-  public getWaterDepthColorBarValues(variable: string) {
-    return this.geojsonManifest ?
-      this.geojsonManifest[variable]['geojson'][this.dateInputControl.value]['color_bar'] : [];
+  public getWaterColorBarValues(variable: string) {
+    const path = `${variable}.geojson.${this.dateInputControl.value}`;
+    if (!_.has(this.geojsonManifest, path)) {
+      return [];
+    }
+    return this.geojsonManifest[variable]['geojson'][this.dateInputControl.value]['color_bar'];
+  }
+
+  public hasVariableValueAtCurrentDate(variable: string): boolean {
+    const path = `${variable}.geojson.${this.dateInputControl.value}`;
+    return _.has(this.geojsonManifest, path);
   }
 
   @HostListener('window:resize', ['$event'])
@@ -177,10 +185,10 @@ export class PsaComponent implements OnInit {
     // update map data opacity
     this.dataOpacityInput.valueChanges.subscribe(
       (data) => {
-        this.waterDepthLayer.setStyle((feature) => {
+        this.waveHeightLayer.setStyle((feature) => {
           return this._getWaterLayerStyle(feature);
         });
-        this.seaSurfaceLayer.setStyle((feature) => {
+        this.waterLevelLayer.setStyle((feature) => {
           return this._getWaterLayerStyle(feature);
         });
         this.windLayer.setStyle((feature) => {
@@ -202,7 +210,7 @@ export class PsaComponent implements OnInit {
     );
 
     // listen for layer input changes
-    this.mapLayerSeaSurfaceInput.valueChanges.pipe(
+    this.mapLayerWaterLevelInput.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
       })
@@ -210,16 +218,16 @@ export class PsaComponent implements OnInit {
       (value) => {
         this._updateCoordinateGraphData();
         if (!value) {
-          this.map.removeLayer(this.seaSurfaceLayer);
+          this.map.removeLayer(this.waterLevelLayer);
         } else {
-          this.seaSurfaceLayer.setSource(this._getSeaSurfaceSource());
-          this.map.addLayer(this.seaSurfaceLayer);
+          this.waterLevelLayer.setSource(this._getWaterLevelSource());
+          this.map.addLayer(this.waterLevelLayer);
         }
       }
     );
 
     // listen for layer input changes
-    this.mapLayerWaterDepthInput.valueChanges.pipe(
+    this.mapLayerWaveHeightInput.valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
       })
@@ -227,10 +235,10 @@ export class PsaComponent implements OnInit {
       (value) => {
         this._updateCoordinateGraphData();
         if (!value) {
-          this.map.removeLayer(this.waterDepthLayer);
+          this.map.removeLayer(this.waveHeightLayer);
         } else {
-          this.waterDepthLayer.setSource(this._getWaterDepthSource());
-          this.map.addLayer(this.waterDepthLayer);
+          this.waveHeightLayer.setSource(this._getWaveHeightSource());
+          this.map.addLayer(this.waveHeightLayer);
         }
       }
     );
@@ -246,6 +254,7 @@ export class PsaComponent implements OnInit {
         if (!value) {
           this.map.removeLayer(this.windLayer);
         } else {
+          this.windLayer.setSource(this._getWindSource());
           this.map.addLayer(this.windLayer);
         }
       }
@@ -258,23 +267,54 @@ export class PsaComponent implements OnInit {
       }),
       debounceTime(1000),
     ).subscribe((value) => {
+
+      // remove all layers first then apply chosen ones
+      this.map.removeLayer(this.waveHeightLayer);
+      this.map.removeLayer(this.waterLevelLayer);
+      this.map.removeLayer(this.windLayer);
+
+      let updated = false;
+
       // update the map's layer's sources
-      this.waterDepthLayer.setSource(this._getWaterDepthSource());
-      this.seaSurfaceLayer.setSource(this._getSeaSurfaceSource());
-      this.windLayer.setSource(this._getWindSource());
+      if (this.mapLayerWaveHeightInput.value) {
+        if (this.hasVariableValueAtCurrentDate('hs')) {
+          this.waveHeightLayer.setSource(this._getWaveHeightSource());
+          this.map.addLayer(this.waveHeightLayer);
+          updated = true;
+        }
+      }
+      if (this.mapLayerWaterLevelInput.value) {
+        if (this.hasVariableValueAtCurrentDate('zeta')) {
+          this.waterLevelLayer.setSource(this._getWaterLevelSource());
+          this.map.addLayer(this.waterLevelLayer);
+          updated = true;
+        }
+      }
+      if (this.mapLayerWindInput.value) {
+        if (this.hasVariableValueAtCurrentDate('wind')) {
+          this.windLayer.setSource(this._getWindSource());
+          this.map.addLayer(this.windLayer);
+          updated = true;
+        }
+      }
+
+      // manually toggle that we're not loading anymore since nothing was actually updated (the map handles actual render events)
+      if (!updated) {
+        this.isLoadingMap = false;
+      }
     });
   }
 
-  protected _getSeaSurfaceSource(): VectorSource {
+  protected _getWaterLevelSource(): VectorSource {
     return new VectorSource({
       url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['zeta']['geojson'][this.dateInputControl.value].path}`,
       format: new GeoJSON()
     });
   }
 
-  protected _getWaterDepthSource(): VectorSource {
+  protected _getWaveHeightSource(): VectorSource {
     return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['mesh2d_waterdepth']['geojson'][this.dateInputControl.value].path}`,
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['hs']['geojson'][this.dateInputControl.value].path}`,
       format: new GeoJSON()
     });
   }
@@ -374,16 +414,16 @@ export class PsaComponent implements OnInit {
     });
 
     // create a vector layer with the contour data
-    this.seaSurfaceLayer = new VectorLayer({
-      source: this._getSeaSurfaceSource(),
+    this.waterLevelLayer = new VectorLayer({
+      source: this._getWaterLevelSource(),
       style: (feature) => {
         return this._getWaterLayerStyle(feature);
       },
     });
 
     // create a vector layer with the contour data
-    this.waterDepthLayer = new VectorLayer({
-      source: this._getWaterDepthSource(),
+    this.waveHeightLayer = new VectorLayer({
+      source: this._getWaveHeightSource(),
       style: (feature) => {
         return this._getWaterLayerStyle(feature);
       },
@@ -447,7 +487,7 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        this.seaSurfaceLayer,
+        this.waterLevelLayer,
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
@@ -473,6 +513,7 @@ export class PsaComponent implements OnInit {
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
       this.isLoadingMap = false;
+      // reset the map's dimensions
       this._setMapHeight();
       this._setMapWidth();
     });
@@ -541,9 +582,9 @@ export class PsaComponent implements OnInit {
             currentFeature['speed'] = feature.get('speed');
           }
 
-          // water depth
-          if (feature.get('variable') == 'mesh2d_waterdepth' && !_.has(currentFeature, 'water_depth')) {
-            currentFeature['water_depth'] = feature.get('title');
+          // wave height
+          if (feature.get('variable') == 'hs' && !_.has(currentFeature, 'wave_height')) {
+            currentFeature['wave_height'] = feature.get('title');
           }
 
           // water level
@@ -590,8 +631,8 @@ export class PsaComponent implements OnInit {
             series: data.water_level,
           },
           {
-            name: 'Water Depth',
-            series: data.water_depth,
+            name: 'Wave Height',
+            series: data.wave_height,
           },
           {
             name: 'Wind Speed',
@@ -613,7 +654,7 @@ export class PsaComponent implements OnInit {
     const coordinateGraphData = [];
     let data;
 
-    if (this.mapLayerSeaSurfaceInput.value) {
+    if (this.mapLayerWaterLevelInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
         return data.name === 'Water Level';
       });
@@ -622,9 +663,9 @@ export class PsaComponent implements OnInit {
       }
     }
 
-    if (this.mapLayerWaterDepthInput.value) {
+    if (this.mapLayerWaveHeightInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Water Depth';
+        return data.name === 'Wave Height';
       });
       if (data.length) {
         coordinateGraphData.push(data[0]);

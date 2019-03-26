@@ -135,11 +135,14 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
     # plot barbs
     #
 
-    # get a subset of data points since we don't want to display a wind barb at every point
-    windx_values = ds.sel(time=date)['mesh2d_windx'][::100].values
-    windy_values = ds.sel(time=date)['mesh2d_windy'][::100].values
-    facex_values = ds.mesh2d_face_x[::100].values
-    facey_values = ds.mesh2d_face_y[::100].values
+    # NaN mask
+    mask = (~np.isnan(ds.sel(time=date)['uwnd'])) & (~np.isnan(ds.sel(time=date)['vwnd']))
+
+    # mask NaN and get a subset of data points since we don't want to display a wind barb at every point
+    windx_values = ds.sel(time=date)['uwnd'][mask][::300].values
+    windy_values = ds.sel(time=date)['vwnd'][mask][::300].values
+    facex_values = ds.longitude[mask][::300].values
+    facey_values = ds.latitude[mask][::300].values
 
     plt.barbs(facex_values, facey_values, windx_values, windy_values)
 
@@ -151,7 +154,7 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
     wind_directions = np.arctan2(windx_values, windy_values)
     coords = np.column_stack([facex_values, facey_values])
     points = [Point(coord.tolist()) for idx, coord in enumerate(coords)]
-    features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx], 'direction': wind_directions[idx]}) for idx, wind_point in enumerate(points)]
+    features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx].item(), 'direction': wind_directions[idx].item()}) for idx, wind_point in enumerate(points)]
     wind_geojson = FeatureCollection(features=features)
 
     # create output directory if it doesn't exist
@@ -181,11 +184,6 @@ def water_level_mask_geojson(geojson_result: dict):
 
 def main():
 
-    # open the dataset
-    dataset_path = sys.argv[1] if len(sys.argv) > 1 else '/media/bucket/cwwed/OPENDAP/PSA_demo/Sandy_DBay/DBay-run_map.nc'
-    #dataset = xarray.open_dataset(dataset_path)
-    dataset = xarray.open_dataset(dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
-
     manifest = {}
 
     #
@@ -193,49 +191,33 @@ def main():
     #
 
     # wave height
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
     cmap = matplotlib.cm.get_cmap('jet')
     manifest['hs'] = {'geojson': []}
     for z in dataset['hs']:
-        print(z.time.values)
         x = dataset.longitude
         y = dataset.latitude
         manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
         manifest['hs']['geojson'].append(manifest_entry)
 
-    ## inundation
-    #cmap = matplotlib.cm.get_cmap('jet')
-    #manifest['zeta'] = {'geojson': []}
-    #for z in dataset['zeta']:
-    #    x = z.x
-    #    y = z.y
-    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-    #    manifest['zeta']['geojson'].append(manifest_entry)
-
-    ## water depth
-    #manifest['mesh2d_waterdepth'] = {'geojson': []}
-    #cmap = matplotlib.cm.get_cmap('Blues')
-    #for z in dataset['mesh2d_waterdepth']:
-    #    x = z.mesh2d_face_x
-    #    y = z.mesh2d_face_y
-    #    manifest_entry = build_contours(z, x, y, cmap)
-    #    manifest['mesh2d_waterdepth']['geojson'].append(manifest_entry)
-
-    ## sea surface
-    #cmap = matplotlib.cm.get_cmap('jet')
-    #manifest['mesh2d_s1'] = {'geojson': []}
-    #for z in dataset['mesh2d_s1']:
-    #    x = z.mesh2d_face_x
-    #    y = z.mesh2d_face_y
-    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-    #    manifest['mesh2d_s1']['geojson'].append(manifest_entry)
+    # inundation
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
+    cmap = matplotlib.cm.get_cmap('jet')
+    manifest['zeta'] = {'geojson': []}
+    for z in dataset['zeta']:
+        x = z.x
+        y = z.y
+        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
+        manifest['zeta']['geojson'].append(manifest_entry)
 
     #
-    # wind velocity
+    # wind barbs
     #
 
-    #manifest['wind'] = {'geojson': []}
-    #for data in dataset['time']:
-    #    manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
+    manifest['wind'] = {'geojson': []}
+    for data in dataset['time']:
+        manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
 
     #
     # write manifest
