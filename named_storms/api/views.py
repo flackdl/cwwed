@@ -25,47 +25,46 @@ class PSAFilterView(views.APIView):
         except ValueError:
             raise exceptions.NotFound('Coordinate should be floats')
 
+        dataset_water_level = xr.open_dataset(os.path.join(path_prefix, water_level_dataset_path), drop_variables=('max_nvdll', 'max_nvell'))
+        dataset_wave_height = xr.open_dataset(os.path.join(path_prefix, wave_dataset_path))
+        dataset_wind = xr.open_dataset(os.path.join(path_prefix, wind_dataset_path))
+
+        # TODO - using the same "nearest_index" as the datasets so far are identical in the geographic areas they consume
+        nearest_index = self._nearest_node_index(dataset_water_level.y, dataset_water_level.x, coordinate)
+        if nearest_index is None:
+            raise exceptions.NotFound('No data found at this location')
+
         #
         # water level
         #
 
-        dataset_water_level = xr.open_dataset(os.path.join(path_prefix, water_level_dataset_path), drop_variables=('max_nvdll', 'max_nvell'))
         water_levels = []
-        nearest_index = self._nearest_node_index(dataset_water_level.y, dataset_water_level.x, coordinate)
-        if nearest_index is None:
-            raise exceptions.NotFound('No data found at this location')
         for data in dataset_water_level.zeta:
             data_date = parse_datetime(str(data.time.values))
             water_levels.append({
                 'name': data_date.isoformat(),
                 'value': data[nearest_index].values,
             })
+        dataset_water_level.close()
 
         #
         # wave height
         #
 
-        dataset_wave_height = xr.open_dataset(os.path.join(path_prefix, wave_dataset_path))
         wave_heights = []
-        nearest_index = self._nearest_node_index(dataset_wave_height.latitude, dataset_wave_height.longitude, coordinate)
-        if nearest_index is None:
-            raise exceptions.NotFound('No data found at this location')
         for data in dataset_wave_height.hs:
             data_date = parse_datetime(str(data.time.values))
             wave_heights.append({
                 'name': data_date.isoformat(),
                 'value': data[nearest_index].values,
             })
+        dataset_wave_height.close()
 
         #
         # wind
         #
 
-        dataset_wind = xr.open_dataset(os.path.join(path_prefix, wind_dataset_path))
         wind_speeds = []
-        nearest_index = self._nearest_node_index(dataset_wind.latitude, dataset_wind.longitude, coordinate)
-        if nearest_index is None:
-            raise exceptions.NotFound('No data found at this location')
         for idx, data_windx in enumerate(dataset_wind.uwnd):  # arbitrarily using u component as it's symmetrical with the v component
             speeds = numpy.arctan2(
                 numpy.abs(data_windx[nearest_index].values),
@@ -76,6 +75,7 @@ class PSAFilterView(views.APIView):
                 'name': data_date.isoformat(),
                 'value': speeds,
             })
+        dataset_wind.close()
 
         response = Response({
             'water_level': water_levels,
