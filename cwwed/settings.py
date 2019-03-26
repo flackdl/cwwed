@@ -197,7 +197,7 @@ MEDIA_ROOT = '/media/bucket/cwwed'
 # https://docs.djangoproject.com/en/2.0/topics/logging/
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
     'handlers': {
         'sentry': {
             'level': 'WARNING',

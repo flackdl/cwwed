@@ -82,9 +82,8 @@ export class CwwedService {
     );
   }
 
-  public fetchPSACoordinateData(datasetPath: string, coordinate: string[]) {
+  public fetchPSACoordinateData(coordinate: string[]) {
     const params = {
-      dataset_path: datasetPath,
       coordinate: coordinate,
     };
     const httpParams = new HttpParams({fromObject: params});

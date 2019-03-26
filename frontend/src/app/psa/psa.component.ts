@@ -45,7 +45,6 @@ export class PsaComponent implements OnInit {
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
   public demoDataURL = "/opendap/PSA_demo/Sandy_DBay/DBay-run_map.nc";
-  public demoDataPath = "PSA_demo/Sandy_DBay/DBay-run_map.nc";
   public isLoading = true;
   public isLoadingMap = true;
   public isLoadingOverlayPopup = false;
@@ -621,7 +620,7 @@ export class PsaComponent implements OnInit {
 
     const latLon = toLonLat(event.coordinate).reverse();
 
-    this.cwwedService.fetchPSACoordinateData(this.demoDataPath, latLon).subscribe(
+    this.cwwedService.fetchPSACoordinateData(latLon).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
 
