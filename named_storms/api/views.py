@@ -1,5 +1,7 @@
 import os
 import numpy
+import time
+import logging
 import xarray as xr
 from scipy import spatial
 from django.conf import settings
@@ -11,11 +13,6 @@ from rest_framework.response import Response
 class PSAFilterView(views.APIView):
 
     def get(self, request):
-        path_prefix = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR)
-
-        water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc'
-        wind_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc'
-        wave_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc'
 
         coordinate = request.GET.getlist('coordinate')
         if not coordinate or not len(coordinate) == 2:
@@ -25,18 +22,34 @@ class PSAFilterView(views.APIView):
         except ValueError:
             raise exceptions.NotFound('Coordinate should be floats')
 
+        water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc'
+        wind_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc'
+        wave_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc'
+
+        path_prefix = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR)
+
         dataset_water_level = xr.open_dataset(os.path.join(path_prefix, water_level_dataset_path), drop_variables=('max_nvdll', 'max_nvell'))
         dataset_wave_height = xr.open_dataset(os.path.join(path_prefix, wave_dataset_path))
         dataset_wind = xr.open_dataset(os.path.join(path_prefix, wind_dataset_path))
 
-        # TODO - using the same "nearest_index" as the datasets so far are identical in the geographic areas they consume
-        nearest_index = self._nearest_node_index(dataset_water_level.y, dataset_water_level.x, coordinate)
+        now = time.time()
+
+        # TODO - using the same mask and "nearest_index" since the datasets so far are identical in the geographic areas they consume
+        xmask = (dataset_water_level.x <= coordinate[1] + .5) & (dataset_water_level.x >= coordinate[1] - .5)
+        ymask = (dataset_water_level.y <= coordinate[0] + .5) & (dataset_water_level.y >= coordinate[0] - .5)
+        mask = xmask & ymask
+
+        nearest_index = self._nearest_node_index(dataset_water_level.x, dataset_water_level.y, mask, coordinate)
         if nearest_index is None:
             raise exceptions.NotFound('No data found at this location')
+
+        logging.info('Nearest: {}'.format(time.time() - now))
 
         #
         # water level
         #
+
+        now = time.time()
 
         water_levels = []
         for data in dataset_water_level.zeta:
@@ -47,9 +60,13 @@ class PSAFilterView(views.APIView):
             })
         dataset_water_level.close()
 
+        logging.info('Water Level: {}'.format(time.time() - now))
+
         #
         # wave height
         #
+
+        now = time.time()
 
         wave_heights = []
         for data in dataset_wave_height.hs:
@@ -60,15 +77,21 @@ class PSAFilterView(views.APIView):
             })
         dataset_wave_height.close()
 
+        logging.info('Wave Height: {}'.format(time.time() - now))
+
         #
         # wind
         #
 
+        now = time.time()
+
         wind_speeds = []
-        for idx, data_windx in enumerate(dataset_wind.uwnd):  # arbitrarily using u component as it's symmetrical with the v component
+        for idx, date in enumerate(dataset_wind.time):
+            data_windx = dataset_wind['uwnd'][idx][nearest_index]
+            data_windy = dataset_wind['vwnd'][idx][nearest_index]
             speeds = numpy.arctan2(
-                numpy.abs(data_windx[nearest_index].values),
-                numpy.abs(dataset_wind['vwnd'][idx][nearest_index].values),
+                numpy.abs(data_windx.values),
+                numpy.abs(data_windy.values),
             )
             data_date = parse_datetime(str(data_windx.time.values))
             wind_speeds.append({
@@ -76,6 +99,8 @@ class PSAFilterView(views.APIView):
                 'value': speeds,
             })
         dataset_wind.close()
+
+        logging.info('Wind: {}'.format(time.time() - now))
 
         response = Response({
             'water_level': water_levels,
@@ -86,10 +111,11 @@ class PSAFilterView(views.APIView):
         return response
 
     @staticmethod
-    def _nearest_node_index(x: xr.DataArray, y: xr.DataArray, point: tuple):
-        coords = numpy.column_stack([y, x])
-        nearest = coords[spatial.KDTree(coords).query(point)[1]]
-        found = numpy.where(coords == nearest)
+    def _nearest_node_index(x: xr.DataArray, y: xr.DataArray, mask: xr.DataArray, coord: tuple):
+        coords = numpy.column_stack([y[mask], x[mask]])
+        all_coords = numpy.column_stack([y, x])
+        nearest = coords[spatial.KDTree(coords).query(coord)[1]]
+        found = numpy.where(all_coords == nearest)
         if found and found[0].any():
             return found[0][0]
         return None
