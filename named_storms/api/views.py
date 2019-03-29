@@ -22,28 +22,27 @@ class PSAFilterView(views.APIView):
         except ValueError:
             raise exceptions.NotFound('Coordinate should be floats')
 
-        water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc'
-        wind_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc'
-        wave_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc'
-
-        path_prefix = os.path.join(settings.CWWED_DATA_DIR, settings.CWWED_OPENDAP_DIR)
-
-        dataset_water_level = xr.open_dataset(os.path.join(path_prefix, water_level_dataset_path), drop_variables=('max_nvdll', 'max_nvell'))
-        dataset_wave_height = xr.open_dataset(os.path.join(path_prefix, wave_dataset_path))
-        dataset_wind = xr.open_dataset(os.path.join(path_prefix, wind_dataset_path))
+        ds = xr.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
         now = time.time()
 
-        # TODO - using the same mask and "nearest_index" since the datasets so far are identical in the geographic areas they consume
-        xmask = (dataset_water_level.x <= coordinate[1] + .5) & (dataset_water_level.x >= coordinate[1] - .5)
-        ymask = (dataset_water_level.y <= coordinate[0] + .5) & (dataset_water_level.y >= coordinate[0] - .5)
+        xmask = (ds.x <= coordinate[1] + .5) & (ds.x >= coordinate[1] - .5)
+        ymask = (ds.y <= coordinate[0] + .5) & (ds.y >= coordinate[0] - .5)
         mask = xmask & ymask
 
-        nearest_index = self._nearest_node_index(dataset_water_level.x, dataset_water_level.y, mask, coordinate)
+        nearest_index = self._nearest_node_index(ds.x, ds.y, mask, coordinate)
         if nearest_index is None:
             raise exceptions.NotFound('No data found at this location')
 
-        logging.info('Nearest ({}): {}'.format(nearest_index, time.time() - now))
+        logging.info('Nearest (idx={}) (s): {}'.format(nearest_index, time.time() - now))
+
+        #
+        # dates
+        #
+
+        dates = []
+        for date in ds.time:
+            dates.append(parse_datetime(str(date.values)))
 
         #
         # water level
@@ -51,17 +50,9 @@ class PSAFilterView(views.APIView):
 
         now = time.time()
 
-        water_levels = []
-        for date in dataset_water_level.time[:257][::12]:
-            water_level = dataset_water_level.zeta.sel(time=date, node=nearest_index)
-            data_date = parse_datetime(str(date.time.values))
-            water_levels.append({
-                'name': data_date.isoformat(),
-                'value': water_level.values,
-            })
-        dataset_water_level.close()
+        water_levels = ds.water_level[:, nearest_index].values
 
-        logging.info('Water Level: {}'.format(time.time() - now))
+        logging.info('Water Level (s): {}'.format(time.time() - now))
 
         #
         # wave height
@@ -69,17 +60,9 @@ class PSAFilterView(views.APIView):
 
         now = time.time()
 
-        wave_heights = []
-        for date in dataset_wave_height.time[1:][::12]:
-            data_date = parse_datetime(str(date.time.values))
-            wave_height = dataset_wave_height.hs.sel(time=date, node=nearest_index)
-            wave_heights.append({
-                'name': data_date.isoformat(),
-                'value': wave_height.values,
-            })
-        dataset_wave_height.close()
+        wave_heights = ds.wave_height[:, nearest_index].values
 
-        logging.info('Wave Height: {}'.format(time.time() - now))
+        logging.info('Wave Height (s): {}'.format(time.time() - now))
 
         #
         # wind
@@ -87,27 +70,21 @@ class PSAFilterView(views.APIView):
 
         now = time.time()
 
-        wind_speeds = []
-        for date in dataset_wind.time[1:][::12]:
-            data_windx = dataset_wind.uwnd.sel(time=date, node=nearest_index)
-            data_windy = dataset_wind.vwnd.sel(time=date, node=nearest_index)
-            speeds = numpy.arctan2(
-                numpy.abs(data_windx.values),
-                numpy.abs(data_windy.values),
-            )
-            data_date = parse_datetime(str(data_windx.time.values))
-            wind_speeds.append({
-                'name': data_date.isoformat(),
-                'value': speeds,
-            })
-        dataset_wind.close()
+        x_wind_speeds = ds.uwnd[:, nearest_index].values
+        y_wind_speeds = ds.vwnd[:, nearest_index].values
+        wind_speeds = numpy.arctan2(
+            numpy.abs(x_wind_speeds),
+            numpy.abs(y_wind_speeds),
+        )
 
-        logging.info('Wind: {}'.format(time.time() - now))
+        logging.info('Wind (s): {}'.format(time.time() - now))
+
+        ds.close()
 
         response = Response({
-            'water_level': water_levels,
-            'wave_height': wave_heights,
-            'wind_speed': wind_speeds,
+            'water_level': [dict(name=name, value=value) for name, value in zip(dates, water_levels)],
+            'wave_height': [dict(name=name, value=value) for name, value in zip(dates, wave_heights)],
+            'wind_speed': [dict(name=name, value=value) for name, value in zip(dates, wind_speeds)],
         })
 
         return response

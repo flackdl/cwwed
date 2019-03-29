@@ -78,7 +78,9 @@ const appRoutes: Routes = [
     RouterModule.forRoot(
       appRoutes,
       {
-        scrollPositionRestoration: 'enabled',  // scroll to top on navigation change and remember position when going back
+        // TODO - this globally scrolls to top on navigation change but then prevents being able to add query params to the URL without scrolling...
+        // https://github.com/angular/angular/issues/24547
+        // scrollPositionRestoration: 'enabled',  // scroll to top on navigation change and remember position when going back
         useHash: true,
       }
     ),

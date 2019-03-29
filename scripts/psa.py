@@ -1,7 +1,4 @@
-import time
 import xarray as xr
-import numpy
-from django.utils.dateparse import parse_datetime
 
 
 water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc'
@@ -20,34 +17,10 @@ ds = xr.Dataset(
         'vwnd': (['time', 'node'], dataset_wind.vwnd[1:]),
     },
     coords={
-        'x': (['x'], dataset_water_level.x),
-        'y': (['y'], dataset_water_level.y),
+        'time': (['time'], dataset_water_level.time[:257]),
+        'x': (['node'], dataset_water_level.x),
+        'y': (['node'], dataset_water_level.y),
     },
 )
 
-nearest_index = 1633019
-
-wind_speeds = []
-x_winds = []
-y_winds = []
-
-now = time.time()
-
-for idx, date in enumerate(ds.time):
-    data_date = parse_datetime(str(date.values))
-    data_windx = ds.uwnd.isel(time=idx, node=nearest_index)
-    data_windy = ds.vwnd.isel(time=idx, node=nearest_index)
-
-    x_winds.append(data_windx)
-    y_winds.append(data_windy)
-
-print('list: {}'.format(time.time() - now))
-
-now = time.time()
-
-numpy.arctan2(
-    numpy.abs(x_winds),
-    numpy.abs(y_winds),
-)
-
-print('calc: {}'.format(time.time() - now))
+ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
