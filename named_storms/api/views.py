@@ -43,7 +43,7 @@ class PSAFilterView(views.APIView):
         if nearest_index is None:
             raise exceptions.NotFound('No data found at this location')
 
-        logging.info('Nearest: {}'.format(time.time() - now))
+        logging.info('Nearest ({}): {}'.format(nearest_index, time.time() - now))
 
         #
         # water level
@@ -52,11 +52,12 @@ class PSAFilterView(views.APIView):
         now = time.time()
 
         water_levels = []
-        for data in dataset_water_level.zeta:
-            data_date = parse_datetime(str(data.time.values))
+        for date in dataset_water_level.time[:257][::12]:
+            water_level = dataset_water_level.zeta.sel(time=date, node=nearest_index)
+            data_date = parse_datetime(str(date.time.values))
             water_levels.append({
                 'name': data_date.isoformat(),
-                'value': data[nearest_index].values,
+                'value': water_level.values,
             })
         dataset_water_level.close()
 
@@ -69,11 +70,12 @@ class PSAFilterView(views.APIView):
         now = time.time()
 
         wave_heights = []
-        for data in dataset_wave_height.hs:
-            data_date = parse_datetime(str(data.time.values))
+        for date in dataset_wave_height.time[1:][::12]:
+            data_date = parse_datetime(str(date.time.values))
+            wave_height = dataset_wave_height.hs.sel(time=date, node=nearest_index)
             wave_heights.append({
                 'name': data_date.isoformat(),
-                'value': data[nearest_index].values,
+                'value': wave_height.values,
             })
         dataset_wave_height.close()
 
@@ -86,9 +88,9 @@ class PSAFilterView(views.APIView):
         now = time.time()
 
         wind_speeds = []
-        for idx, date in enumerate(dataset_wind.time):
-            data_windx = dataset_wind['uwnd'][idx][nearest_index]
-            data_windy = dataset_wind['vwnd'][idx][nearest_index]
+        for date in dataset_wind.time[1:][::12]:
+            data_windx = dataset_wind.uwnd.sel(time=date, node=nearest_index)
+            data_windy = dataset_wind.vwnd.sel(time=date, node=nearest_index)
             speeds = numpy.arctan2(
                 numpy.abs(data_windx.values),
                 numpy.abs(data_windy.values),
