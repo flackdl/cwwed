@@ -86,9 +86,10 @@ class PSAFilterView(views.APIView):
         ds.close()
 
         response = Response({
-            'water_level': [dict(name=name, value=value) for name, value in zip(dates, water_levels)],
-            'wave_height': [dict(name=name, value=value) for name, value in zip(dates, wave_heights)],
-            'wind_speed': [dict(name=name, value=value) for name, value in zip(dates, wind_speeds)],
+            'dates': dates,
+            'water_level': water_levels,
+            'wave_height': wave_heights,
+            'wind_speed': wind_speeds,
         })
 
         return response

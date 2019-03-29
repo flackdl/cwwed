@@ -627,15 +627,30 @@ export class PsaComponent implements OnInit {
         this._coordinateGraphDataAll = [
           {
             name: 'Water Level',
-            series: data.water_level,
+            series: _.zip(data.dates, data.water_level).map((dateVal) => {
+              return {
+                name: dateVal[0],
+                value: dateVal[1],
+              }
+            })
           },
           {
             name: 'Wave Height',
-            series: data.wave_height,
+            series: _.zip(data.dates, data.wave_height).map((dateVal) => {
+              return {
+                name: dateVal[0],
+                value: dateVal[1],
+              }
+            })
           },
           {
             name: 'Wind Speed',
-            series: data.wind_speed,
+            series: _.zip(data.dates, data.wind_speed).map((dateVal) => {
+              return {
+                name: dateVal[0],
+                value: dateVal[1],
+              }
+            })
           },
         ];
 
