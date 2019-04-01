@@ -60,8 +60,10 @@ export class PsaComponent implements OnInit {
   public dataOpacityInput = new FormControl(.5);
   public waveHeightLayer: any;  // VectorLayer
   public waterLevelLayer: any;  // VectorLayer
+  public waterLevelMaxLayer: any;  // VectorLayer
   public windLayer: any;  // VectorLayer
-  public mapLayerWaterLevelInput = new FormControl(true);
+  public mapLayerWaterLevelMaxInput = new FormControl(true);
+  public mapLayerWaterLevelInput = new FormControl(false);
   public mapLayerWaveHeightInput = new FormControl(false);
   public mapLayerWindInput = new FormControl(false);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
@@ -156,9 +158,9 @@ export class PsaComponent implements OnInit {
   }
 
   public getWaterColorBarValues(variable: string) {
-    const path = `${variable}.geojson.${this.dateInputControl.value}`;
-    if (!_.has(this.geojsonManifest, path)) {
-      return [];
+    // return the first value if the date doesn't exist (i.e "max water level" is a static value across the duration)
+    if (!this.geojsonManifest[variable]['geojson'][this.dataOpacityInput.value]) {
+      return this.geojsonManifest[variable]['geojson'][0]['color_bar'];
     }
     return this.geojsonManifest[variable]['geojson'][this.dateInputControl.value]['color_bar'];
   }
@@ -188,6 +190,9 @@ export class PsaComponent implements OnInit {
           return this._getWaterLayerStyle(feature);
         });
         this.waterLevelLayer.setStyle((feature) => {
+          return this._getWaterLayerStyle(feature);
+        });
+        this.waterLevelMaxLayer.setStyle((feature) => {
           return this._getWaterLayerStyle(feature);
         });
         this.windLayer.setStyle((feature) => {
@@ -221,6 +226,23 @@ export class PsaComponent implements OnInit {
         } else {
           this.waterLevelLayer.setSource(this._getWaterLevelSource());
           this.map.addLayer(this.waterLevelLayer);
+        }
+      }
+    );
+
+    // listen for layer input changes
+    this.mapLayerWaterLevelMaxInput.valueChanges.pipe(
+      tap(() => {
+        this.isLoadingMap = true;
+      })
+    ).subscribe(
+      (value) => {
+        this._updateCoordinateGraphData();
+        if (!value) {
+          this.map.removeLayer(this.waterLevelMaxLayer);
+        } else {
+          this.waterLevelMaxLayer.setSource(this._getWaterLevelMaxSource());
+          this.map.addLayer(this.waterLevelMaxLayer);
         }
       }
     );
@@ -270,6 +292,7 @@ export class PsaComponent implements OnInit {
       // remove all layers first then apply chosen ones
       this.map.removeLayer(this.waveHeightLayer);
       this.map.removeLayer(this.waterLevelLayer);
+      this.map.removeLayer(this.waterLevelMaxLayer);
       this.map.removeLayer(this.windLayer);
 
       let updated = false;
@@ -289,6 +312,12 @@ export class PsaComponent implements OnInit {
           updated = true;
         }
       }
+      if (this.mapLayerWaterLevelMaxInput.value) {
+        // NOTE: don't check to see if it has the value at the current date because it's static
+        this.waterLevelMaxLayer.setSource(this._getWaterLevelMaxSource());
+        this.map.addLayer(this.waterLevelMaxLayer);
+        updated = true;
+      }
       if (this.mapLayerWindInput.value) {
         if (this.hasVariableValueAtCurrentDate('wind')) {
           this.windLayer.setSource(this._getWindSource());
@@ -307,6 +336,14 @@ export class PsaComponent implements OnInit {
   protected _getWaterLevelSource(): VectorSource {
     return new VectorSource({
       url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['zeta']['geojson'][this.dateInputControl.value].path}`,
+      format: new GeoJSON()
+    });
+  }
+
+  protected _getWaterLevelMaxSource(): VectorSource {
+    // there's only a single entry for the "max"
+    return new VectorSource({
+      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['water_level_max']['geojson'][0].path}`,
       format: new GeoJSON()
     });
   }
@@ -421,6 +458,14 @@ export class PsaComponent implements OnInit {
     });
 
     // create a vector layer with the contour data
+    this.waterLevelMaxLayer = new VectorLayer({
+      source: this._getWaterLevelMaxSource(),
+      style: (feature) => {
+        return this._getWaterLayerStyle(feature);
+      },
+    });
+
+    // create a vector layer with the contour data
     this.waveHeightLayer = new VectorLayer({
       source: this._getWaveHeightSource(),
       style: (feature) => {
@@ -486,7 +531,7 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        this.waterLevelLayer,
+        this.waterLevelMaxLayer,
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
@@ -590,6 +635,11 @@ export class PsaComponent implements OnInit {
           if (feature.get('variable') == 'zeta' && !_.has(currentFeature, 'water_level')) {
             currentFeature['water_level'] = feature.get('title');
           }
+
+          // water level max
+          if (feature.get('variable') == 'zeta_max' && !_.has(currentFeature, 'water_level_max')) {
+            currentFeature['water_level_max'] = feature.get('title');
+          }
         });
       }
 
@@ -626,7 +676,7 @@ export class PsaComponent implements OnInit {
 
         this._coordinateGraphDataAll = [
           {
-            name: 'Water Level',
+            name: 'Water Level (m)',
             series: _.zip(data.dates, data.water_level).map((dateVal) => {
               return {
                 name: dateVal[0],
@@ -635,7 +685,7 @@ export class PsaComponent implements OnInit {
             })
           },
           {
-            name: 'Wave Height',
+            name: 'Wave Height (m)',
             series: _.zip(data.dates, data.wave_height).map((dateVal) => {
               return {
                 name: dateVal[0],
@@ -644,7 +694,7 @@ export class PsaComponent implements OnInit {
             })
           },
           {
-            name: 'Wind Speed',
+            name: 'Wind Speed (m/s)',
             series: _.zip(data.dates, data.wind_speed).map((dateVal) => {
               return {
                 name: dateVal[0],
@@ -670,7 +720,16 @@ export class PsaComponent implements OnInit {
 
     if (this.mapLayerWaterLevelInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Water Level';
+        return data.name === 'Water Level (m)';
+      });
+      if (data.length) {
+        coordinateGraphData.push(data[0]);
+      }
+    }
+
+    if (this.mapLayerWaterLevelMaxInput.value) {
+      data = this._coordinateGraphDataAll.filter((data) => {
+        return data.name === 'Max Water Level (m)';
       });
       if (data.length) {
         coordinateGraphData.push(data[0]);
@@ -679,7 +738,7 @@ export class PsaComponent implements OnInit {
 
     if (this.mapLayerWaveHeightInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Wave Height';
+        return data.name === 'Wave Height (m)';
       });
       if (data.length) {
         coordinateGraphData.push(data[0]);
@@ -688,7 +747,7 @@ export class PsaComponent implements OnInit {
 
     if (this.mapLayerWindInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Wind Speed';
+        return data.name === 'Wind Speed (m/s)';
       });
       if (data.length) {
         coordinateGraphData.push(data[0]);

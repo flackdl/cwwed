@@ -51,10 +51,11 @@ def circum_radius(pa, pb, pc):
     return a*b*c/(4.0*area)
 
 
-def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
+def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
 
+    # TODO
     # capture date and convert to datetime
-    dt = datetime64_to_datetime(z.time)
+    #dt = datetime64_to_datetime(z.time)
 
     # build json file name output
     file_name = '{}.json'.format(dt.isoformat())
@@ -79,8 +80,7 @@ def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray
     # convert matplotlib contourf to geojson
     geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
         contourf=contourf,
-        min_angle_deg=0,
-        ndigits=5,
+        ndigits=10,
         stroke_width=2,
         fill_opacity=0.5,
         geojson_properties={'variable': variable_name},
@@ -139,10 +139,10 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
     mask = (~np.isnan(ds.sel(time=date)['uwnd'])) & (~np.isnan(ds.sel(time=date)['vwnd']))
 
     # mask NaN and get a subset of data points since we don't want to display a wind barb at every point
-    windx_values = ds.sel(time=date)['uwnd'][mask][::300].values
-    windy_values = ds.sel(time=date)['vwnd'][mask][::300].values
-    facex_values = ds.longitude[mask][::300].values
-    facey_values = ds.latitude[mask][::300].values
+    windx_values = ds.sel(time=date)['uwnd'][mask][::100].values
+    windy_values = ds.sel(time=date)['vwnd'][mask][::100].values
+    facex_values = ds.longitude[mask][::100].values
+    facey_values = ds.latitude[mask][::100].values
 
     plt.barbs(facex_values, facey_values, windx_values, windy_values)
 
@@ -190,34 +190,46 @@ def main():
     # contours
     #
 
-    # wave height
-    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
-    cmap = matplotlib.cm.get_cmap('jet')
-    manifest['hs'] = {'geojson': []}
-    for z in dataset['hs']:
-        x = dataset.longitude
-        y = dataset.latitude
-        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-        manifest['hs']['geojson'].append(manifest_entry)
+    ## wave height
+    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
+    #cmap = matplotlib.cm.get_cmap('jet')
+    #manifest['hs'] = {'geojson': []}
+    #for z in dataset['hs']:
+    #    x = dataset.longitude
+    #    y = dataset.latitude
+    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
+    #    manifest['hs']['geojson'].append(manifest_entry)
 
-    # inundation
-    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
+    ## water level
+    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
+    #cmap = matplotlib.cm.get_cmap('jet')
+    #manifest['zeta'] = {'geojson': []}
+    #for z in dataset['zeta']:
+    #    x = z.x
+    #    y = z.y
+    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
+    #    manifest['zeta']['geojson'].append(manifest_entry)
+
+    # maximum water level
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
     cmap = matplotlib.cm.get_cmap('jet')
-    manifest['zeta'] = {'geojson': []}
-    for z in dataset['zeta']:
-        x = z.x
-        y = z.y
-        manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-        manifest['zeta']['geojson'].append(manifest_entry)
+    manifest['water_level_max'] = {'geojson': []}
+    z = dataset['zeta_max']
+    x = dataset.x
+    y = dataset.y
+    # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane
+    datetime_placeholder = datetime(2012, 10, 30)
+    manifest_entry = build_contours(z, x, y, datetime_placeholder, cmap)
+    manifest['water_level_max']['geojson'].append(manifest_entry)
 
     #
     # wind barbs
     #
 
-    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
-    manifest['wind'] = {'geojson': []}
-    for data in dataset['time']:
-        manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
+    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
+    #manifest['wind'] = {'geojson': []}
+    #for data in dataset['time']:
+    #    manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
 
     #
     # write manifest

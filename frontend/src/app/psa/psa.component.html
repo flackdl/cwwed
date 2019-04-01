@@ -6,12 +6,8 @@
       <h1>Sandy</h1>
     </div>
     <div class="card-body">
-      <div class="card-title">
-        <h5>Delaware Bay</h5>
-      </div>
       <div class="card-text">
-        This is the DFLow FM simulation on Delaware Bay and River domain. Dflow was forced with GFS winds during the spinup period and with HWRF winds during
-        the simulation. The computational domain covers Delaware River and Bay up to the mouth of the Bay.
+        The following Post Storm Assessment (PSA) products; Mean Sea Level, Wave Height and Winds were created for the Atlantic and Gulf of Mexico coastal waters of the United States during the period of time that Hurricane Sandy formed in the central Caribbean on October 22, 2012. Sandy intensified into a hurricane as it tracked north across the Caribbean moved northeast of the United States until turning west toward the mid-Atlantic coast on October 28th.
       </div>
       <div class="row">
 
@@ -22,6 +18,12 @@
             <ngb-panel title="Map Filters" id="map-filters">
               <ng-template ngbPanelContent>
                 <div class="form-group">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterLevelMaxInput" id="water_level_max">
+                    <label class="form-check-label" for="water_level_max">
+                      Water Level Maximum <span class="oi oi-info text-info" placement="top" ngbTooltip="Maximum Water Level from Mean Sea Level (MSL) over the duration of the hurricane"></span>
+                    </label>
+                  </div>
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterLevelInput" id="water_level">
                     <label class="form-check-label" for="water_level">
@@ -59,6 +61,17 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
+                <div *ngIf="hasVariableValueAtCurrentDate('water_level_max') && mapLayerWaterLevelMaxInput.value">
+                  <h6>Water Level Maximum</h6>
+                  <div class="d-flex justify-content-center color-bar">
+                    <div class="color-bar-legend">
+                      <div class="color-bar-color" *ngFor="let color_values of getWaterColorBarValues('water_level_max')" [style.background-color]="color_values[1]">
+                        <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
+                      </div>
+                    </div>
+                    <span class="pl-1">(m)</span>
+                  </div>
+                </div>
                 <div *ngIf="hasVariableValueAtCurrentDate('zeta') && mapLayerWaterLevelInput.value">
                   <h6>Water Level</h6>
                   <div class="d-flex justify-content-center color-bar">
@@ -134,6 +147,7 @@
             <!-- feature info -->
             <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div *ngIf="currentFeature.water_level">Water Level: {{ currentFeature.water_level }} m ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.water_level_max">Water Level Max: {{ currentFeature.water_level_max }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.wave_height">Wave Height: {{ currentFeature.wave_height }} m ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
               <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
