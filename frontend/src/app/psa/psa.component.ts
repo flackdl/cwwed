@@ -65,7 +65,7 @@ export class PsaComponent implements OnInit {
   public mapLayerWaterLevelMaxInput = new FormControl(true);
   public mapLayerWaterLevelInput = new FormControl(false);
   public mapLayerWaveHeightInput = new FormControl(false);
-  public mapLayerWindInput = new FormControl(false);
+  public mapLayerWindInput = new FormControl(true);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
   public popupOverlay: Overlay;
   public coordinateGraphData: any[];
@@ -532,6 +532,7 @@ export class PsaComponent implements OnInit {
           })
         }),
         this.waterLevelMaxLayer,
+        this.windLayer,
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
@@ -755,11 +756,6 @@ export class PsaComponent implements OnInit {
     }
 
     this.coordinateGraphData = coordinateGraphData;
-
-    // close graph popup if there's nothing being displayed
-    if (this.coordinateGraphData.length === 0) {
-      this.closeOverlayPopup();
-    }
   }
 
   protected _configureMapExtentInteraction() {
