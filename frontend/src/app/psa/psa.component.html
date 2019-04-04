@@ -61,6 +61,11 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
+                <div *ngIf="mapLayerWindInput.value" class="mb-3">
+                  <a href="https://commons.wikimedia.org/wiki/Wind_speed" target="_blank" class="btn btn-block btn-light">
+                    Wind Barbs <span class="oi oi-external-link"></span>
+                  </a>
+                </div>
                 <div *ngIf="mapLayerWaterLevelMaxInput.value">
                   <h6>Water Level Maximum</h6>
                   <div class="d-flex justify-content-center color-bar">
