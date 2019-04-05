@@ -563,16 +563,19 @@ export class PsaComponent implements OnInit {
       this._setMapWidth();
     });
 
-    // update the url params when the map zooms or moves
     this.map.on('moveend', (event: any) => {
       const zoom = this.map.getView().getZoom();
       const center = toLonLat(this.map.getView().getCenter());
+
+      // update the url params when the map zooms or moves
       this.router.navigate([], {
         queryParams: {
           zoom: zoom,
           center: center,
         }
       });
+
+      this._updateWindBarbDensity();
     });
 
     this.map.on('singleclick', (event) => {
@@ -584,6 +587,31 @@ export class PsaComponent implements OnInit {
 
     this._configureFeatureHover();
 
+  }
+
+  protected _updateWindBarbDensity() {
+    const zoom = this.map.getView().getZoom();
+
+    // update the wind barb density depending on zoom level
+    // NOTE: no style means it's hidden
+    this.windLayer.getSource().getFeatures().forEach((feature, i) => {
+      feature.setStyle(this._getWindLayerStyle(feature));
+      let shouldHide = false;
+      if (zoom <= 5 && i % 2 === 0) {
+        shouldHide = true;
+      } else if (zoom <= 6 && i % 3 === 0) {
+        shouldHide = true;
+      } else if (zoom <= 7 && i % 4 === 0) {
+        shouldHide = true;
+      } else if (zoom <= 8 && i % 5 === 0) {
+        shouldHide = true;
+      } else if (zoom <= 9 && i % 6 === 0) {
+        shouldHide = true;
+      }
+      if (shouldHide) {
+        feature.setStyle(new Style());
+      }
+    });
   }
 
   protected _getConfidenceValueAtPixel(pixel) {
