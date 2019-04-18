@@ -27,7 +27,7 @@ class PSAFilterView(views.APIView):
         x_coords = ds.x[:].values
         y_coords = ds.y[:].values
 
-        # create a mask "near" the coordinate to make the "nearest neighbor" faster
+        # create a mask of coordinates near the supplied coordinate to make the "nearest neighbor" faster
         xmask = (x_coords <= coordinate[1] + .5) & (x_coords >= coordinate[1] - .5)
         ymask = (y_coords <= coordinate[0] + .5) & (y_coords >= coordinate[0] - .5)
         mask = xmask & ymask

@@ -151,11 +151,11 @@
 
             <!-- feature info -->
             <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
-              <div *ngIf="currentFeature.water_level">Water Level: {{ currentFeature.water_level }} m ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.water_level_max">Water Level Max: {{ currentFeature.water_level_max }} m ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.wave_height">Wave Height: {{ currentFeature.wave_height }} m ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% confidence)</div>
-              <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% confidence)</div>
+              <div *ngIf="currentFeature.water_level">Water Level: {{ currentFeature.water_level }} m ({{ currentConfidence }}% accuracy)</div>
+              <div *ngIf="currentFeature.water_level_max">Water Level Max: {{ currentFeature.water_level_max }} m ({{ currentConfidence }}% accuracy)</div>
+              <div *ngIf="currentFeature.wave_height">Wave Height: {{ currentFeature.wave_height }} m ({{ currentConfidence }}% accuracy)</div>
+              <div *ngIf="currentFeature.speed >= 0">Wind Speed: {{ currentFeature.speed | number:'1.0-2' }} m/s ({{ currentConfidence }}% accuracy)</div>
+              <div *ngIf="currentFeature.direction">Wind Direction: {{ currentFeature.direction| number:'1.0-2' }} rad ({{ currentConfidence }}% accuracy)</div>
               <div><hr></div>
               <div><small><em>{{ currentFeature.coordinate }}</em></small></div>
             </div>
