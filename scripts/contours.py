@@ -2,10 +2,9 @@ import os
 import gzip
 import json
 import math
-import sys
 from datetime import datetime
 import xarray
-from geojson import Point, Feature, FeatureCollection
+import geojson
 import matplotlib
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
@@ -13,15 +12,32 @@ import matplotlib.tri as tri
 import numpy as np
 import geojsoncontour
 from typing import Callable
+from shapely.geometry import Polygon, Point
 
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
-GRID_SIZE = 1000
-MAX_CIRCUM_RADIUS = .015  # ~ 1 mile
+
+GRID_SIZE = 5000
 LEVELS = 30
 
 # color bar range
 COLOR_STEPS = 10
+
+
+# atlantic coast
+GEO_POLY = Polygon([
+    [-77.1240234375, 33.97980872872457],
+    [-75.0146484375, 35.24561909420681],
+    [-75.4541015625, 37.09023980307208],
+    [-74.0478515625, 38.8225909761771],
+    [-72.3779296875, 39.977120098439634],
+    [-70.224609375, 40.91351257612758],
+    [-70.048828125, 42.68243539838623],
+    [-74.6630859375, 41.83682786072714],
+    [-78.1787109375, 38.89103282648846],
+    [-77.607421875, 36.35052700542763],
+    [-77.1240234375, 33.97980872872457],
+])
 
 
 def datetime64_to_datetime(dt64):
@@ -31,46 +47,15 @@ def datetime64_to_datetime(dt64):
     return datetime.utcfromtimestamp(seconds_since_epoch)
 
 
-def circum_radius(pa, pb, pc):
-    """
-    returns circum-circle radius of triangle
-    https://sgillies.net/2012/10/13/the-fading-shape-of-alpha.html
-    https://en.wikipedia.org/wiki/Circumscribed_circle#/media/File:Circumcenter_Construction.svg
-    """
-    # lengths of sides of triangle
-    a = math.sqrt((pa[0]-pb[0])**2 + (pa[1]-pb[1])**2)
-    b = math.sqrt((pb[0]-pc[0])**2 + (pb[1]-pc[1])**2)
-    c = math.sqrt((pc[0]-pa[0])**2 + (pc[1]-pa[1])**2)
-
-    # semiperimeter of triangle
-    s = (a + b + c)/2.0
-
-    # area of triangle by Heron's formula
-    area = math.sqrt(s*(s-a)*(s-b)*(s-c))
-
-    return a*b*c/(4.0*area)
-
-
-def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
-
-    # TODO
-    # capture date and convert to datetime
-    #dt = datetime64_to_datetime(z.time)
+def build_contours(z: xarray.DataArray, xi: np.ndarray, yi: np.ndarray, triangulation: tri.Triangulation, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
 
     # build json file name output
     file_name = '{}.json'.format(dt.isoformat())
 
     variable_name = z.name
 
-    # build delaunay triangles
-    triang = tri.Triangulation(x, y)
-
-    # build grid constraints
-    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
-
     # interpolate values from triangle data and build a mesh of data
-    interpolator = tri.LinearTriInterpolator(triang, z)
+    interpolator = tri.LinearTriInterpolator(triangulation, z)
     Xi, Yi = np.meshgrid(xi, yi)
     zi = interpolator(Xi, Yi)
 
@@ -126,39 +111,15 @@ def build_contours(z: xarray.DataArray, x: xarray.DataArray, y: xarray.DataArray
     }
 
 
-def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
+def build_wind_barbs(x: np.ndarray, y: np.ndarray, wind_speeds: np.ndarray, wind_directions: np.ndarray, dt: datetime):
 
-    # capture date and convert to datetime
-    dt = datetime64_to_datetime(date)
-
-    #
-    # plot barbs
-    #
-
-    # NaN mask
-    mask = (~np.isnan(ds.sel(time=date)['uwnd'])) & (~np.isnan(ds.sel(time=date)['vwnd']))
-
-    # mask NaN and get a subset of data points since we don't want to display a wind barb at every point
-    windx_values = ds.sel(time=date)['uwnd'][mask][::100].values
-    windy_values = ds.sel(time=date)['vwnd'][mask][::100].values
-    facex_values = ds.longitude[mask][::100].values
-    facey_values = ds.latitude[mask][::100].values
-
-    plt.barbs(facex_values, facey_values, windx_values, windy_values)
-
-    #
-    # generate geojson
-    #
-
-    wind_speeds = np.abs(np.hypot(windx_values, windy_values))
-    wind_directions = np.arctan2(windx_values, windy_values)
-    coords = np.column_stack([facex_values, facey_values])
-    points = [Point(coord.tolist()) for idx, coord in enumerate(coords)]
-    features = [Feature(geometry=wind_point, properties={'speed': wind_speeds[idx].item(), 'direction': wind_directions[idx].item()}) for idx, wind_point in enumerate(points)]
-    wind_geojson = FeatureCollection(features=features)
+    coords = np.column_stack([x, y])
+    points = [geojson.Point(coord.tolist()) for idx, coord in enumerate(coords)]
+    features = [geojson.Feature(geometry=wind_point, properties={'speed': wind_speeds[idx].item(), 'direction': wind_directions[idx].item()}) for idx, wind_point in enumerate(points)]
+    wind_geojson = geojson.FeatureCollection(features=features)
 
     # create output directory if it doesn't exist
-    output_path = '/tmp/wind'
+    output_path = '/tmp/wind_barbs'
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -171,7 +132,7 @@ def build_wind_barbs(date: xarray.DataArray, ds: xarray.Dataset):
     # update manifest
     return {
         'date': dt.isoformat(),
-        'path': os.path.join('wind', file_name),
+        'path': os.path.join('wind_barbs', file_name),
     }
 
 
@@ -187,49 +148,150 @@ def main():
     manifest = {}
 
     #
-    # contours
+    # wave height
     #
 
-    ## wave height
-    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
-    #cmap = matplotlib.cm.get_cmap('jet')
-    #manifest['hs'] = {'geojson': []}
-    #for z in dataset['hs']:
-    #    x = dataset.longitude
-    #    y = dataset.latitude
-    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-    #    manifest['hs']['geojson'].append(manifest_entry)
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
+    cmap = matplotlib.cm.get_cmap('jet')
+    manifest['hs'] = {'geojson': []}
 
-    ## water level
-    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
-    #cmap = matplotlib.cm.get_cmap('jet')
-    #manifest['zeta'] = {'geojson': []}
-    #for z in dataset['zeta']:
-    #    x = z.x
-    #    y = z.y
-    #    manifest_entry = build_contours(z, x, y, cmap, mask_geojson=water_level_mask_geojson)
-    #    manifest['zeta']['geojson'].append(manifest_entry)
+    # subset geo
+    coords = np.column_stack((dataset.longitude, dataset.latitude))
+    mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
 
+    x = dataset.longitude[mask]
+    y = dataset.latitude[mask]
+
+    # build delaunay triangles
+    triangulation = tri.Triangulation(x, y)
+
+    # build grid constraints
+    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
+    for z in dataset['hs']:
+
+        z = z[mask]
+
+        # capture date and convert to datetime
+        dt = datetime64_to_datetime(z.time)
+
+        manifest_entry = build_contours(z, xi, yi, triangulation, dt, cmap, mask_geojson=water_level_mask_geojson)
+        manifest['hs']['geojson'].append(manifest_entry)
+
+    #
+    # water level
+    #
+
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
+    cmap = matplotlib.cm.get_cmap('jet')
+    manifest['zeta'] = {'geojson': []}
+
+    # subset geo
+    coords = np.column_stack((dataset.x, dataset.y))
+    mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
+
+    x = dataset.x[mask]
+    y = dataset.y[mask]
+
+    # build delaunay triangles
+    triangulation = tri.Triangulation(x, y)
+
+    # build grid constraints
+    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
+    for z in dataset['zeta']:
+
+        # capture date and convert to datetime
+        dt = datetime64_to_datetime(z.time)
+
+        z = z[mask]
+
+        manifest_entry = build_contours(z, xi, yi, triangulation, dt, cmap, mask_geojson=water_level_mask_geojson)
+        manifest['zeta']['geojson'].append(manifest_entry)
+
+    #
     # maximum water level
+    #
+
     dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
     cmap = matplotlib.cm.get_cmap('jet')
     manifest['water_level_max'] = {'geojson': []}
-    z = dataset['zeta_max']
-    x = dataset.x
-    y = dataset.y
+
+    coords = np.column_stack((dataset.x, dataset.y))
+    mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
+
+    z = dataset['zeta_max'][mask]
+    x = dataset.x[mask]
+    y = dataset.y[mask]
+
+    # build delaunay triangles
+    triangulation = tri.Triangulation(x, y)
+
+    # build grid constraints
+    xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+    yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
     # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane
     datetime_placeholder = datetime(2012, 10, 30)
-    manifest_entry = build_contours(z, x, y, datetime_placeholder, cmap)
+
+    manifest_entry = build_contours(z, xi, yi, triangulation, datetime_placeholder, cmap)
     manifest['water_level_max']['geojson'].append(manifest_entry)
 
     #
-    # wind barbs
+    # wind
     #
 
-    #dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
-    #manifest['wind'] = {'geojson': []}
-    #for data in dataset['time']:
-    #    manifest['wind']['geojson'].append(build_wind_barbs(data, dataset))
+    dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
+    manifest['wind'] = {'geojson': []}
+    manifest['wind_barbs'] = {'geojson': []}
+
+    for date in dataset['time']:
+
+        # capture date and convert to datetime
+        dt = datetime64_to_datetime(date)
+
+        # NaN mask
+        nan_mask = (~np.isnan(dataset.sel(time=date)['uwnd'])) & (~np.isnan(dataset.sel(time=date)['vwnd']))
+
+        # geo mask
+        coords = np.column_stack((dataset.longitude, dataset.latitude))
+        geo_mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
+
+        mask = nan_mask & geo_mask
+
+        # mask and get a subset of data points since we don't want to display a wind barb at every point
+        windx_values = dataset.sel(time=date)['uwnd'][mask][::100].values
+        windy_values = dataset.sel(time=date)['vwnd'][mask][::100].values
+        x = dataset.longitude[mask][::100].values
+        y = dataset.latitude[mask][::100].values
+
+        wind_speeds = np.abs(np.hypot(windx_values, windy_values))
+        wind_directions = np.arctan2(windx_values, windy_values)
+
+        #
+        # barbs
+        #
+
+        manifest['wind_barbs']['geojson'].append(build_wind_barbs(x, y, wind_speeds, wind_directions, dt))
+
+        #
+        # contours
+        #
+
+        cmap = matplotlib.cm.get_cmap('jet')
+
+        # build delaunay triangles
+        triangulation = tri.Triangulation(x, y)
+
+        # build grid constraints
+        xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+        yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
+        wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
+
+        manifest['wind']['geojson'].append(build_contours(wind_speeds_data_array, xi, yi, triangulation, dt, cmap))
 
     #
     # write manifest
