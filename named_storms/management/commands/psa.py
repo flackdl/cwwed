@@ -7,7 +7,7 @@ import xarray
 import geojson
 import matplotlib
 from django.contrib.gis import geos
-from named_storms.models import NSEM, NsemPsa
+from named_storms.models import NSEM, NsemPsa, NamedStorm
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -40,7 +40,10 @@ GEO_POLY = Polygon([
 
 
 class Command(BaseCommand):
-    help = 'CWWED Init'
+    help = 'Create Post Storm Assessments'
+
+    storm: NamedStorm = None
+    nsem: NSEM = None
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -77,9 +80,7 @@ class Command(BaseCommand):
         if mask_geojson is not None:
             mask_geojson(geojson_result)
 
-        # TODO - simply a placeholder, will need to specify or grab the newest nsem version
-        nsem = NSEM.objects.get(id=5)
-
+        # TODO - move to central location
         results = []
         for feature in geojson_result['features']:
             results.append({
@@ -90,7 +91,7 @@ class Command(BaseCommand):
 
         for result in results:
             nsem_psa = NsemPsa(
-                nsem=nsem,
+                nsem=self.nsem,
                 variable='water_level_max',
                 date=dt,
                 geo=result['mpoly'],
@@ -315,11 +316,14 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
+        self.storm = NamedStorm.objects.get(name='Sandy')
+        self.nsem = self.storm.nsem_set.order_by('-id')[0]
+
         manifest = {}
 
-        #manifest.update(self.process_wave_height())
-        #manifest.update(self.process_water_level())
         manifest.update(self.process_water_level_max())
+        #manifest.update(self.process_water_level())
+        #manifest.update(self.process_wave_height())
         #manifest.update(self.process_wind())
 
         # write manifest
