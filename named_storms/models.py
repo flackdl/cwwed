@@ -145,3 +145,12 @@ class NSEM(models.Model):
 
     def __str__(self):
         return '{}: {}'.format(self.named_storm, self.date_requested)
+
+
+class NsemPsa(models.Model):
+    nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
+    variable = models.CharField(max_length=50)  # i.e "water_level"
+    date = models.DateTimeField()
+    geo = models.MultiPolygonField(geography=True)
+    value = models.FloatField()
+    color = models.CharField(max_length=7)  # rgb

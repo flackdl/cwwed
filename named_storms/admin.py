@@ -1,7 +1,7 @@
 from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NSEM,
-    NamedStormCoveredDataLog,
+    NamedStormCoveredDataLog, NsemPsa,
 )
 
 
@@ -55,6 +55,11 @@ class NSEMAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'named_storm', 'date_requested', 'date_returned', 'covered_data_snapshot', 'model_output_snapshot',)
     list_filter = ('named_storm', 'date_requested', 'date_returned',)
     readonly_fields = ('date_requested',)
+
+
+@admin.register(NsemPsa)
+class NsemPsaAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'nsem', 'variable', 'value', 'date')
 
 
 @admin.register(NamedStormCoveredDataLog)
