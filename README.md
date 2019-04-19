@@ -301,7 +301,9 @@ Build geojson data from post storm assessment:
  Upload geojson to S3:
  
     aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/wind s3://cwwed-static-assets-frontend/psa/wind/
-    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/mesh2d_waterdepth s3://cwwed-static-assets-frontend/psa/mesh2d_waterdepth
-    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/mesh2d_s1 s3://cwwed-static-assets-frontend/psa/mesh2d_s1
+    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/wind_barbs s3://cwwed-static-assets-frontend/psa/wind_barbs/
+    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/hs s3://cwwed-static-assets-frontend/psa/hs/
+    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/zeta s3://cwwed-static-assets-frontend/psa/zeta/
+    aws s3 cp --recursive --content-encoding gzip --acl public-read /tmp/zeta_max s3://cwwed-static-assets-frontend/psa/zeta_max/
     aws s3 cp --acl public-read /tmp/manifest.json s3://cwwed-static-assets-frontend/psa/
 
