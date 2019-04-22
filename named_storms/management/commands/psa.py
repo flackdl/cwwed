@@ -80,7 +80,10 @@ class Command(BaseCommand):
         if mask_geojson is not None:
             mask_geojson(geojson_result)
 
-        # TODO - move to central location
+        # delete any previous psa results
+        self.nsem.nsempsa_set.filter(variable=variable_name, nsem=self.nsem).delete()
+
+        # build new psa results from geojson output
         results = []
         for feature in geojson_result['features']:
             results.append({
@@ -89,10 +92,11 @@ class Command(BaseCommand):
                 'color': feature['properties']['fill'],
             })
 
+        # save results
         for result in results:
             nsem_psa = NsemPsa(
                 nsem=self.nsem,
-                variable='water_level_max',
+                variable=variable_name,
                 date=dt,
                 geo=result['mpoly'],
                 value=result['value'],
@@ -100,17 +104,8 @@ class Command(BaseCommand):
             )
             nsem_psa.save()
 
-        # create output directory if it doesn't exist
-        output_path = '/tmp/{}'.format(variable_name)
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-
-        # gzip compress geojson output and save to file
-        with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
-            fh.write(json.dumps(geojson_result).encode('utf-8'))
-
         #
-        # build color values
+        # build color bar values
         #
 
         color_values = []
@@ -233,7 +228,6 @@ class Command(BaseCommand):
 
         dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
         cmap = matplotlib.cm.get_cmap('jet')
-        manifest = {'geojson': []}
 
         coords = np.column_stack((dataset.x, dataset.y))
         mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
@@ -252,10 +246,7 @@ class Command(BaseCommand):
         # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane
         datetime_placeholder = datetime(2012, 10, 30)
 
-        manifest_entry = self.build_contours(z, xi, yi, triangulation, datetime_placeholder, cmap)
-        manifest['geojson'].append(manifest_entry)
-
-        return {'water_level_max': manifest}
+        self.build_contours(z, xi, yi, triangulation, datetime_placeholder, cmap)
 
     def process_wind(self):
         manifest_wind = {'geojson': []}
@@ -319,12 +310,8 @@ class Command(BaseCommand):
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
-        manifest = {}
+        self.process_water_level_max()
 
-        manifest.update(self.process_water_level_max())
-        #manifest.update(self.process_water_level())
-        #manifest.update(self.process_wave_height())
-        #manifest.update(self.process_wind())
-
-        # write manifest
-        json.dump(manifest, open('/tmp/manifest.json', 'w'))
+        # self.process_water_level()
+        # self.process_wave_height()
+        # self.process_wind()

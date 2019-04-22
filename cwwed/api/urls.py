@@ -1,19 +1,18 @@
 from django.urls import path, include
 from rest_framework import routers
-from named_storms.api import viewsets as storm_viewsets
-from named_storms.api import views
-from coastal_act.api import viewsets as coastal_act_viewsets
+from named_storms.api import urls as named_storms_urls
+from coastal_act.api import urls as coastal_act_urls
 from rest_framework.authtoken import views as drf_views
 
 router = routers.DefaultRouter()
-router.register(r'named-storms', storm_viewsets.NamedStormViewSet)
-router.register(r'covered-data', storm_viewsets.CoveredDataViewSet)
-router.register(r'nsem', storm_viewsets.NSEMViewset)
-router.register(r'coastal-act-projects', coastal_act_viewsets.CoastalActProjectViewSet)
-router.register(r'user', coastal_act_viewsets.CurrentUserViewSet)
+
+# extend router to include app's routers
+router.registry.extend(named_storms_urls.router.registry)
+router.registry.extend(coastal_act_urls.router.registry)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('psa-filter/', views.PSAFilterView.as_view()),
     path('auth/', drf_views.obtain_auth_token),  # authenticates user and returns token
+    *named_storms_urls.urlpatterns,
+    *coastal_act_urls.urlpatterns,
 ]

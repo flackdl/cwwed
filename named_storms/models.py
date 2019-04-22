@@ -144,7 +144,7 @@ class NSEM(models.Model):
     model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
 
     def __str__(self):
-        return '{}: {}'.format(self.named_storm, self.date_requested)
+        return str(self.named_storm)
 
 
 class NsemPsa(models.Model):

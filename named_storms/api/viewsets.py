@@ -1,7 +1,11 @@
+from django.core.serializers import serialize
+from django.http import HttpResponse
 from rest_framework import viewsets
+from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
+
 
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
@@ -70,3 +74,33 @@ class NSEMViewset(viewsets.ModelViewSet):
         # save the instance first so we can create a task to extract the model output snapshot
         obj = serializer.save()
         extract_nsem_model_output_task.delay(obj.id)
+
+
+class NsemPsaViewset(viewsets.ReadOnlyModelViewSet):
+    """
+    Named Storm Event Model View
+    NOTE: expects to be nested under a NamedStormViewset detail
+    """
+    filter_fields = ('value',)
+    storm: NamedStorm = None
+
+    def dispatch(self, request, *args, **kwargs):
+        storm_id = kwargs.pop('storm_id')
+        self.storm = NamedStorm.objects.get(id=storm_id)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        nsem = self.storm.nsem_set.filter(model_output_snapshot_extracted=True).order_by('-date_returned')
+        if not nsem.exists():
+            raise exceptions.ValidationError('No post storm assessments exist for this storm')
+        return nsem[0].nsempsa_set.all()
+
+    def list(self, request, *args, **kwargs):
+        return HttpResponse(
+            content=serialize(
+                'geojson',
+                self.filter_queryset(self.get_queryset()),
+                geometry_field='geo',
+                fields=('value', 'color'),),
+            content_type='application/json',
+        )
