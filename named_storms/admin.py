@@ -1,8 +1,8 @@
 from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NSEM,
-    NamedStormCoveredDataLog, NsemPsa,
-)
+    NamedStormCoveredDataLog, NsemPsaData,
+    NsemPsaVariable)
 
 
 class CoveredDataInline(admin.TabularInline):
@@ -22,11 +22,22 @@ class NamedStormCoveredDataProviderInline(admin.TabularInline):
     extra = 0
 
 
-class NsemPsaInline(admin.TabularInline):
-    model = NsemPsa
+class NsemPsaVariableInline(admin.TabularInline):
+    model = NsemPsaVariable
     show_change_link = True
     extra = 0
-    fields = ('variable', 'date', 'value', 'color')
+    fields = ('nsem', 'name',)
+
+    def has_add_permission(self, request):
+        # disabled since we can't edit geo which is a required field
+        return False
+
+
+class NsemPsaDataInline(admin.TabularInline):
+    model = NsemPsaData
+    show_change_link = True
+    extra = 0
+    fields = ('date', 'value', 'color')
 
     def has_add_permission(self, request):
         # disabled since we can't edit geo which is a required field
@@ -67,12 +78,18 @@ class NSEMAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'named_storm', 'date_requested', 'date_returned', 'covered_data_snapshot', 'model_output_snapshot',)
     list_filter = ('named_storm', 'date_requested', 'date_returned',)
     readonly_fields = ('date_requested',)
-    inlines = (NsemPsaInline,)
+    inlines = (NsemPsaVariableInline,)
 
 
-@admin.register(NsemPsa)
-class NsemPsaAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'nsem', 'variable', 'value', 'date')
+@admin.register(NsemPsaVariable)
+class NsemPsaVariableAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'nsem', 'name')
+    inlines = (NsemPsaDataInline,)
+
+
+@admin.register(NsemPsaData)
+class NsemPsaDataAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'value', 'date')
 
 
 @admin.register(NamedStormCoveredDataLog)

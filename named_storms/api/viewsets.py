@@ -1,5 +1,7 @@
+from datetime import datetime
 from django.core.serializers import serialize
 from django.http import HttpResponse
+from django.utils.dateparse import parse_datetime
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
@@ -12,7 +14,7 @@ from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NSEM
+from named_storms.models import NamedStorm, CoveredData, NSEM, NsemPsaVariable, NsemPsaData
 from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer
 
 
@@ -85,22 +87,26 @@ class NsemPsaViewset(viewsets.ReadOnlyModelViewSet):
     filterset_class = NsemPsaFilter
 
     storm: NamedStorm = None
+    nsem: NSEM = None
+    nsem_psa_variable: NsemPsaVariable = None
+    date: datetime = None
 
     def dispatch(self, request, *args, **kwargs):
-        storm_id = kwargs.pop('storm_id')
-        self.storm = NamedStorm.objects.get(id=storm_id)
+        self.storm = NamedStorm.objects.get(id=kwargs.pop('storm_id'))
+        self.date = parse_datetime(kwargs.pop('date'))
+
+        nsem = self.storm.nsem_set.filter(model_output_snapshot_extracted=True).order_by('-date_returned')
+        if nsem.exists():
+            self.nsem = nsem[0]
+
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        nsem = self.storm.nsem_set.filter(model_output_snapshot_extracted=True).order_by('-date_returned')
-        if not nsem.exists():
-            raise exceptions.ValidationError('No post storm assessments exist for this storm')
-        return nsem[0].nsempsa_set.all()
+        return self.nsem_psa_variable.nsempsadata_set.all() if self.nsem_psa_variable else NsemPsaData.objects.none()
 
     def list(self, request, *args, **kwargs):
 
-        if 'date' not in self.request.query_params:
-            raise ValidationError({'date': ['A date parameter must be supplied']})
+        self._validate()
 
         return HttpResponse(
             content=serialize(
@@ -110,3 +116,17 @@ class NsemPsaViewset(viewsets.ReadOnlyModelViewSet):
                 fields=('value', 'color', 'date'),),
             content_type='application/json',
         )
+
+    def _validate(self):
+        nsem_psa_variable = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['variable'])
+        if nsem_psa_variable.exists():
+            self.nsem_psa_variable = nsem_psa_variable[0]
+
+        if not self.nsem:
+            raise exceptions.ValidationError('No post storm assessments exist for this storm')
+        if not self.nsem_psa_variable:
+            raise ValidationError('No data exists for variable "{}" and date "{}"'.format(self.request.query_params['variable'], self.date.isoformat()))
+        if not self.date:
+            raise ValidationError({'date': ['date parameter must be valid']})
+        if 'variable' not in self.request.query_params:
+            raise ValidationError({'variable': ['variable parameter must be supplied']})

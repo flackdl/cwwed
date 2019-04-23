@@ -7,7 +7,7 @@ import xarray
 import geojson
 import matplotlib
 from django.contrib.gis import geos
-from named_storms.models import NSEM, NsemPsa, NamedStorm
+from named_storms.models import NSEM, NsemPsaData, NamedStorm, NsemPsaVariable
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -81,7 +81,11 @@ class Command(BaseCommand):
             mask_geojson(geojson_result)
 
         # delete any previous psa results
-        self.nsem.nsempsa_set.filter(variable=variable_name, nsem=self.nsem).delete()
+        self.nsem.nsempsavariable_set.filter(name=variable_name, nsem=self.nsem).delete()
+
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(nsem=self.nsem, name=variable_name)
+        nsem_psa_variable.save()
 
         # build new psa results from geojson output
         results = []
@@ -93,10 +97,10 @@ class Command(BaseCommand):
             })
 
         # save results
+        # TODO - do this in previous loop
         for result in results:
-            nsem_psa = NsemPsa(
-                nsem=self.nsem,
-                variable=variable_name,
+            nsem_psa = NsemPsaData(
+                nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=result['mpoly'],
                 value=result['value'],

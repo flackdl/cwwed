@@ -147,10 +147,20 @@ class NSEM(models.Model):
         return str(self.named_storm)
 
 
-class NsemPsa(models.Model):
+class NsemPsaVariable(models.Model):
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
-    variable = models.CharField(max_length=50)  # i.e "water_level"
+    name = models.CharField(max_length=50)  # i.e "water_level"
+
+    def __str__(self):
+        return self.name
+
+
+class NsemPsaData(models.Model):
+    nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField()
     geo = models.MultiPolygonField(geography=True)
     value = models.FloatField()
-    color = models.CharField(max_length=7)  # rgb
+    color = models.CharField(max_length=7)  # rgb hex, i.e "#ffffff"
+
+    def __str__(self):
+        return str(self.nsem_psa_variable)
