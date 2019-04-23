@@ -3,10 +3,11 @@ from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
-
+from named_storms.api.filters import NsemPsaFilter
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task,
@@ -18,7 +19,7 @@ from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerial
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = NamedStorm.objects.all()
     serializer_class = NamedStormSerializer
-    filter_fields = ('name',)
+    filterset_fields = ('name',)
     search_fields = ('name',)
 
     def get_serializer_class(self):
@@ -40,7 +41,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     queryset = NSEM.objects.all()
     serializer_class = NSEMSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filter_fields = ('named_storm__id', 'model_output_snapshot_extracted')
+    filterset_fields = ('named_storm__id', 'model_output_snapshot_extracted')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
@@ -77,11 +78,12 @@ class NSEMViewset(viewsets.ModelViewSet):
 
 
 class NsemPsaViewset(viewsets.ReadOnlyModelViewSet):
-    """
-    Named Storm Event Model View
-    NOTE: expects to be nested under a NamedStormViewset detail
-    """
-    filter_fields = ('value',)
+    # Named Storm Event Model Viewset
+    #     - expects to be nested under a NamedStormViewset detail
+    #     - returns geojson results
+
+    filterset_class = NsemPsaFilter
+
     storm: NamedStorm = None
 
     def dispatch(self, request, *args, **kwargs):
@@ -96,11 +98,15 @@ class NsemPsaViewset(viewsets.ReadOnlyModelViewSet):
         return nsem[0].nsempsa_set.all()
 
     def list(self, request, *args, **kwargs):
+
+        if 'date' not in self.request.query_params:
+            raise ValidationError({'date': ['A date parameter must be supplied']})
+
         return HttpResponse(
             content=serialize(
                 'geojson',
                 self.filter_queryset(self.get_queryset()),
                 geometry_field='geo',
-                fields=('value', 'color'),),
+                fields=('value', 'color', 'date'),),
             content_type='application/json',
         )
