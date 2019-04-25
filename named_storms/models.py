@@ -2,6 +2,7 @@ from datetime import datetime
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.contrib.postgres import fields
 
 
 # data factories
@@ -150,6 +151,10 @@ class NSEM(models.Model):
 class NsemPsaVariable(models.Model):
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
+    color_bar = fields.JSONField(default=dict)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
+
+    class Meta:
+        unique_together = ('nsem', 'name',)
 
     def __str__(self):
         return self.name

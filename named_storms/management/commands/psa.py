@@ -23,19 +23,44 @@ GRID_SIZE = 5000
 LEVELS = 30
 COLOR_STEPS = 10  # color bar range
 
-# atlantic coast
+# mid atlantic coast
 GEO_POLY = Polygon([
-    [-77.1240234375, 33.97980872872457],
-    [-75.0146484375, 35.24561909420681],
-    [-75.4541015625, 37.09023980307208],
-    [-74.0478515625, 38.8225909761771],
-    [-72.3779296875, 39.977120098439634],
-    [-70.224609375, 40.91351257612758],
-    [-70.048828125, 42.68243539838623],
-    [-74.6630859375, 41.83682786072714],
-    [-78.1787109375, 38.89103282648846],
-    [-77.607421875, 36.35052700542763],
-    [-77.1240234375, 33.97980872872457],
+    [-78.50830078125, 33.76088200086917],
+    [-77.82714843749999, 33.815666308702774],
+    [-77.607421875, 34.161818161230386],
+    [-77.1240234375, 34.52466147177172],
+    [-76.46484375, 34.615126683462194],
+    [-75.78369140625, 34.97600151317588],
+    [-75.30029296875, 35.44277092585766],
+    [-75.34423828125, 35.871246850027966],
+    [-75.65185546874999, 36.43896124085945],
+    [-75.8056640625, 37.09023980307208],
+    [-75.30029296875, 37.735969208590504],
+    [-74.99267578125, 38.16911413556086],
+    [-74.8828125, 38.59970036588819],
+    [-74.7509765625, 38.92522904714054],
+    [-74.37744140625, 39.26628442213066],
+    [-73.93798828125, 39.80853604144591],
+    [-73.7841796875, 40.463666324587685],
+    [-72.61962890625, 40.66397287638688],
+    [-71.8505859375, 40.88029480552824],
+    [-71.34521484375, 41.1455697310095],
+    [-69.85107421874999, 41.21172151054787],
+    [-69.78515625, 41.52502957323801],
+    [-69.76318359375, 42.00032514831621],
+    [-70.48828125, 42.17968819665961],
+    [-71.65283203125, 42.01665183556825],
+    [-72.97119140625, 41.60722821271717],
+    [-74.28955078125, 41.42625319507269],
+    [-75.21240234375, 40.34654412118006],
+    [-76.31103515625, 39.70718665682654],
+    [-77.3876953125, 39.04478604850143],
+    [-77.49755859375, 38.324420427006544],
+    [-77.47558593749999, 37.61423141542417],
+    [-77.2119140625, 36.66841891894786],
+    [-77.080078125, 35.69299463209881],
+    [-77.431640625, 34.92197103616377],
+    [-78.50830078125, 33.76088200086917],
 ])
 
 
@@ -45,6 +70,19 @@ class Command(BaseCommand):
     storm: NamedStorm = None
     nsem: NSEM = None
 
+    def handle(self, *args, **options):
+
+        self.storm = NamedStorm.objects.get(name='Sandy')
+        self.nsem = self.storm.nsem_set.order_by('-id')[0]
+
+        # delete any previous psa results for this nsem
+        self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
+
+        #self.process_water_level_max()
+        self.process_water_level()
+        # self.process_wave_height()
+        # self.process_wind()
+
     @staticmethod
     def datetime64_to_datetime(dt64):
         unix_epoch = np.datetime64(0, 's')
@@ -52,12 +90,7 @@ class Command(BaseCommand):
         seconds_since_epoch = (dt64 - unix_epoch) / one_second
         return datetime.utcfromtimestamp(seconds_since_epoch)
 
-    def build_contours(self, z: xarray.DataArray, xi: np.ndarray, yi: np.ndarray, triangulation: tri.Triangulation, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
-
-        # build json file name output
-        file_name = '{}.json'.format(dt.isoformat())
-
-        variable_name = z.name
+    def build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, xi: np.ndarray, yi: np.ndarray, triangulation: tri.Triangulation, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
 
         # interpolate values from triangle data and build a mesh of data
         interpolator = tri.LinearTriInterpolator(triangulation, z)
@@ -73,66 +106,22 @@ class Command(BaseCommand):
             ndigits=10,
             stroke_width=2,
             fill_opacity=0.5,
-            geojson_properties={'variable': variable_name},
+            geojson_properties={'variable': nsem_psa_variable.name},
         ))
 
         # mask regions
         if mask_geojson is not None:
             mask_geojson(geojson_result)
 
-        # delete any previous psa results
-        self.nsem.nsempsavariable_set.filter(name=variable_name, nsem=self.nsem).delete()
-
-        # create psa variable to assign data
-        nsem_psa_variable = NsemPsaVariable(nsem=self.nsem, name=variable_name)
-        nsem_psa_variable.save()
-
         # build new psa results from geojson output
-        results = []
         for feature in geojson_result['features']:
-            results.append({
-                'mpoly': geos.MultiPolygon(*[geos.Polygon(poly) for poly in feature['geometry']['coordinates'][0]]),
-                'value': feature['properties']['title'],
-                'color': feature['properties']['fill'],
-            })
-
-        # save results
-        # TODO - do this in previous loop
-        for result in results:
-            nsem_psa = NsemPsaData(
+            NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
-                geo=result['mpoly'],
-                value=result['value'],
-                color=result['color'],
-            )
-            nsem_psa.save()
-
-        #
-        # build color bar values
-        #
-
-        color_values = []
-
-        color_norm = matplotlib.colors.Normalize(vmin=z.min(), vmax=z.max())
-        step_intervals = np.linspace(z.min(), z.max(), COLOR_STEPS)
-
-        for step_value in step_intervals:
-            # round the step value for ranges greater than COLOR_STEPS
-            if z.max() - z.min() >= COLOR_STEPS:
-                step_value = math.ceil(step_value)
-            hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
-            color_values.append((step_value, hex_value))
-
-        #
-        # return manifest entry
-        #
-
-        return {
-            'date': dt.isoformat(),
-            'path': os.path.join(variable_name, file_name),
-            'color_bar': color_values,
-        }
+                geo=geos.MultiPolygon(*[geos.Polygon(poly) for poly in feature['geometry']['coordinates'][0]]),
+                value=feature['properties']['title'],
+                color=feature['properties']['fill'],
+            ).save()
 
     def build_wind_barbs(self, x: np.ndarray, y: np.ndarray, wind_speeds: np.ndarray, wind_directions: np.ndarray, dt: datetime):
 
@@ -191,6 +180,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
+            # TODO - no manifest
             manifest_entry = self.build_contours(self.z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
             manifest['geojson'].append(manifest_entry)
 
@@ -200,7 +190,6 @@ class Command(BaseCommand):
 
         dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
         cmap = matplotlib.cm.get_cmap('jet')
-        manifest = {'geojson': []}
 
         # subset geo
         coords = np.column_stack((dataset.x, dataset.y))
@@ -216,23 +205,29 @@ class Command(BaseCommand):
         xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
         yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
-        for z in dataset['zeta']:
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(
+            nsem=self.nsem,
+            name='zeta',
+            color_bar=self._color_bar_values(dataset.zeta.min(), dataset.zeta.max(), cmap),
+        )
+        nsem_psa_variable.save()
+
+        for z in dataset['zeta'][:2]:  # TODO
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
             z = z[mask]
 
-            manifest_entry = self.build_contours(z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
-            manifest['geojson'].append(manifest_entry)
-
-        return {'zeta': manifest}
+            self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
 
     def process_water_level_max(self):
 
         dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
         cmap = matplotlib.cm.get_cmap('jet')
 
+        # subset geo
         coords = np.column_stack((dataset.x, dataset.y))
         mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
 
@@ -247,10 +242,18 @@ class Command(BaseCommand):
         xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
         yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
-        # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane
+        # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane and not date specific
         datetime_placeholder = datetime(2012, 10, 30)
 
-        self.build_contours(z, xi, yi, triangulation, datetime_placeholder, cmap)
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(
+            nsem=self.nsem,
+            name='zeta_max',
+            color_bar=self._color_bar_values(z.min(), z.max(), cmap),
+        )
+        nsem_psa_variable.save()
+
+        self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, datetime_placeholder, cmap)
 
     def process_wind(self):
         manifest_wind = {'geojson': []}
@@ -281,6 +284,8 @@ class Command(BaseCommand):
             wind_speeds = np.abs(np.hypot(windx_values, windy_values))
             wind_directions = np.arctan2(windx_values, windy_values)
 
+            # TODO - no manifest
+
             #
             # barbs
             #
@@ -309,13 +314,19 @@ class Command(BaseCommand):
             'wind_barbs': manifest_barbs,
         }
 
-    def handle(self, *args, **options):
+    def _color_bar_values(self, z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
+        # build color bar values
 
-        self.storm = NamedStorm.objects.get(name='Sandy')
-        self.nsem = self.storm.nsem_set.order_by('-id')[0]
+        color_values = []
 
-        self.process_water_level_max()
+        color_norm = matplotlib.colors.Normalize(vmin=z_min, vmax=z_max)
+        step_intervals = np.linspace(z_min, z_max, COLOR_STEPS)
 
-        # self.process_water_level()
-        # self.process_wave_height()
-        # self.process_wind()
+        for step_value in step_intervals:
+            # round the step value for ranges greater than COLOR_STEPS
+            if z_max - z_min >= COLOR_STEPS:
+                step_value = math.ceil(step_value)
+            hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
+            color_values.append((step_value, hex_value))
+
+        return color_values

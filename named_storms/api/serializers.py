@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider, NsemPsaVariable, NsemPsaData
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
 
@@ -130,3 +130,23 @@ class NSEMSerializer(serializers.ModelSerializer):
             settings.CWWED_NSEM_UPLOAD_DIR_NAME,
             'v{}.{}'.format(obj.id, settings.CWWED_ARCHIVE_EXTENSION)),
         )
+
+
+class NsemPsaVariableSerializer(serializers.ModelSerializer):
+    """
+    Named Storm Event Model PSA Variable Serializer
+    """
+
+    class Meta:
+        model = NsemPsaVariable
+        fields = '__all__'
+
+
+class NsemPsaDataSerializer(serializers.ModelSerializer):
+    """
+    Named Storm Event Model PSA Data Serializer
+    """
+
+    class Meta:
+        model = NsemPsaData
+        fields = ('nsem_psa_variable', 'date', 'value', 'color',)
