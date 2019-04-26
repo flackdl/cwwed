@@ -151,6 +151,7 @@ class NSEM(models.Model):
 class NsemPsaVariable(models.Model):
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
+    geo_type = models.CharField(choices=(('multipolygon', 'MultiPolygon',), ('point', 'Point'),), max_length=20)
     color_bar = fields.JSONField(default=dict)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
 
     class Meta:

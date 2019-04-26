@@ -11,7 +11,7 @@ router.register(r'nsem', viewsets.NSEMViewset)
 
 urlpatterns = [
     path('psa-filter/', views.PSAFilterView.as_view()),
-    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/(?P<date>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'})),
+    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/variable/$', viewsets.NsemPsaVariableViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/$', viewsets.NsemPsaDataViewset.as_view({'get': 'list'})),
 ]

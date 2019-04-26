@@ -132,14 +132,12 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
     filterset_class = NsemPsaDataFilter
 
     nsem_psa_variable: NsemPsaVariable = None
-    date: datetime = None
 
     def dispatch(self, request, *args, **kwargs):
-        self.date = parse_datetime(kwargs.pop('date'))
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return self.nsem_psa_variable.nsempsadata_set.filter(date=self.date) if self.nsem_psa_variable else NsemPsaData.objects.none()
+        return self.nsem_psa_variable.nsempsadata_set.all() if self.nsem_psa_variable else NsemPsaData.objects.none()
 
     def list(self, request, *args, **kwargs):
 
@@ -155,15 +153,19 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         )
 
     def _validate(self):
+        filter_errors = {}
 
         if not self.nsem:
             raise exceptions.ValidationError('No post storm assessments exist for this storm')
 
-        if not self.date:
-            raise ValidationError({'date': ['date parameter must be valid']})
+        if 'date' not in self.request.query_params:
+            filter_errors.update({'date': ['missing value']})
 
         if 'variable' not in self.request.query_params:
-            raise exceptions.ValidationError({'variable': ['missing value']})
+            filter_errors.update({'variable': ['missing value']})
+
+        if filter_errors:
+            raise exceptions.ValidationError(filter_errors)
 
         nsem_psa_variable = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['variable'])
         if not nsem_psa_variable.exists():
