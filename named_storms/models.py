@@ -149,9 +149,15 @@ class NSEM(models.Model):
 
 
 class NsemPsaVariable(models.Model):
+    DATA_TYPE_TIME_SERIES = 'time-series'
+    DATA_TYPE_TIME_MAX = 'max-values'
+    GEO_TYPE_MULTIPOLYGON = 'multipolygon'
+    GEO_TYPE_POINT = 'point'
+
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
-    geo_type = models.CharField(choices=(('multipolygon', 'MultiPolygon',), ('point', 'Point'),), max_length=20)
+    geo_type = models.CharField(choices=((GEO_TYPE_MULTIPOLYGON, GEO_TYPE_MULTIPOLYGON), (GEO_TYPE_POINT, GEO_TYPE_POINT)), max_length=20)
+    data_type = models.CharField(choices=((DATA_TYPE_TIME_SERIES, DATA_TYPE_TIME_SERIES), (DATA_TYPE_TIME_MAX, DATA_TYPE_TIME_MAX)), max_length=20)
     color_bar = fields.JSONField(default=dict)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
 
     class Meta:

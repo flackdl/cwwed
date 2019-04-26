@@ -14,10 +14,17 @@
         <div class="col-lg-4 col-xl-3 mt-3">
 
           <!-- map controls -->
-          <ngb-accordion #acc="ngbAccordion" activeIds="map-filters">
+          <ngb-accordion #acc="ngbAccordion" activeIds="map-filters" [formGroup]="form" *ngIf="form">
             <ngb-panel title="Map Filters" id="map-filters">
               <ng-template ngbPanelContent>
-                <div class="form-group">
+                <div class="form-group" formGroupName="variables">
+                  <div class="form-check" *ngFor="let psaVariable of psaVariables">
+                    <input class="form-check-input" type="checkbox" [formControlName]="psaVariable.name" [id]="psaVariable.name">
+                    <label class="form-check-label" [for]="psaVariable.name">
+                      {{ psaVariable.name }}
+                    </label>
+                  </div>
+                  <!--
                   <div class="form-check">
                     <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterLevelMaxInput" id="water_level_max">
                     <label class="form-check-label" for="water_level_max">
@@ -42,14 +49,15 @@
                       Wind
                     </label>
                   </div>
+                -->
                 </div>
                 <div class="form-group">
                   <label>Data Opacity</label>
-                  <input type="number" step=".1" min=".1" max="1" [formControl]="dataOpacityInput" class="form-control form-control-sm w-25">
+                  <input type="range" step=".1" min=".1" max="1" formControlName="opacity" class="w-100">
                 </div>
                 <div class="form-group">
-                  <label>Date: <small>{{ getDateInputFormatted(dateInputControl.value) }}</small></label>
-                  <input type="range" [formControl]="dateInputControl" min="0" [max]="getDateInputMax()" class="w-100">
+                  <label>Date: <small>{{ getDateInputFormatted(form.get('date').value) }}</small></label>
+                  <input type="range" formControlName="date" min="0" [max]="getDateInputMax()" class="w-100">
                 </div>
                 <div>
                   <small class="form-text text-muted">Start: {{ getDateMin() }}</small>
@@ -61,6 +69,7 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
+                <!--
                 <div *ngIf="mapLayerWindInput.value" class="mb-3">
                   <a href="https://commons.wikimedia.org/wiki/Wind_speed" target="_blank" class="btn btn-block btn-light">
                     Wind Barbs <span class="oi oi-external-link"></span>
@@ -99,6 +108,7 @@
 										<span class="pl-1">(m)</span>
                   </div>
                 </div>
+                -->
               </ng-template>
             </ngb-panel>
             <ngb-panel title="Base Maps">

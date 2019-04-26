@@ -3,8 +3,8 @@ import { ActivatedRoute, Router } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
-import { FormControl } from "@angular/forms";
-import { debounceTime, tap } from 'rxjs/operators';
+import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
+import { debounceTime, mergeMap, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
@@ -30,7 +30,7 @@ const hexToRgba = require("hex-to-rgba");
   styleUrls: ['./psa.component.scss'],
 })
 export class PsaComponent implements OnInit {
-  public S3_PSA_BUCKET_BASE_URL = 'https://s3.amazonaws.com/cwwed-static-assets-frontend/psa/';
+  public DEMO_NAMED_STORM_ID = 1;
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
@@ -49,24 +49,20 @@ export class PsaComponent implements OnInit {
   public isLoadingMap = true;
   public isLoadingOverlayPopup = false;
   public map: Map;
-  public nsemId: number;
   public namedStorms: any;
+  public psaVariables: any[];
+  public psaVariablesData: any[];
+  public psaDates: string[] = [];
+  public form: FormGroup;
   public nsemList: any;
   public currentFeature: any;
   public extentCoords: Number[];
-  public geojsonManifest: any;
   public currentConfidence: Number;
-  public dateInputControl = new FormControl(0); // first date in the list
-  public dataOpacityInput = new FormControl(.5);
-  public waveHeightLayer: any;  // VectorLayer
-  public waterLevelLayer: any;  // VectorLayer
-  public waterLevelMaxLayer: any;  // VectorLayer
-  public windLayer: any;  // VectorLayer
-  public mapLayerWaterLevelMaxInput = new FormControl(true);
-  public mapLayerWaterLevelInput = new FormControl(false);
-  public mapLayerWaveHeightInput = new FormControl(false);
-  public mapLayerWindInput = new FormControl(true);
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
+  public mapLayers: {
+    name: string,
+    layer: VectorLayer,
+  }[];
   public popupOverlay: Overlay;
   public coordinateGraphData: any[];
   public chartWidth: number;
@@ -81,6 +77,7 @@ export class PsaComponent implements OnInit {
     private http: HttpClient,
     private route: ActivatedRoute,
     private router: Router,
+    private fb: FormBuilder,
     private cwwedService: CwwedService,
     private modalService: NgbModal,
     private chartTooltipInjectionService: InjectionService,
@@ -93,20 +90,18 @@ export class PsaComponent implements OnInit {
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorms = this.cwwedService.namedStorms;
 
-    this._listenForInputChanges();
+    // create initial form group
+    this.form = this.fb.group({
+      opacity: new FormControl(.5),
+      variables: new FormControl(),
+      date: new FormControl(0),
+    });
 
     this._fetchDataAndBuildMap();
-
-    this.route.params.subscribe((data) => {
-      if (data.id) {
-        this.nsemId = parseInt(data.id);
-      }
-    });
   }
 
   public getDateInputFormatted(dateIndex: number) {
-    // TODO - shouldn't rely on specific variable
-    return this.geojsonManifest ? this.geojsonManifest['zeta']['geojson'][dateIndex].date : '';
+    return this.psaDates ? this.psaDates[dateIndex] : '';
   }
 
   public getDateMin() {
@@ -114,12 +109,11 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateMax() {
-    return this.geojsonManifest ? this.getDateInputFormatted(this.getDateInputMax()) : '';
+    return this.getDateInputFormatted(this.getDateInputMax());
   }
 
   public getDateInputMax() {
-    // TODO - shouldn't rely on specific variable
-    return this.geojsonManifest ? this.geojsonManifest['zeta']['geojson'].length - 1 : 0;
+    return this.psaDates ? this.psaDates.length - 1 : 0;
   }
 
   public isOverlayVisible(): boolean {
@@ -158,16 +152,13 @@ export class PsaComponent implements OnInit {
   }
 
   public getWaterColorBarValues(variable: string) {
-    // return the first value if the date doesn't exist (i.e "max water level" is a static value across the duration)
-    if (!this.geojsonManifest[variable]['geojson'][this.dataOpacityInput.value]) {
-      return this.geojsonManifest[variable]['geojson'][0]['color_bar'];
-    }
-    return this.geojsonManifest[variable]['geojson'][this.dateInputControl.value]['color_bar'];
+    // TODO
+    return [];
   }
 
   public hasVariableValueAtCurrentDate(variable: string): boolean {
-    const path = `${variable}.geojson.${this.dateInputControl.value}`;
-    return _.has(this.geojsonManifest, path);
+    // TODO
+    return true;
   }
 
   @HostListener('window:resize', ['$event'])
@@ -184,20 +175,18 @@ export class PsaComponent implements OnInit {
   protected _listenForInputChanges() {
 
     // update map data opacity
-    this.dataOpacityInput.valueChanges.subscribe(
+    this.form.get('opacity').valueChanges.subscribe(
       (data) => {
-        this.waveHeightLayer.setStyle((feature) => {
-          return this._getWaterLayerStyle(feature);
+        this.mapLayers.forEach((mapLayer) => {
+          mapLayer['layer'].setStyle((feature) => {
+            return this._getWaterLayerStyle(feature);
+          });
         });
-        this.waterLevelLayer.setStyle((feature) => {
-          return this._getWaterLayerStyle(feature);
-        });
-        this.waterLevelMaxLayer.setStyle((feature) => {
-          return this._getWaterLayerStyle(feature);
-        });
+        /* TODO - handle "wind" (geo_type=point?) layers
         this.windLayer.setStyle((feature) => {
           return this._getWindLayerStyle(feature);
         });
+        */
       }
     );
 
@@ -213,57 +202,22 @@ export class PsaComponent implements OnInit {
       }
     );
 
-    // listen for layer input changes
-    this.mapLayerWaterLevelInput.valueChanges.pipe(
-      tap(() => {
-        this.isLoadingMap = true;
-      })
-    ).subscribe(
-      (value) => {
+    this.form.get('variables').valueChanges.subscribe(
+      (variablesValues) => {
+
         this._updateCoordinateGraphData();
-        if (!value) {
-          this.map.removeLayer(this.waterLevelLayer);
-        } else {
-          this.waterLevelLayer.setSource(this._getWaterLevelSource());
-          this.map.addLayer(this.waterLevelLayer);
-        }
+
+        this.mapLayers.forEach((mapLayer) => {
+          if (!variablesValues[mapLayer['name']]) {
+            this.map.removeLayer(mapLayer['layer']);
+          } else {
+            // TODO add layer (or just set source?)
+          }
+        })
       }
     );
 
-    // listen for layer input changes
-    this.mapLayerWaterLevelMaxInput.valueChanges.pipe(
-      tap(() => {
-        this.isLoadingMap = true;
-      })
-    ).subscribe(
-      (value) => {
-        this._updateCoordinateGraphData();
-        if (!value) {
-          this.map.removeLayer(this.waterLevelMaxLayer);
-        } else {
-          this.waterLevelMaxLayer.setSource(this._getWaterLevelMaxSource());
-          this.map.addLayer(this.waterLevelMaxLayer);
-        }
-      }
-    );
-
-    // listen for layer input changes
-    this.mapLayerWaveHeightInput.valueChanges.pipe(
-      tap(() => {
-        this.isLoadingMap = true;
-      })
-    ).subscribe(
-      (value) => {
-        this._updateCoordinateGraphData();
-        if (!value) {
-          this.map.removeLayer(this.waveHeightLayer);
-        } else {
-          this.waveHeightLayer.setSource(this._getWaveHeightSource());
-          this.map.addLayer(this.waveHeightLayer);
-        }
-      }
-    );
-
+    /* TODO
     // listen for layer input changes
     this.mapLayerWindInput.valueChanges.pipe(
       tap(() => {
@@ -280,38 +234,24 @@ export class PsaComponent implements OnInit {
         }
       }
     );
+    */
 
     // listen for date input changes
-    this.dateInputControl.valueChanges.pipe(
+    this.form.get('date').valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
       }),
       debounceTime(1000),
     ).subscribe((value) => {
 
+      /* TODO
       // remove all layers first then apply chosen ones
-      this.map.removeLayer(this.waveHeightLayer);
-      this.map.removeLayer(this.waterLevelLayer);
-      this.map.removeLayer(this.waterLevelMaxLayer);
       this.map.removeLayer(this.windLayer);
+       */
 
       let updated = false;
 
-      // update the map's layer's sources
-      if (this.mapLayerWaveHeightInput.value) {
-        if (this.hasVariableValueAtCurrentDate('hs')) {
-          this.waveHeightLayer.setSource(this._getWaveHeightSource());
-          this.map.addLayer(this.waveHeightLayer);
-          updated = true;
-        }
-      }
-      if (this.mapLayerWaterLevelInput.value) {
-        if (this.hasVariableValueAtCurrentDate('zeta')) {
-          this.waterLevelLayer.setSource(this._getWaterLevelSource());
-          this.map.addLayer(this.waterLevelLayer);
-          updated = true;
-        }
-      }
+      /* TODO
       if (this.mapLayerWaterLevelMaxInput.value) {
         // NOTE: don't check to see if it has the value at the current date because it's static
         this.waterLevelMaxLayer.setSource(this._getWaterLevelMaxSource());
@@ -325,6 +265,7 @@ export class PsaComponent implements OnInit {
           updated = true;
         }
       }
+      */
 
       // manually toggle that we're not loading anymore since nothing was actually updated (the map handles actual render events)
       if (!updated) {
@@ -333,33 +274,13 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _getWaterLevelSource(): VectorSource {
+  protected _getVariableVectorSource(psaVariable: any): VectorSource {
+    // only time-series variables have dates
+    let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
     return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['zeta']['geojson'][this.dateInputControl.value].path}`,
+      url: CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.name, date),
       format: new GeoJSON()
     });
-  }
-
-  protected _getWaterLevelMaxSource(): VectorSource {
-    // there's only a single entry for the "max"
-    return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['water_level_max']['geojson'][0].path}`,
-      format: new GeoJSON()
-    });
-  }
-
-  protected _getWaveHeightSource(): VectorSource {
-    return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['hs']['geojson'][this.dateInputControl.value].path}`,
-      format: new GeoJSON()
-    });
-  }
-
-  protected _getWindSource(): VectorSource {
-    return new VectorSource({
-      url: `${this.S3_PSA_BUCKET_BASE_URL}${this.geojsonManifest['wind']['geojson'][this.dateInputControl.value].path}`,
-      format: new GeoJSON(),
-    })
   }
 
   protected _getWindLayerStyle(feature): Style {
@@ -407,31 +328,71 @@ export class PsaComponent implements OnInit {
       image: new Icon({
         rotation: -feature.get('direction'),  // direction is in radians and rotates clockwise
         src: icon,
-        opacity: this.dataOpacityInput.value,
+        opacity: this.form.get('opacity').value,
       }),
     });
   }
 
   protected _fetchDataAndBuildMap() {
 
-    this.http.get(`${this.S3_PSA_BUCKET_BASE_URL}manifest.json`).subscribe(
+    // fetch psa variables
+    this.cwwedService.fetchPSAVariables(this.DEMO_NAMED_STORM_ID).pipe(
+      tap(
+        (data: any[]) => {
+          this.isLoading = false;
+          this.psaVariables = data;
+
+          // create and populate variables form group
+          let psaVariablesFormGroup = this.fb.group({});
+          this.psaVariables.forEach((psaVariable) => {
+            // TODO - designate (in the db) which variables are enabled by default
+            psaVariablesFormGroup.addControl(psaVariable.name, new FormControl(true));
+          });
+          this.form.setControl('variables', psaVariablesFormGroup);
+        }),
+      mergeMap((x) => {
+
+        // fetch psa variables data
+        return this.cwwedService.fetchPSAVariablesData(this.DEMO_NAMED_STORM_ID).pipe(tap(
+          (data: any[]) => {
+            this.psaVariablesData = data;
+
+            // filter down to time-series only variables
+            let timeSeriesVariables = this.psaVariables.filter((variable) => {
+              return variable.data_type == 'time-series';
+            }).map((variable) => {
+              return variable.name;
+            });
+
+            // get a list of all the available dates from the time-series specific data
+            let timeSeriesData = data.filter((d) => {
+              return _.includes(timeSeriesVariables, d.nsem_psa_variable);
+            });
+
+            // map the results
+            let datesSet = new Set(timeSeriesData.map((d) => d.date).sort());
+            datesSet.forEach((d) => {
+              this.psaDates.push(d);
+            });
+          }
+        ));
+      }),
+    ).subscribe(
       (data) => {
-        this.isLoading = false;
-        this.geojsonManifest = data;
         // build the map
         this._buildMap();
+        this._listenForInputChanges();
       },
       (error) => {
         console.error(error);
         this.isLoading = false;
-      }
-    )
+      });
   }
 
   protected _getWaterLayerStyle(feature) {
     return new Style({
       fill: new Fill({
-        color: hexToRgba(feature.get('fill'), this.dataOpacityInput.value),
+        color: hexToRgba(feature.get('color'), this.form.get('opacity').value),
       }),
     })
   }
@@ -449,36 +410,16 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    // create a vector layer with the contour data
-    this.waterLevelLayer = new VectorLayer({
-      source: this._getWaterLevelSource(),
-      style: (feature) => {
-        return this._getWaterLayerStyle(feature);
-      },
-    });
-
-    // create a vector layer with the contour data
-    this.waterLevelMaxLayer = new VectorLayer({
-      source: this._getWaterLevelMaxSource(),
-      style: (feature) => {
-        return this._getWaterLayerStyle(feature);
-      },
-    });
-
-    // create a vector layer with the contour data
-    this.waveHeightLayer = new VectorLayer({
-      source: this._getWaveHeightSource(),
-      style: (feature) => {
-        return this._getWaterLayerStyle(feature);
-      },
-    });
-
-    // create a vector layer with the wind data
-    this.windLayer = new VectorLayer({
-      source: this._getWindSource(),
-      style: (feature) => {
-        return this._getWindLayerStyle(feature);
-      },
+    this.mapLayers = this.psaVariables.map((variable) => {
+      return {
+        name: variable.name,
+        layer: new VectorLayer({
+          source: this._getVariableVectorSource(variable),
+          style: (feature) => {
+            return this._getWaterLayerStyle(feature);
+          },
+        })
+      }
     });
 
     let zoom = 8;
@@ -531,8 +472,8 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        this.waterLevelMaxLayer,
-        this.windLayer,
+        // TODO - dynamically include "certain" variables (designated in the db?)
+        ...this.mapLayers.map((l) => { return l.layer;}),
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
@@ -592,6 +533,7 @@ export class PsaComponent implements OnInit {
   protected _updateWindBarbDensity() {
     const zoom = this.map.getView().getZoom();
 
+    /* TODO update wind specific layers ?
     // update the wind barb density depending on zoom level
     // NOTE: no style means it's hidden
     this.windLayer.getSource().getFeatures().forEach((feature, i) => {
@@ -612,6 +554,7 @@ export class PsaComponent implements OnInit {
         feature.setStyle(new Style());
       }
     });
+    */
   }
 
   protected _getConfidenceValueAtPixel(pixel) {
@@ -747,33 +690,7 @@ export class PsaComponent implements OnInit {
     const coordinateGraphData = [];
     let data;
 
-    if (this.mapLayerWaterLevelInput.value) {
-      data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Water Level (m)';
-      });
-      if (data.length) {
-        coordinateGraphData.push(data[0]);
-      }
-    }
-
-    if (this.mapLayerWaterLevelMaxInput.value) {
-      data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Max Water Level (m)';
-      });
-      if (data.length) {
-        coordinateGraphData.push(data[0]);
-      }
-    }
-
-    if (this.mapLayerWaveHeightInput.value) {
-      data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Wave Height (m)';
-      });
-      if (data.length) {
-        coordinateGraphData.push(data[0]);
-      }
-    }
-
+    /* TODO
     if (this.mapLayerWindInput.value) {
       data = this._coordinateGraphDataAll.filter((data) => {
         return data.name === 'Wind Speed (m/s)';
@@ -782,6 +699,7 @@ export class PsaComponent implements OnInit {
         coordinateGraphData.push(data[0]);
       }
     }
+    */
 
     this.coordinateGraphData = coordinateGraphData;
   }

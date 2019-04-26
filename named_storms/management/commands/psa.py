@@ -80,8 +80,8 @@ class Command(BaseCommand):
 
         self.process_water_level_max()
         self.process_water_level()
-        # self.process_wave_height()
-        # self.process_wind()
+        self.process_wave_height()
+        #self.process_wind()
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -157,7 +157,6 @@ class Command(BaseCommand):
 
         dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
         cmap = matplotlib.cm.get_cmap('jet')
-        manifest = {'geojson': []}
 
         # subset geo
         coords = np.column_stack((dataset.longitude, dataset.latitude))
@@ -173,18 +172,24 @@ class Command(BaseCommand):
         xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
         yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
-        for z in dataset['hs']:
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(
+            nsem=self.nsem,
+            name='hs',
+            color_bar=self._color_bar_values(dataset['hs'].min(), dataset['hs'].max(), cmap),
+            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+        )
+        nsem_psa_variable.save()
+
+        for z in dataset['hs'][:1]:  # TODO
 
             z = z[mask]
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
-            # TODO - no manifest
-            manifest_entry = self.build_contours(self.z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
-            manifest['geojson'].append(manifest_entry)
-
-        return {'hs': manifest}
+            self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
 
     def process_water_level(self):
 
@@ -210,10 +215,12 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name='zeta',
             color_bar=self._color_bar_values(dataset.zeta.min(), dataset.zeta.max(), cmap),
+            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
         )
         nsem_psa_variable.save()
 
-        for z in dataset['zeta'][:2]:  # TODO
+        for z in dataset['zeta'][:1]:  # TODO
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
@@ -250,12 +257,16 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name='zeta_max',
             color_bar=self._color_bar_values(z.min(), z.max(), cmap),
+            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_MAX,
         )
         nsem_psa_variable.save()
 
         self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, datetime_placeholder, cmap)
 
     def process_wind(self):
+        # TODO
+
         manifest_wind = {'geojson': []}
         manifest_barbs = {'geojson': []}
 

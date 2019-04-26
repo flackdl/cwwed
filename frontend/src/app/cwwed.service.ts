@@ -93,4 +93,31 @@ export class CwwedService {
       }),
     );
   }
+
+  public fetchPSAVariables(namedStormId: number) {
+    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/variable/`).pipe(
+      map((data) => {
+        return data;
+      }),
+    );
+  }
+
+  public fetchPSAVariablesData(namedStormId: number) {
+    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/data/`).pipe(
+      map((data) => {
+        return data;
+      }),
+    );
+  }
+
+  public static getPsaVariableGeoUrl(named_storm_id: number, variable: string, date?: string) {
+    const params = {
+      variable: variable,
+    };
+    if (date) {
+      params['date'] = date;
+    }
+    const httpParams = new HttpParams({fromObject: params});
+    return `${API_NAMED_STORMS}${named_storm_id}/psa/geojson/?${httpParams}`;
+  }
 }

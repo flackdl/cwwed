@@ -1,11 +1,8 @@
-from datetime import datetime
 from django.core.serializers import serialize
 from django.http import HttpResponse
-from django.utils.dateparse import parse_datetime
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
@@ -153,21 +150,17 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         )
 
     def _validate(self):
-        filter_errors = {}
 
         if not self.nsem:
             raise exceptions.ValidationError('No post storm assessments exist for this storm')
 
-        if 'date' not in self.request.query_params:
-            filter_errors.update({'date': ['missing value']})
-
         if 'variable' not in self.request.query_params:
-            filter_errors.update({'variable': ['missing value']})
-
-        if filter_errors:
-            raise exceptions.ValidationError(filter_errors)
+            raise exceptions.ValidationError({'variable': ['missing value']})
 
         nsem_psa_variable = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['variable'])
         if not nsem_psa_variable.exists():
-            raise ValidationError('No data exists for variable "{}"'.format(self.request.query_params['variable']))
+            raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['variable']))
         self.nsem_psa_variable = nsem_psa_variable[0]
+
+        if self.nsem_psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and 'date' not in self.request.query_params:
+            raise exceptions.ValidationError({'date': ['missing value']})
