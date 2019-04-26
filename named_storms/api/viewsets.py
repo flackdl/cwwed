@@ -101,19 +101,17 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Data Viewset
     #     - expects to be nested under a NamedStormViewset detail
     serializer_class = NsemPsaDataSerializer
-    filterset_fields = ('date',)
+    filterset_class = NsemPsaDataFilter
 
     def get_queryset(self):
         if not self.nsem:
             return NsemPsaData.objects.none()
+        filters = {
+            'nsem_psa_variable__nsem': self.nsem,
+        }
         if 'variable' in self.request.query_params:
-            query = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['variable'])
-            if query.exists():
-                nsem_psa_variable = query[0]  # type: NsemPsaVariable
-                # TODO - date filter isn't working
-                return nsem_psa_variable.nsempsadata_set.all()
-        # TODO - return all variable's data?
-        return NsemPsaData.objects.none()
+            filters['nsem_psa_variable__name'] = self.request.query_params['variable']
+        return NsemPsaData.objects.filter(**filters)
 
 
 class NsemPsaVariableViewset(NsemPsaBaseViewset):

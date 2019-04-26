@@ -78,7 +78,7 @@ class Command(BaseCommand):
         # delete any previous psa results for this nsem
         self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        #self.process_water_level_max()
+        self.process_water_level_max()
         self.process_water_level()
         # self.process_wave_height()
         # self.process_wind()
