@@ -59,8 +59,8 @@ export class PsaComponent implements OnInit {
   public extentCoords: Number[];
   public currentConfidence: Number;
   public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
-  public mapLayers: {
-    name: string,
+  public availableMapLayers: {
+    variable: any,
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
@@ -177,8 +177,8 @@ export class PsaComponent implements OnInit {
     // update map data opacity
     this.form.get('opacity').valueChanges.subscribe(
       (data) => {
-        this.mapLayers.forEach((mapLayer) => {
-          mapLayer['layer'].setStyle((feature) => {
+        this.availableMapLayers.forEach((availableLayer) => {
+          availableLayer['layer'].setStyle((feature) => {
             return this._getWaterLayerStyle(feature);
           });
         });
@@ -202,16 +202,32 @@ export class PsaComponent implements OnInit {
       }
     );
 
-    this.form.get('variables').valueChanges.subscribe(
+    this.form.get('variables').valueChanges.pipe(
+      tap(() => {
+        this.isLoadingMap = true;
+      }),
+    ).subscribe(
       (variablesValues) => {
 
         this._updateCoordinateGraphData();
 
-        this.mapLayers.forEach((mapLayer) => {
-          if (!variablesValues[mapLayer['name']]) {
-            this.map.removeLayer(mapLayer['layer']);
+        this.availableMapLayers.forEach((availableLayer) => {
+          // remove layer
+          if (!variablesValues[availableLayer['variable']['name']]) {
+            this.map.removeLayer(availableLayer['layer']);
           } else {
-            // TODO add layer (or just set source?)
+            // check to see if the layer is already present
+            let layerExists = false;
+            this.map.getLayers().getArray().forEach((layer) => {
+              if (layer === availableLayer['layer']) {
+                layerExists = true;
+              }
+            });
+            // layer isn't present so add it
+            if (!layerExists) {
+              availableLayer['layer'].setSource(this._getVariableVectorSource(availableLayer['variable']));
+              this.map.addLayer(availableLayer['layer']);
+            }
           }
         })
       }
@@ -410,9 +426,9 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    this.mapLayers = this.psaVariables.map((variable) => {
+    this.availableMapLayers = this.psaVariables.map((variable) => {
       return {
-        name: variable.name,
+        variable: variable,
         layer: new VectorLayer({
           source: this._getVariableVectorSource(variable),
           style: (feature) => {
@@ -472,8 +488,8 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        // TODO - dynamically include "certain" variables (designated in the db?)
-        ...this.mapLayers.map((l) => { return l.layer;}),
+        // TODO - dynamically include specific variables (ie. designated in the db)
+        ...this.availableMapLayers.map((l) => { return l.layer;}),
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],

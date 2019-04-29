@@ -175,10 +175,11 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='hs',
+            name='Wave Height',
             color_bar=self._color_bar_values(dataset['hs'].min(), dataset['hs'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
@@ -213,10 +214,11 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='zeta',
+            name='Water Level',
             color_bar=self._color_bar_values(dataset.zeta.min(), dataset.zeta.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
@@ -255,10 +257,11 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='zeta_max',
+            name='Water Level Max',
             color_bar=self._color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_MAX,
+            units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
