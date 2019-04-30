@@ -90,9 +90,10 @@ class Command(BaseCommand):
         # build delaunay triangles
         self.triangulation = tri.Triangulation(x, y)
 
-        # mask triangles outside geo
-        tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
-        self.triangulation.set_mask(tri_mask)
+        # TODO - remove
+        ## mask triangles outside geo
+        #tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+        #self.triangulation.set_mask(tri_mask)
 
         # build grid constraints
         self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
@@ -104,10 +105,10 @@ class Command(BaseCommand):
         # delete any previous psa results for this nsem
         self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        self.process_water_level_max()
-        self.process_water_level()
-        self.process_wave_height()
-        #self.process_wind()
+        #self.process_water_level_max()
+        #self.process_water_level()
+        #self.process_wave_height()
+        self.process_wind()
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -246,65 +247,55 @@ class Command(BaseCommand):
         self.build_contours(nsem_psa_variable, z, cmap)
 
     def process_wind(self):
-        # TODO
 
-        manifest_wind = {'geojson': []}
-        manifest_barbs = {'geojson': []}
+        cmap = matplotlib.cm.get_cmap('jet')
 
-        dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc')
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(
+            nsem=self.nsem,
+            name='Wind Speed',
+            # TODO - define afterwards?
+            #color_bar=self._color_bar_values(z.min(), z.max(), cmap),
+            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+        )
+        nsem_psa_variable.save()
 
-        for date in dataset['time']:
+        min_speed = None
+        max_speed = None
+
+        for date in self.dataset['time'][:1]:  # TODO
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            # NaN mask
-            nan_mask = (~np.isnan(dataset.sel(time=date)['uwnd'])) & (~np.isnan(dataset.sel(time=date)['vwnd']))
-
-            # geo mask
-            coords = np.column_stack((dataset.longitude, dataset.latitude))
-            geo_mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
-
-            mask = nan_mask & geo_mask
-
-            # mask and get a subset of data points since we don't want to display a wind barb at every point
-            windx_values = dataset.sel(time=date)['uwnd'][mask][::100].values
-            windy_values = dataset.sel(time=date)['vwnd'][mask][::100].values
-            x = dataset.longitude[mask][::100].values
-            y = dataset.latitude[mask][::100].values
+            # get masked values
+            windx_values = self.dataset.sel(time=date)['uwnd'][self.mask].values
+            windy_values = self.dataset.sel(time=date)['vwnd'][self.mask].values
 
             wind_speeds = np.abs(np.hypot(windx_values, windy_values))
             wind_directions = np.arctan2(windx_values, windy_values)
 
-            # TODO - no manifest
+            ##
+            ## barbs
+            ##
 
-            #
-            # barbs
-            #
-
-            manifest_barbs['geojson'].append(self.build_wind_barbs(x, y, wind_speeds, wind_directions, dt))
+            #self.build_wind_barbs(x, y, wind_speeds, wind_directions, dt)
 
             #
             # contours
             #
 
-            cmap = matplotlib.cm.get_cmap('jet')
-
-            # build delaunay triangles
-            triangulation = tri.Triangulation(x, y)
-
-            # build grid constraints
-            xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-            yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
-
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
-            manifest_wind['geojson'].append(self.build_contours(wind_speeds_data_array, xi, yi, triangulation, cmap, dt))
+            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
+            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
 
-        return {
-            'wind': manifest_wind,
-            'wind_barbs': manifest_barbs,
-        }
+            self.build_contours(nsem_psa_variable, wind_speeds_data_array, cmap, dt)
+
+        nsem_psa_variable.color_bar = self._color_bar_values(min_speed, max_speed, cmap)
+        nsem_psa_variable.save()
 
     def _color_bar_values(self, z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
         # build color bar values
