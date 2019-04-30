@@ -1,10 +1,7 @@
-import os
-import gzip
 import json
 import math
 from datetime import datetime
 import xarray
-import geojson
 import matplotlib
 from django.contrib.gis import geos
 from named_storms.models import NSEM, NsemPsaData, NamedStorm, NsemPsaVariable
@@ -20,7 +17,7 @@ from django.core.management import BaseCommand
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
-LEVELS = 30
+CONTOUR_LEVELS = 30
 
 COLOR_STEPS = 10  # color bar range
 
@@ -90,10 +87,9 @@ class Command(BaseCommand):
         # build delaunay triangles
         self.triangulation = tri.Triangulation(x, y)
 
-        # TODO - remove
-        ## mask triangles outside geo
-        #tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
-        #self.triangulation.set_mask(tri_mask)
+        # mask triangles outside geo
+        tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+        self.triangulation.set_mask(tri_mask)
 
         # build grid constraints
         self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
@@ -105,10 +101,35 @@ class Command(BaseCommand):
         # delete any previous psa results for this nsem
         self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        #self.process_water_level_max()
-        #self.process_water_level()
-        #self.process_wave_height()
+        self.process_water_level_max()
+        self.process_water_level()
+        self.process_wave_height()
         self.process_wind()
+
+    @staticmethod
+    def water_level_mask_geojson(geojson_result: dict):
+        # mask values not greater than zero
+        for feature in geojson_result['features'][:]:
+            if float(feature['properties']['title']) <= 0:
+                geojson_result['features'].remove(feature)
+
+    @staticmethod
+    def color_bar_values(z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
+        # build color bar values
+
+        color_values = []
+
+        color_norm = matplotlib.colors.Normalize(vmin=z_min, vmax=z_max)
+        step_intervals = np.linspace(z_min, z_max, COLOR_STEPS)
+
+        for step_value in step_intervals:
+            # round the step value for ranges greater than COLOR_STEPS
+            if z_max - z_min >= COLOR_STEPS:
+                step_value = math.ceil(step_value)
+            hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
+            color_values.append((step_value, hex_value))
+
+        return color_values
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -125,7 +146,7 @@ class Command(BaseCommand):
         zi = interpolator(Xi, Yi)
 
         # create the contour
-        contourf = plt.contourf(self.xi, self.yi, zi, LEVELS, cmap=cmap)
+        contourf = plt.contourf(self.xi, self.yi, zi, CONTOUR_LEVELS, cmap=cmap)
 
         # convert matplotlib contourf to geojson
         geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
@@ -149,35 +170,23 @@ class Command(BaseCommand):
                 color=feature['properties']['fill'],
             ).save()
 
-    def build_wind_barbs(self, x: np.ndarray, y: np.ndarray, wind_speeds: np.ndarray, wind_directions: np.ndarray, dt: datetime):
+    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, dt: datetime):
 
-        coords = np.column_stack([x, y])
-        points = [geojson.Point(coord.tolist()) for idx, coord in enumerate(coords)]
-        features = [geojson.Feature(geometry=wind_point, properties={'speed': wind_speeds[idx].item(), 'direction': wind_directions[idx].item()}) for idx, wind_point in enumerate(points)]
-        wind_geojson = geojson.FeatureCollection(features=features)
+        nan_mask = ~np.isnan(wind_directions)
 
-        # create output directory if it doesn't exist
-        output_path = '/tmp/wind_barbs'
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        # get a subset so we're not displaying every single point
+        wind_directions = wind_directions[nan_mask][::100]
+        x = self.dataset.x[self.mask][nan_mask][::100].values
+        y = self.dataset.y[self.mask][nan_mask][::100].values
 
-        file_name = '{}.json'.format(dt.isoformat())
-
-        # gzip compress geojson output and save to file
-        with gzip.GzipFile(os.path.join(output_path, file_name), 'w') as fh:
-            fh.write(json.dumps(wind_geojson).encode('utf-8'))
-
-        # update manifest
-        return {
-            'date': dt.isoformat(),
-            'path': os.path.join('wind_barbs', file_name),
-        }
-
-    def water_level_mask_geojson(self, geojson_result: dict):
-        # mask values not greater than zero
-        for feature in geojson_result['features'][:]:
-            if float(feature['properties']['title']) <= 0:
-                geojson_result['features'].remove(feature)
+        # build new psa results from geojson output
+        for i, direction in enumerate(wind_directions):
+            NsemPsaData(
+                nsem_psa_variable=nsem_psa_variable,
+                date=dt,
+                geo=geos.Point(x[i], y[i]),
+                value=direction,
+            ).save()
 
     def process_wave_height(self):
 
@@ -187,14 +196,14 @@ class Command(BaseCommand):
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Wave Height',
-            color_bar=self._color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
+            color_bar=self.color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
-        for z in self.dataset['wave_height'][:1]:  # TODO
+        for z in self.dataset['wave_height']:
 
             z = z[self.mask]
 
@@ -211,14 +220,14 @@ class Command(BaseCommand):
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Water Level',
-            color_bar=self._color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
+            color_bar=self.color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
-        for z in self.dataset['water_level'][:1]:  # TODO
+        for z in self.dataset['water_level']:
 
             z = z[self.mask]
 
@@ -237,7 +246,7 @@ class Command(BaseCommand):
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Water Level Max',
-            color_bar=self._color_bar_values(z.min(), z.max(), cmap),
+            color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_MAX,
             units=NsemPsaVariable.UNITS_METERS,
@@ -250,22 +259,30 @@ class Command(BaseCommand):
 
         cmap = matplotlib.cm.get_cmap('jet')
 
-        # create psa variable to assign data
-        nsem_psa_variable = NsemPsaVariable(
+        # create psa variables to assign data
+        nsem_psa_variable_direction = NsemPsaVariable(
+            nsem=self.nsem,
+            name='Wind Direction',
+            geo_type=NsemPsaVariable.GEO_TYPE_POINT,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_RADIAN,
+        )
+
+        nsem_psa_variable_speed = NsemPsaVariable(
             nsem=self.nsem,
             name='Wind Speed',
-            # TODO - define afterwards?
-            #color_bar=self._color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
         )
-        nsem_psa_variable.save()
+
+        nsem_psa_variable_direction.save()
+        nsem_psa_variable_speed.save()
 
         min_speed = None
         max_speed = None
 
-        for date in self.dataset['time'][:1]:  # TODO
+        for date in self.dataset['time']:
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
@@ -277,11 +294,11 @@ class Command(BaseCommand):
             wind_speeds = np.abs(np.hypot(windx_values, windy_values))
             wind_directions = np.arctan2(windx_values, windy_values)
 
-            ##
-            ## barbs
-            ##
+            #
+            # barbs
+            #
 
-            #self.build_wind_barbs(x, y, wind_speeds, wind_directions, dt)
+            self.build_wind_barbs(nsem_psa_variable_direction, wind_directions, dt)
 
             #
             # contours
@@ -292,24 +309,7 @@ class Command(BaseCommand):
             min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
             max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
 
-            self.build_contours(nsem_psa_variable, wind_speeds_data_array, cmap, dt)
+            self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
 
-        nsem_psa_variable.color_bar = self._color_bar_values(min_speed, max_speed, cmap)
-        nsem_psa_variable.save()
-
-    def _color_bar_values(self, z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
-        # build color bar values
-
-        color_values = []
-
-        color_norm = matplotlib.colors.Normalize(vmin=z_min, vmax=z_max)
-        step_intervals = np.linspace(z_min, z_max, COLOR_STEPS)
-
-        for step_value in step_intervals:
-            # round the step value for ranges greater than COLOR_STEPS
-            if z_max - z_min >= COLOR_STEPS:
-                step_value = math.ceil(step_value)
-            hex_value = matplotlib.colors.to_hex(cmap(color_norm(step_value)))
-            color_values.append((step_value, hex_value))
-
-        return color_values
+        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
+        nsem_psa_variable_speed.save()

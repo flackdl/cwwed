@@ -155,6 +155,7 @@ class NsemPsaVariable(models.Model):
     GEO_TYPE_POINT = 'point'
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
+    UNITS_RADIAN = 'rad'
 
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
@@ -173,9 +174,9 @@ class NsemPsaVariable(models.Model):
 class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
-    geo = models.MultiPolygonField(geography=True)
+    geo = models.GeometryField(geography=True)
     value = models.FloatField()
-    color = models.CharField(max_length=7)  # rgb hex, i.e "#ffffff"
+    color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
     def __str__(self):
         return str(self.nsem_psa_variable)
