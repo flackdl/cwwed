@@ -21,6 +21,7 @@ from django.core.management import BaseCommand
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
 LEVELS = 30
+
 COLOR_STEPS = 10  # color bar range
 
 # mid atlantic coast
@@ -69,8 +70,33 @@ class Command(BaseCommand):
 
     storm: NamedStorm = None
     nsem: NSEM = None
+    triangulation: tri.Triangulation = None
+    dataset: xarray.Dataset = None
+    xi: np.ndarray = None
+    yi: np.ndarray = None
+    mask: np.ndarray = None
 
     def handle(self, *args, **options):
+
+        self.dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+
+        # create a mask to subset data from the geo's convex hull
+        # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
+        self.mask = np.array([Point(coord).within(GEO_POLY.convex_hull) for coord in np.column_stack((self.dataset.x, self.dataset.y))])
+
+        x = self.dataset.x[self.mask]
+        y = self.dataset.y[self.mask]
+
+        # build delaunay triangles
+        self.triangulation = tri.Triangulation(x, y)
+
+        # mask triangles outside geo
+        tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+        self.triangulation.set_mask(tri_mask)
+
+        # build grid constraints
+        self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+        self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
@@ -90,15 +116,15 @@ class Command(BaseCommand):
         seconds_since_epoch = (dt64 - unix_epoch) / one_second
         return datetime.utcfromtimestamp(seconds_since_epoch)
 
-    def build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, xi: np.ndarray, yi: np.ndarray, triangulation: tri.Triangulation, dt: datetime, cmap: matplotlib.colors.Colormap, mask_geojson: Callable = None):
+    def build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None, mask_geojson: Callable = None):
 
         # interpolate values from triangle data and build a mesh of data
-        interpolator = tri.LinearTriInterpolator(triangulation, z)
-        Xi, Yi = np.meshgrid(xi, yi)
+        interpolator = tri.LinearTriInterpolator(self.triangulation, z)
+        Xi, Yi = np.meshgrid(self.xi, self.yi)
         zi = interpolator(Xi, Yi)
 
         # create the contour
-        contourf = plt.contourf(xi, yi, zi, LEVELS, cmap=cmap)
+        contourf = plt.contourf(self.xi, self.yi, zi, LEVELS, cmap=cmap)
 
         # convert matplotlib contourf to geojson
         geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
@@ -106,7 +132,6 @@ class Command(BaseCommand):
             ndigits=10,
             stroke_width=2,
             fill_opacity=0.5,
-            geojson_properties={'variable': nsem_psa_variable.name},
         ))
 
         # mask regions
@@ -155,104 +180,57 @@ class Command(BaseCommand):
 
     def process_wave_height(self):
 
-        dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc')
         cmap = matplotlib.cm.get_cmap('jet')
-
-        # subset geo
-        coords = np.column_stack((dataset.longitude, dataset.latitude))
-        mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
-
-        x = dataset.longitude[mask]
-        y = dataset.latitude[mask]
-
-        # build delaunay triangles
-        triangulation = tri.Triangulation(x, y)
-
-        # build grid constraints
-        xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-        yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Wave Height',
-            color_bar=self._color_bar_values(dataset['hs'].min(), dataset['hs'].max(), cmap),
+            color_bar=self._color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
-        for z in dataset['hs'][:1]:  # TODO
+        for z in self.dataset['wave_height'][:1]:  # TODO
 
-            z = z[mask]
+            z = z[self.mask]
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
-            self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
+            self.build_contours(nsem_psa_variable, z, cmap, dt, mask_geojson=self.water_level_mask_geojson)
 
     def process_water_level(self):
 
-        dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
         cmap = matplotlib.cm.get_cmap('jet')
-
-        # subset geo
-        coords = np.column_stack((dataset.x, dataset.y))
-        mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
-
-        x = dataset.x[mask]
-        y = dataset.y[mask]
-
-        # build delaunay triangles
-        triangulation = tri.Triangulation(x, y)
-
-        # build grid constraints
-        xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-        yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Water Level',
-            color_bar=self._color_bar_values(dataset.zeta.min(), dataset.zeta.max(), cmap),
+            color_bar=self._color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
 
-        for z in dataset['zeta'][:1]:  # TODO
+        for z in self.dataset['water_level'][:1]:  # TODO
+
+            z = z[self.mask]
 
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
-            z = z[mask]
-
-            self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, dt, cmap, mask_geojson=self.water_level_mask_geojson)
+            self.build_contours(nsem_psa_variable, z, cmap, dt, mask_geojson=self.water_level_mask_geojson)
 
     def process_water_level_max(self):
 
-        dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
         cmap = matplotlib.cm.get_cmap('jet')
 
-        # subset geo
-        coords = np.column_stack((dataset.x, dataset.y))
-        mask = np.array([Point(coord).within(GEO_POLY) for coord in coords])
-
-        z = dataset['zeta_max'][mask]
-        x = dataset.x[mask]
-        y = dataset.y[mask]
-
-        # build delaunay triangles
-        triangulation = tri.Triangulation(x, y)
-
-        # build grid constraints
-        xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-        yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
-
-        # arbitrary datetime placeholder since it's a "maximum level" across the duration of the hurricane and not date specific
-        datetime_placeholder = datetime(2012, 10, 30)
+        z = self.dataset['water_level_max'][self.mask]
 
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
@@ -265,7 +243,7 @@ class Command(BaseCommand):
         )
         nsem_psa_variable.save()
 
-        self.build_contours(nsem_psa_variable, z, xi, yi, triangulation, datetime_placeholder, cmap)
+        self.build_contours(nsem_psa_variable, z, cmap)
 
     def process_wind(self):
         # TODO
@@ -321,7 +299,7 @@ class Command(BaseCommand):
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
-            manifest_wind['geojson'].append(self.build_contours(wind_speeds_data_array, xi, yi, triangulation, dt, cmap))
+            manifest_wind['geojson'].append(self.build_contours(wind_speeds_data_array, xi, yi, triangulation, cmap, dt))
 
         return {
             'wind': manifest_wind,
