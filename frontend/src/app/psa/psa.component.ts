@@ -254,28 +254,20 @@ export class PsaComponent implements OnInit {
       debounceTime(1000),
     ).subscribe((value) => {
 
-      /* TODO
       // remove all layers first then apply chosen ones
-      this.map.removeLayer(this.windLayer);
-       */
+      this.availableMapLayers.forEach((mapLayer) => {
+        this.map.removeLayer(mapLayer.layer);
+      });
 
       let updated = false;
 
-      /* TODO
-      if (this.mapLayerWaterLevelMaxInput.value) {
-        // NOTE: don't check to see if it has the value at the current date because it's static
-        this.waterLevelMaxLayer.setSource(this._getWaterLevelMaxSource());
-        this.map.addLayer(this.waterLevelMaxLayer);
-        updated = true;
-      }
-      if (this.mapLayerWindInput.value) {
-        if (this.hasVariableValueAtCurrentDate('wind')) {
-          this.windLayer.setSource(this._getWindSource());
-          this.map.addLayer(this.windLayer);
+      this.availableMapLayers.forEach((mapLayer) => {
+        if (this.form.get('variables').get(mapLayer.variable.name).value) {
+          mapLayer.layer.setSource(this._getVariableVectorSource(mapLayer.variable));
+          this.map.addLayer(mapLayer.layer);
           updated = true;
         }
-      }
-      */
+      });
 
       // manually toggle that we're not loading anymore since nothing was actually updated (the map handles actual render events)
       if (!updated) {
