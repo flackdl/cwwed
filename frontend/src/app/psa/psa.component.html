@@ -31,24 +31,6 @@
                       Water Level Maximum <span class="oi oi-info text-info" placement="top" ngbTooltip="Maximum Water Level from Mean Sea Level (MSL) over the duration of the hurricane"></span>
                     </label>
                   </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaterLevelInput" id="water_level">
-                    <label class="form-check-label" for="water_level">
-                      Water Level <span class="oi oi-info text-info" placement="top" ngbTooltip="Water Level from Mean Sea Level (MSL)"></span>
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWaveHeightInput" id="wave_height">
-                    <label class="form-check-label" for="wave_height">
-                      Wave Height
-                    </label>
-                  </div>
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" [formControl]="mapLayerWindInput" id="wind">
-                    <label class="form-check-label" for="wind">
-                      Wind
-                    </label>
-                  </div>
                 -->
                 </div>
                 <div class="form-group">
@@ -177,7 +159,7 @@
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateGraphData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
                 <div *ngIf="coordinateGraphData.length == 0">
-                  <strong>Please select a time dependent variable to display</strong>
+                  <strong>There is no data to display</strong>
                 </div>
               </div>
             </div>

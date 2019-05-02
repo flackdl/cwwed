@@ -102,8 +102,8 @@ export class CwwedService {
     );
   }
 
-  public fetchPSAVariablesData(namedStormId: number) {
-    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/data/`).pipe(
+  public fetchPSAVariablesDataDates(namedStormId: number) {
+    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/data/dates/`).pipe(
       map((data) => {
         return data;
       }),

@@ -1,5 +1,7 @@
 from django.core.serializers import serialize
 from django.http import HttpResponse
+from django.utils.decorators import method_decorator
+from django.views.decorators.gzip import gzip_page
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
@@ -103,12 +105,18 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
     def get_queryset(self):
         if not self.nsem:
             return NsemPsaData.objects.none()
-        filters = {
-            'nsem_psa_variable__nsem': self.nsem,
-        }
-        if 'variable' in self.request.query_params:
-            filters['nsem_psa_variable__name'] = self.request.query_params['variable']
-        return NsemPsaData.objects.filter(**filters)
+        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+
+    def list(self, request, *args, **kwargs):
+        if 'date' not in self.request.query_params:
+            raise exceptions.ValidationError({'date': ['missing value']})
+        return super().list(request, *args, **kwargs)
+
+    def dates(self, request, *args, **kwargs):
+        dates = NsemPsaData.objects.filter(nsem_psa_variable__nsem__id=19, date__isnull=False).order_by('date').distinct('date').values('date')
+        return Response(
+           [date['date'] for date in dates]
+        )
 
 
 class NsemPsaVariableViewset(NsemPsaBaseViewset):
@@ -130,6 +138,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     nsem_psa_variable: NsemPsaVariable = None
 
+    @method_decorator(gzip_page)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 

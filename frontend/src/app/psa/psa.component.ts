@@ -51,7 +51,6 @@ export class PsaComponent implements OnInit {
   public map: Map;
   public namedStorms: any;
   public psaVariables: any[];
-  public psaVariablesData: any[];
   public psaDates: string[] = [];
   public form: FormGroup;
   public nsemList: any;
@@ -116,6 +115,10 @@ export class PsaComponent implements OnInit {
     return this.psaDates ? this.psaDates.length - 1 : 0;
   }
 
+  public getSelectedDate() {
+    return this.getDateInputFormatted(this.form.get('date').value);
+  }
+
   public isOverlayVisible(): boolean {
     return this.popupOverlay.getPosition() !== undefined;
   }
@@ -151,8 +154,14 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
-  public getWaterColorBarValues(variable: string) {
-    // TODO
+  public getWaterColorBarValues(variableName: string) {
+    let variable = this.psaVariables.find((psaVariable) => {
+      return variableName === psaVariable.name;
+    });
+
+    if (variable) {
+      return variable.color_bar;
+    }
     return [];
   }
 
@@ -366,30 +375,11 @@ export class PsaComponent implements OnInit {
           });
           this.form.setControl('variables', psaVariablesFormGroup);
         }),
-      mergeMap((x) => {
-
-        // fetch psa variables data
-        return this.cwwedService.fetchPSAVariablesData(this.DEMO_NAMED_STORM_ID).pipe(tap(
+      mergeMap(() => {
+        // fetch psa variables data dates
+        return this.cwwedService.fetchPSAVariablesDataDates(this.DEMO_NAMED_STORM_ID).pipe(tap(
           (data: any[]) => {
-            this.psaVariablesData = data;
-
-            // filter down to time-series only variables
-            let timeSeriesVariables = this.psaVariables.filter((variable) => {
-              return variable.data_type == 'time-series';
-            }).map((variable) => {
-              return variable.name;
-            });
-
-            // get a list of all the available dates from the time-series specific data
-            let timeSeriesData = data.filter((d) => {
-              return _.includes(timeSeriesVariables, d.nsem_psa_variable);
-            });
-
-            // map the results
-            let datesSet = new Set(timeSeriesData.map((d) => d.date).sort());
-            datesSet.forEach((d) => {
-              this.psaDates.push(d);
-            });
+            this.psaDates = data;
           }
         ));
       }),
