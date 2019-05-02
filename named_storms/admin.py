@@ -33,17 +33,6 @@ class NsemPsaVariableInline(admin.TabularInline):
         return False
 
 
-class NsemPsaDataInline(admin.TabularInline):
-    model = NsemPsaData
-    show_change_link = True
-    extra = 0
-    fields = ('date', 'value', 'color')
-
-    def has_add_permission(self, request):
-        # disabled since we can't edit geo which is a required field
-        return False
-
-
 @admin.register(NamedStorm)
 class NamedStormInlineAdmin(admin.GeoModelAdmin):
     inlines = (
@@ -84,7 +73,6 @@ class NSEMAdmin(admin.GeoModelAdmin):
 @admin.register(NsemPsaVariable)
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'nsem', 'name')
-    inlines = (NsemPsaDataInline,)
 
 
 @admin.register(NsemPsaData)

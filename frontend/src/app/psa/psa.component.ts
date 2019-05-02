@@ -186,16 +186,20 @@ export class PsaComponent implements OnInit {
     // update map data opacity
     this.form.get('opacity').valueChanges.subscribe(
       (data) => {
+
+        // update layers
         this.availableMapLayers.forEach((availableLayer) => {
-          availableLayer['layer'].setStyle((feature) => {
-            return this._getWaterLayerStyle(feature);
-          });
+          // wind barbs
+          if (availableLayer['variable']['geo_type'] === 'wind-arrow') {
+            availableLayer['layer'].setStyle((feature) => {
+              return this._getWindLayerStyle(feature);
+            });
+          } else { // water contours
+            availableLayer['layer'].setStyle((feature) => {
+              return this._getWaterLayerStyle(feature);
+            });
+          }
         });
-        /* TODO - handle "wind" (geo_type=point?) layers
-        this.windLayer.setStyle((feature) => {
-          return this._getWindLayerStyle(feature);
-        });
-        */
       }
     );
 
@@ -241,25 +245,6 @@ export class PsaComponent implements OnInit {
         })
       }
     );
-
-    /* TODO
-    // listen for layer input changes
-    this.mapLayerWindInput.valueChanges.pipe(
-      tap(() => {
-        this.isLoadingMap = true;
-      }),
-    ).subscribe(
-      (value) => {
-        this._updateCoordinateGraphData();
-        if (!value) {
-          this.map.removeLayer(this.windLayer);
-        } else {
-          this.windLayer.setSource(this._getWindSource());
-          this.map.addLayer(this.windLayer);
-        }
-      }
-    );
-    */
 
     // listen for date input changes
     this.form.get('date').valueChanges.pipe(
@@ -309,49 +294,12 @@ export class PsaComponent implements OnInit {
   }
 
   protected _getWindLayerStyle(feature): Style {
-    let icon;
 
-    const speed = feature.get('speed') || 0; // m/s
-    const knots = speed * 1.94384;
-
-    // https://commons.wikimedia.org/wiki/Wind_speed
-    if (_.inRange(knots, 0, 2)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_00.svg.png';
-    } else if (_.inRange(knots, 2, 7)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_01.svg.png';
-    } else if (_.inRange(knots, 7, 12)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_02.svg.png';
-    } else if (_.inRange(knots, 12, 17)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_03.svg.png';
-    } else if (_.inRange(knots, 17, 22)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_04.svg.png';
-    } else if (_.inRange(knots, 22, 27)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_05.svg.png';
-    } else if (_.inRange(knots, 27, 32)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_06.svg.png';
-    } else if (_.inRange(knots, 32, 37)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_07.svg.png';
-    } else if (_.inRange(knots, 37, 42)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_08.svg.png';
-    } else if (_.inRange(knots, 42, 47)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_09.svg.png';
-    } else if (_.inRange(knots, 47, 52)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_10.svg.png';
-    } else if (_.inRange(knots, 52, 57)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_11.svg.png';
-    } else if (_.inRange(knots, 57, 62)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_12.svg.png';
-    } else if (_.inRange(knots, 62, 83)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_13.svg.png';
-    } else if (_.inRange(knots, 83, 102)) {
-      icon = '/assets/psa/50px-Symbol_wind_speed_14.svg.png';
-    } else {
-      icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
-    }
+    const icon = '/assets/psa/arrow.png';
 
     return new Style({
       image: new Icon({
-        rotation: -feature.get('direction'),  // direction is in radians and rotates clockwise
+        rotation: -feature.get('value'),  // direction is in radians and rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
       }),
@@ -417,14 +365,27 @@ export class PsaComponent implements OnInit {
     });
 
     this.availableMapLayers = this.psaVariables.map((variable) => {
-      return {
-        variable: variable,
-        layer: new VectorLayer({
+      let layer;
+
+      if (variable.geo_type === 'wind-arrow') {
+        layer = new VectorLayer({
+          source: this._getVariableVectorSource(variable),
+          style: (feature) => {
+            return this._getWindLayerStyle(feature);
+          },
+        })
+      } else {
+        layer = new VectorLayer({
           source: this._getVariableVectorSource(variable),
           style: (feature) => {
             return this._getWaterLayerStyle(feature);
           },
         })
+      }
+
+      return {
+        variable: variable,
+        layer: layer,
       }
     });
 
@@ -521,8 +482,6 @@ export class PsaComponent implements OnInit {
           center: center,
         }
       });
-
-      this._updateWindBarbDensity();
     });
 
     this.map.on('singleclick', (event) => {
@@ -534,33 +493,6 @@ export class PsaComponent implements OnInit {
 
     this._configureFeatureHover();
 
-  }
-
-  protected _updateWindBarbDensity() {
-    const zoom = this.map.getView().getZoom();
-
-    /* TODO update wind specific layers ?
-    // update the wind barb density depending on zoom level
-    // NOTE: no style means it's hidden
-    this.windLayer.getSource().getFeatures().forEach((feature, i) => {
-      feature.setStyle(this._getWindLayerStyle(feature));
-      let shouldHide = false;
-      if (zoom <= 5 && i % 2 === 0) {
-        shouldHide = true;
-      } else if (zoom <= 6 && i % 3 === 0) {
-        shouldHide = true;
-      } else if (zoom <= 7 && i % 4 === 0) {
-        shouldHide = true;
-      } else if (zoom <= 8 && i % 5 === 0) {
-        shouldHide = true;
-      } else if (zoom <= 9 && i % 6 === 0) {
-        shouldHide = true;
-      }
-      if (shouldHide) {
-        feature.setStyle(new Style());
-      }
-    });
-    */
   }
 
   protected _getConfidenceValueAtPixel(pixel) {

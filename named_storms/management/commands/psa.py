@@ -248,7 +248,7 @@ class Command(BaseCommand):
             name='Water Level Max',
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_MAX,
+            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
@@ -263,7 +263,7 @@ class Command(BaseCommand):
         nsem_psa_variable_direction = NsemPsaVariable(
             nsem=self.nsem,
             name='Wind Direction',
-            geo_type=NsemPsaVariable.GEO_TYPE_POINT,
+            geo_type=NsemPsaVariable.GEO_TYPE_WIND_ARROW,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_RADIAN,
         )

@@ -2,6 +2,7 @@ from django.core.serializers import serialize
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.gzip import gzip_page
+from django.views.decorators.cache import cache_control
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
@@ -139,6 +140,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
     nsem_psa_variable: NsemPsaVariable = None
 
     @method_decorator(gzip_page)
+    @method_decorator(cache_control(max_age=3600))
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
