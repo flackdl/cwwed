@@ -1,4 +1,3 @@
-from django.core.serializers import serialize
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.gzip import gzip_page
@@ -114,7 +113,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         return super().list(request, *args, **kwargs)
 
     def dates(self, request, *args, **kwargs):
-        dates = NsemPsaData.objects.filter(nsem_psa_variable__nsem__id=19, date__isnull=False).order_by('date').distinct('date').values('date')
+        dates = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem, date__isnull=False).order_by('date').distinct('date').values('date')
         return Response(
            [date['date'] for date in dates]
         )
@@ -151,12 +150,34 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
         self._validate()
 
+        # build and return geojson results
+
+        features = []
+        fields = ['geo', 'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units']
+        for data in self.filter_queryset(self.get_queryset()).values(*fields):
+            features.append('''
+            {{
+                "type": "Feature",
+                "properties": {{
+                    "name": "{name}",
+                    "unit": "{unit}",
+                    "value": {value},
+                    "date": "{date}",
+                    "color": "{color}"
+                }},
+                "geometry": {geo}
+            }}
+            '''.format(
+                unit=data['nsem_psa_variable__units'],
+                name=data['nsem_psa_variable__name'],
+                value=data['value'],
+                date=data['date'].isoformat() if data['date'] else None,
+                color=data['color'],
+                geo=data['geo'].json,
+            ))
+
         return HttpResponse(
-            content=serialize(
-                'geojson',
-                self.filter_queryset(self.get_queryset()),
-                geometry_field='geo',
-                fields=('value', 'color', 'date'),),
+            content='{{"type": "FeatureCollection", "features": [{}] }}'.format(','.join(features)),
             content_type='application/json',
         )
 

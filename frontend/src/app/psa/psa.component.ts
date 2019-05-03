@@ -165,11 +165,6 @@ export class PsaComponent implements OnInit {
     return [];
   }
 
-  public hasVariableValueAtCurrentDate(variable: string): boolean {
-    // TODO
-    return true;
-  }
-
   @HostListener('window:resize', ['$event'])
   protected _setMapWidth() {
     this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
@@ -520,27 +515,12 @@ export class PsaComponent implements OnInit {
         features.forEach((feature) => {
           // include all feature's details but don't overwrite an existing value from an overlapping feature of the same variable
 
-          // wind
-          if (!_.has(currentFeature, 'direction') && feature.get('direction') !== undefined) {
-            currentFeature['direction'] = feature.get('direction');
-          }
-          if (!_.has(currentFeature, 'speed') && feature.get('speed') !== undefined) {
-            currentFeature['speed'] = feature.get('speed');
-          }
+          const variableName = feature.get('name');
+          const variableValue = feature.get('value');
+          const variableUnit = feature.get('unit');
 
-          // wave height
-          if (feature.get('variable') == 'hs' && !_.has(currentFeature, 'wave_height')) {
-            currentFeature['wave_height'] = feature.get('title');
-          }
-
-          // water level
-          if (feature.get('variable') == 'zeta' && !_.has(currentFeature, 'water_level')) {
-            currentFeature['water_level'] = feature.get('title');
-          }
-
-          // water level max
-          if (feature.get('variable') == 'zeta_max' && !_.has(currentFeature, 'water_level_max')) {
-            currentFeature['water_level_max'] = feature.get('title');
+          if (!_.has(currentFeature, variableName) && variableName !== undefined) {
+            currentFeature[variableName] = `${variableValue} ${variableUnit}`;
           }
         });
       }
