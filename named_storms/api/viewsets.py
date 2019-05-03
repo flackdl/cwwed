@@ -132,6 +132,8 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         )
 
     def time_series(self, request, *args, **kwargs):
+        # TODO - WIP
+
         coordinate = request.query_params.getlist('coordinate')
         if not coordinate or not len(coordinate) == 2:
             raise exceptions.NotFound('Coordinate (2) not supplied')
@@ -141,9 +143,23 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
             raise exceptions.NotFound('Coordinate should be floats')
 
         point = geos.Point(x=coordinate[0], y=coordinate[1])
-        query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(nsem_psa_variable__nsem=self.nsem, geom__covers=point)
 
-        return Response(NsemPsaDataSerializer(query, many=True).data)
+        # TODO - is this sorting right? Water Level is missing certain dates (i.e 2012-10-22T08:00:00Z)
+
+        query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField()))
+        query = query.filter(nsem_psa_variable__nsem=self.nsem, geom__covers=point)
+        query = query.order_by('nsem_psa_variable__name', 'date')
+        query = query.values('nsem_psa_variable__name', 'value', 'date')
+
+        results = []
+        for data in query:
+            results.append({
+                'name': data['nsem_psa_variable__name'],
+                'value': data['value'],
+                'date': data['date'],
+            })
+
+        return Response(results)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
