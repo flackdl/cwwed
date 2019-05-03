@@ -1,5 +1,8 @@
+from django.contrib.gis.db.models import GeometryField
+from django.db.models.functions import Cast
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
+from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.cache import cache_control
 from rest_framework import viewsets
@@ -96,6 +99,16 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
         return super().dispatch(request, *args, **kwargs)
 
 
+class NsemPsaVariableViewset(NsemPsaBaseViewset):
+    # Named Storm Event Model PSA Variable Viewset
+    #     - expects to be nested under a NamedStormViewset detail
+    serializer_class = NsemPsaVariableSerializer
+    filterset_fields = ('name',)
+
+    def get_queryset(self):
+        return self.nsem.nsempsavariable_set.all() if self.nsem else NsemPsaVariable.objects.none()
+
+
 class NsemPsaDataViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Data Viewset
     #     - expects to be nested under a NamedStormViewset detail
@@ -118,15 +131,19 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
            [date['date'] for date in dates]
         )
 
+    def time_series(self, request, *args, **kwargs):
+        coordinate = request.query_params.getlist('coordinate')
+        if not coordinate or not len(coordinate) == 2:
+            raise exceptions.NotFound('Coordinate (2) not supplied')
+        try:
+            coordinate = tuple(map(float, coordinate))
+        except ValueError:
+            raise exceptions.NotFound('Coordinate should be floats')
 
-class NsemPsaVariableViewset(NsemPsaBaseViewset):
-    # Named Storm Event Model PSA Variable Viewset
-    #     - expects to be nested under a NamedStormViewset detail
-    serializer_class = NsemPsaVariableSerializer
-    filterset_fields = ('name',)
+        point = geos.Point(x=coordinate[0], y=coordinate[1])
+        query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(nsem_psa_variable__nsem=self.nsem, geom__covers=point)
 
-    def get_queryset(self):
-        return self.nsem.nsempsavariable_set.all() if self.nsem else NsemPsaVariable.objects.none()
+        return Response(NsemPsaDataSerializer(query, many=True).data)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
