@@ -169,7 +169,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
             result[variable] = []
             for date in dates:
                 # find matching record if it exists
-                value = next((v['value'] for v in query if v['nsem_psa_variable__name'] == variable and v['date'] == date), None)
+                value = next((v['value'] for v in query if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
                 result[variable].append(value)
 
         return Response(result)

@@ -1,6 +1,5 @@
-from django.urls import path, re_path
+from django.urls import re_path
 from rest_framework import routers
-from named_storms.api import views
 from named_storms.api import viewsets
 
 router = routers.DefaultRouter()
@@ -10,8 +9,6 @@ router.register(r'nsem', viewsets.NSEMViewset)
 
 
 urlpatterns = [
-
-    path('psa-filter/', views.PSAFilterView.as_view()),
 
     # nested storm -> psa routes
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'})),

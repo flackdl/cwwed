@@ -587,8 +587,6 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    console.log(coordinateGraphData);
-
     this.coordinateGraphData = coordinateGraphData;
   }
 
