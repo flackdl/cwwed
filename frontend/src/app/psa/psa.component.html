@@ -157,7 +157,7 @@
               <div *ngIf="coordinateGraphData">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateGraphData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
-                <div *ngIf="coordinateGraphData.length == 0">
+                <div *ngIf="coordinateGraphData.length == 0 && !isLoadingOverlayPopup">
                   <strong>There is no relevant data to display</strong>
                 </div>
               </div>
