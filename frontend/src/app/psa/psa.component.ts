@@ -550,41 +550,22 @@ export class PsaComponent implements OnInit {
 
     this.popupOverlay.setPosition(event.coordinate);
 
-    const latLon = toLonLat(event.coordinate).reverse();
+    const latLon = toLonLat(event.coordinate);
 
-    this.cwwedService.fetchPSACoordinateData(latLon).subscribe(
+    this.cwwedService.fetchPSACoordinateData(this.DEMO_NAMED_STORM_ID, latLon).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-
-        this._coordinateGraphDataAll = [
-          {
-            name: 'Water Level (m)',
-            series: _.zip(data.dates, data.water_level).map((dateVal) => {
+        this._coordinateGraphDataAll = _.map(data, (variableData, variableName) => {
+          return {
+            name: variableName,
+            series: _.zip(data.dates, variableData).map((dateVal) => {
               return {
                 name: dateVal[0],
                 value: dateVal[1],
               }
             })
-          },
-          {
-            name: 'Wave Height (m)',
-            series: _.zip(data.dates, data.wave_height).map((dateVal) => {
-              return {
-                name: dateVal[0],
-                value: dateVal[1],
-              }
-            })
-          },
-          {
-            name: 'Wind Speed (m/s)',
-            series: _.zip(data.dates, data.wind_speed).map((dateVal) => {
-              return {
-                name: dateVal[0],
-                value: dateVal[1],
-              }
-            })
-          },
-        ];
+          };
+        });
 
         this._updateCoordinateGraphData();
       },
@@ -598,18 +579,15 @@ export class PsaComponent implements OnInit {
   protected _updateCoordinateGraphData() {
 
     const coordinateGraphData = [];
-    let data;
 
-    /* TODO
-    if (this.mapLayerWindInput.value) {
-      data = this._coordinateGraphDataAll.filter((data) => {
-        return data.name === 'Wind Speed (m/s)';
-      });
-      if (data.length) {
-        coordinateGraphData.push(data[0]);
+    // include the coordinate variable data if that variable is currently being displayed
+    this._coordinateGraphDataAll.forEach((data) => {
+      if (this.form.get('variables').value[data.name]) {
+        coordinateGraphData.push(data);
       }
-    }
-    */
+    });
+
+    console.log(coordinateGraphData);
 
     this.coordinateGraphData = coordinateGraphData;
   }

@@ -1,3 +1,4 @@
+from itertools import groupby
 from django.contrib.gis.db.models import GeometryField
 from django.db.models.functions import Cast
 from django.http import HttpResponse
@@ -132,8 +133,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         )
 
     def time_series(self, request, *args, **kwargs):
-        # TODO - WIP
-
+        # validate supplied coordinate
         coordinate = request.query_params.getlist('coordinate')
         if not coordinate or not len(coordinate) == 2:
             raise exceptions.NotFound('Coordinate (2) not supplied')
@@ -144,22 +144,35 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
 
         point = geos.Point(x=coordinate[0], y=coordinate[1])
 
-        # TODO - is this sorting right? Water Level is missing certain dates (i.e 2012-10-22T08:00:00Z)
-
+        # find data covering point
         query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField()))
-        query = query.filter(nsem_psa_variable__nsem=self.nsem, geom__covers=point)
+        query = query.filter(
+            nsem_psa_variable__nsem=self.nsem,
+            geom__covers=point,
+            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+        )
         query = query.order_by('nsem_psa_variable__name', 'date')
         query = query.values('nsem_psa_variable__name', 'value', 'date')
 
-        results = []
-        for data in query:
-            results.append({
-                'name': data['nsem_psa_variable__name'],
-                'value': data['value'],
-                'date': data['date'],
-            })
+        # sorted/unique dates
+        dates = sorted(set(data['date'] for data in query))
 
-        return Response(results)
+        result = {
+            'dates': dates,
+        }
+
+        # list of all variable names
+        variables = list(map(lambda x: x['nsem_psa_variable__name'], query))
+
+        # include data grouped by variable
+        for variable in variables:
+            result[variable] = []
+            for date in dates:
+                # find matching record if it exists
+                value = next((v['value'] for v in query if v['nsem_psa_variable__name'] == variable and v['date'] == date), None)
+                result[variable].append(value)
+
+        return Response(result)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
