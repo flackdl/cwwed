@@ -19,6 +19,7 @@ import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { InjectionService } from "../../ngx-charts/common/tooltip/injection.service";
+import { DecimalPipe } from "@angular/common";
 
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
@@ -28,6 +29,7 @@ const hexToRgba = require("hex-to-rgba");
   selector: 'app-psa',
   templateUrl: './psa.component.html',
   styleUrls: ['./psa.component.scss'],
+  providers: [DecimalPipe],
 })
 export class PsaComponent implements OnInit {
   public DEMO_NAMED_STORM_ID = 1;
@@ -77,6 +79,7 @@ export class PsaComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private fb: FormBuilder,
+    private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
     private modalService: NgbModal,
     private chartTooltipInjectionService: InjectionService,
@@ -513,13 +516,13 @@ export class PsaComponent implements OnInit {
 
       if (features) {
         features.forEach((feature) => {
-          // include all feature's details but don't overwrite an existing value from an overlapping feature of the same variable
 
           const variableName = feature.get('name');
-          const variableValue = feature.get('value');
+          const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnit = feature.get('unit');
 
-          if (!_.has(currentFeature, variableName) && variableName !== undefined) {
+          // make sure not to overwrite an existing value from an overlapping feature of the same variable
+          if (!_.has(currentFeature, variableName)) {
             currentFeature[variableName] = `${variableValue} ${variableUnit}`;
           }
         });
