@@ -51,46 +51,19 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
-                <!--
-                <div *ngIf="mapLayerWindInput.value" class="mb-3">
-                  <a href="https://commons.wikimedia.org/wiki/Wind_speed" target="_blank" class="btn btn-block btn-light">
-                    Wind Barbs <span class="oi oi-external-link"></span>
-                  </a>
-                </div>
-                <div *ngIf="mapLayerWaterLevelMaxInput.value">
-                  <h6>Water Level Maximum</h6>
-                  <div class="d-flex justify-content-center color-bar">
-                    <div class="color-bar-legend">
-                      <div class="color-bar-color" *ngFor="let color_values of getWaterColorBarValues('water_level_max')" [style.background-color]="color_values[1]">
-                        <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
+                <div *ngFor="let variable of psaVariables">
+                  <div *ngIf="variable.geo_type === 'multipolygon'">
+                    <h6>{{ variable.name }}</h6>
+                    <div class="d-flex justify-content-center color-bar">
+                      <div class="color-bar-legend">
+                        <div class="color-bar-color" *ngFor="let color_values of variable.color_bar" [style.background-color]="color_values[1]">
+                          <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
+                        </div>
                       </div>
+                      <span class="pl-1">({{ variable.units }})</span>
                     </div>
-                    <span class="pl-1">(m)</span>
                   </div>
                 </div>
-                <div *ngIf="hasVariableValueAtCurrentDate('zeta') && mapLayerWaterLevelInput.value">
-                  <h6>Water Level</h6>
-                  <div class="d-flex justify-content-center color-bar">
-                    <div class="color-bar-legend">
-                      <div class="color-bar-color" *ngFor="let color_values of getWaterColorBarValues('zeta')" [style.background-color]="color_values[1]">
-                        <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
-                      </div>
-                    </div>
-                    <span class="pl-1">(m)</span>
-                  </div>
-                </div>
-                <div *ngIf="hasVariableValueAtCurrentDate('hs') && mapLayerWaveHeightInput.value">
-                  <h6>Wave Height</h6>
-                  <div class="d-flex justify-content-center color-bar">
-										<div class="color-bar-legend">
-											<div class="color-bar-color" *ngFor="let color_values of getWaterColorBarValues('hs')" [style.background-color]="color_values[1]">
-												<span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
-											</div>
-										</div>
-										<span class="pl-1">(m)</span>
-                  </div>
-                </div>
-                -->
               </ng-template>
             </ngb-panel>
             <ngb-panel title="Base Maps">

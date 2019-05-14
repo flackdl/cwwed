@@ -157,17 +157,6 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
-  public getWaterColorBarValues(variableName: string) {
-    let variable = this.psaVariables.find((psaVariable) => {
-      return variableName === psaVariable.name;
-    });
-
-    if (variable) {
-      return variable.color_bar;
-    }
-    return [];
-  }
-
   @HostListener('window:resize', ['$event'])
   protected _setMapWidth() {
     this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
@@ -522,7 +511,7 @@ export class PsaComponent implements OnInit {
           const variableUnit = feature.get('unit');
 
           // make sure not to overwrite an existing value from an overlapping feature of the same variable
-          if (!_.has(currentFeature, variableName)) {
+          if (variableName !== undefined && !_.has(currentFeature, variableName)) {
             currentFeature[variableName] = `${variableValue} ${variableUnit}`;
           }
         });
