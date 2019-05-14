@@ -181,6 +181,7 @@ class NsemPsaVariable(models.Model):
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
     color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
     units = models.CharField(choices=UNITS_CHOICES, max_length=20)
+    auto_displayed = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('nsem', 'name',)

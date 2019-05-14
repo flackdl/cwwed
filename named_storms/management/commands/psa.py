@@ -250,6 +250,7 @@ class Command(BaseCommand):
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
             units=NsemPsaVariable.UNITS_METERS,
+            auto_displayed=True,
         )
         nsem_psa_variable.save()
 
@@ -266,6 +267,7 @@ class Command(BaseCommand):
             geo_type=NsemPsaVariable.GEO_TYPE_WIND_ARROW,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_RADIAN,
+            auto_displayed=True,
         )
 
         nsem_psa_variable_speed = NsemPsaVariable(

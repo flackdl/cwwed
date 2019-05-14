@@ -303,8 +303,7 @@ export class PsaComponent implements OnInit {
           // create and populate variables form group
           let psaVariablesFormGroup = this.fb.group({});
           this.psaVariables.forEach((psaVariable) => {
-            // TODO - designate (in the db) which variables are enabled by default
-            psaVariablesFormGroup.addControl(psaVariable.name, new FormControl(true));
+            psaVariablesFormGroup.addControl(psaVariable.name, new FormControl(psaVariable.auto_displayed));
           });
           this.form.setControl('variables', psaVariablesFormGroup);
         }),
@@ -424,8 +423,8 @@ export class PsaComponent implements OnInit {
             url: 'http://a.tile.stamen.com/toner/{z}/{x}/{y}.png',
           })
         }),
-        // TODO - dynamically include specific variables (ie. designated in the db)
-        ...this.availableMapLayers.map((l) => { return l.layer;}),
+        // only include the variable layers that are "auto displayed"
+        ...this.availableMapLayers.filter((ml) => { return ml.variable.auto_displayed}).map((l) => { return l.layer;}),
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
