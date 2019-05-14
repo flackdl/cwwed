@@ -185,6 +185,7 @@ class NsemPsaVariable(models.Model):
 
     class Meta:
         unique_together = ('nsem', 'name',)
+        ordering = ['name']
 
     def __str__(self):
         return self.name
