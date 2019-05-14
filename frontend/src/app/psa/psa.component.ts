@@ -157,6 +157,12 @@ export class PsaComponent implements OnInit {
     this._configureMapExtentInteraction();
   }
 
+  public getColorBarVariables() {
+    return this.psaVariables.filter((variable) => {
+      return variable.geo_type === 'multipolygon';
+    });
+  }
+
   @HostListener('window:resize', ['$event'])
   protected _setMapWidth() {
     this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;

@@ -51,17 +51,15 @@
             </ngb-panel>
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
-                <div *ngFor="let variable of psaVariables">
-                  <div *ngIf="variable.geo_type === 'multipolygon'">
-                    <h6>{{ variable.name }}</h6>
-                    <div class="d-flex justify-content-center color-bar">
-                      <div class="color-bar-legend">
-                        <div class="color-bar-color" *ngFor="let color_values of variable.color_bar" [style.background-color]="color_values[1]">
-                          <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
-                        </div>
+                <div *ngFor="let variable of getColorBarVariables()">
+                  <h6>{{ variable.name }}</h6>
+                  <div class="d-flex justify-content-center color-bar">
+                    <div class="color-bar-legend">
+                      <div class="color-bar-color" *ngFor="let color_values of variable.color_bar" [style.background-color]="color_values[1]">
+                        <span class="color-bar-value">{{ color_values[0] | number: '0.0-1' }}</span>
                       </div>
-                      <span class="pl-1">({{ variable.units }})</span>
                     </div>
+                    <span class="pl-1">({{ variable.units }})</span>
                   </div>
                 </div>
               </ng-template>
