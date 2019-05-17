@@ -78,6 +78,7 @@ class NsemPsaVariableAdmin(admin.GeoModelAdmin):
 @admin.register(NsemPsaData)
 class NsemPsaDataAdmin(admin.GeoModelAdmin):
     list_display = ('nsem_psa_variable', 'value', 'date')
+    list_filter = ('nsem_psa_variable',)
 
 
 @admin.register(NamedStormCoveredDataLog)

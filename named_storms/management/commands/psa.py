@@ -1,4 +1,5 @@
 import json
+import logging
 import math
 from datetime import datetime
 import xarray
@@ -75,7 +76,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
+        logging.info('opening dataset')
+
         self.dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+
+        logging.info('creating geo mask')
 
         # create a mask to subset data from the geo's convex hull
         # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
@@ -84,8 +89,12 @@ class Command(BaseCommand):
         x = self.dataset.x[self.mask]
         y = self.dataset.y[self.mask]
 
+        logging.info('building triangulation')
+
         # build delaunay triangles
         self.triangulation = tri.Triangulation(x, y)
+
+        logging.info('masking triangulation')
 
         # mask triangles outside geo
         tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
@@ -140,6 +149,8 @@ class Command(BaseCommand):
 
     def build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None, mask_geojson: Callable = None):
 
+        logging.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
+
         # interpolate values from triangle data and build a mesh of data
         interpolator = tri.LinearTriInterpolator(self.triangulation, z)
         Xi, Yi = np.meshgrid(self.xi, self.yi)
@@ -149,12 +160,7 @@ class Command(BaseCommand):
         contourf = plt.contourf(self.xi, self.yi, zi, CONTOUR_LEVELS, cmap=cmap)
 
         # convert matplotlib contourf to geojson
-        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(
-            contourf=contourf,
-            ndigits=10,
-            stroke_width=2,
-            fill_opacity=0.5,
-        ))
+        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(contourf=contourf, ndigits=10))
 
         # mask regions
         if mask_geojson is not None:
@@ -162,13 +168,15 @@ class Command(BaseCommand):
 
         # build new psa results from geojson output
         for feature in geojson_result['features']:
-            NsemPsaData(
-                nsem_psa_variable=nsem_psa_variable,
-                date=dt,
-                geo=geos.MultiPolygon(*[geos.Polygon(poly) for poly in feature['geometry']['coordinates'][0]]),
-                value=feature['properties']['title'],
-                color=feature['properties']['fill'],
-            ).save()
+            # save individual contours as separate polygons
+            for polygon in feature['geometry']['coordinates'][0]:
+                NsemPsaData(
+                    nsem_psa_variable=nsem_psa_variable,
+                    date=dt,
+                    geo=geos.Polygon(polygon),
+                    value=feature['properties']['title'],
+                    color=feature['properties']['fill'],
+                ).save()
 
     def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, dt: datetime):
 

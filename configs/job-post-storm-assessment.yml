@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cwwed-post-storm-assessment
+spec:
+  backoffLimit: 2  # number of retries
+  template:
+    spec:
+      volumes:
+      - name: cwwed-volume-storage
+        persistentVolumeClaim:
+         claimName: efs
+      # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
+      restartPolicy: Never  # don't restart the container if the entire process fails
+      containers:
+      - name: cwwed-post-storm-assessment
+        image: flackdl/cwwed
+        command: ['python']
+        args: ['manage.py', 'psa']
+        volumeMounts:
+        - mountPath: "/media/bucket/cwwed"
+          name: cwwed-volume-storage
+        env:
+          - name: DJANGO_SETTINGS_MODULE
+            value: cwwed.settings
+          - name: DEPLOY_STAGE
+            value: prod
+          - name: CELERY_BROKER
+            value: rabbitmq-service
+          - name: CELERY_BACKEND
+            value: rabbitmq-service
+        # secrets
+        envFrom:
+          - secretRef:
+              name: cwwed-secrets
