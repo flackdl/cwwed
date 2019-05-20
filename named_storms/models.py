@@ -1,6 +1,7 @@
 from datetime import datetime
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Index
 from django.utils import timezone
 from django.contrib.postgres import fields
 
@@ -202,3 +203,8 @@ class NsemPsaData(models.Model):
 
     def __str__(self):
         return str(self.nsem_psa_variable)
+
+    class Meta:
+        indexes = [
+            Index(fields=['nsem_psa_variable', 'date'])
+        ]
