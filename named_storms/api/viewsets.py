@@ -1,6 +1,3 @@
-from itertools import groupby
-from django.contrib.gis.db.models import GeometryField
-from django.db.models.functions import Cast
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
@@ -144,32 +141,41 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
 
         point = geos.Point(x=coordinate[0], y=coordinate[1])
 
-        # find data covering point
-        query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField()))
-        query = query.filter(
+        # find data covering bounding boxes
+        bbox_query = NsemPsaData.objects.annotate().filter(
             nsem_psa_variable__nsem=self.nsem,
-            geom__covers=point,
+            bbox__covers=point,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
         )
-        query = query.order_by('nsem_psa_variable__name', 'date')
-        query = query.values('nsem_psa_variable__name', 'value', 'date')
+
+        bbox_data = bbox_query.only('id').values('id')
+
+        # find data covering point from the bbox results
+        time_series_query = NsemPsaData.objects.filter(
+            id__in=[bbox['id'] for bbox in bbox_data],
+            geo__covers=point,
+        )
+
+        time_series_query = time_series_query.order_by('nsem_psa_variable__name', 'date')
+        time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
+        time_series = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
 
         # sorted/unique dates
-        dates = sorted(set(data['date'] for data in query))
+        dates = sorted(set(data['date'] for data in time_series))
 
         result = {
             'dates': dates,
         }
 
-        # list of all variable names
-        variables = list(map(lambda x: x['nsem_psa_variable__name'], query))
+        # list of all variables
+        variables = set(map(lambda x: x['nsem_psa_variable__name'], time_series))
 
         # include data grouped by variable
         for variable in variables:
             result[variable] = []
             for date in dates:
                 # find matching record if it exists
-                value = next((v['value'] for v in query if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
+                value = next((v['value'] for v in time_series if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
                 result[variable].append(value)
 
         return Response(result)

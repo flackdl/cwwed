@@ -169,11 +169,13 @@ class Command(BaseCommand):
         # build new psa results from geojson output
         for feature in geojson_result['features']:
             # save individual contours as separate polygons
-            for polygon in feature['geometry']['coordinates'][0]:
+            for coords in feature['geometry']['coordinates'][0]:
+                polygon = geos.Polygon(coords)
                 NsemPsaData(
                     nsem_psa_variable=nsem_psa_variable,
                     date=dt,
-                    geo=geos.Polygon(polygon),
+                    geo=polygon,
+                    bbox=geos.Polygon.from_bbox(polygon.extent),
                     value=feature['properties']['title'],
                     color=feature['properties']['fill'],
                 ).save()
@@ -262,6 +264,7 @@ class Command(BaseCommand):
         )
         nsem_psa_variable.save()
 
+        # TODO - should we mask zero-values with self.water_level_mask_geojson?
         self.build_contours(nsem_psa_variable, z, cmap)
 
     def process_wind(self):
@@ -284,6 +287,7 @@ class Command(BaseCommand):
             geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            auto_displayed=True,
         )
 
         nsem_psa_variable_direction.save()

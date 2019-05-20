@@ -195,6 +195,7 @@ class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
+    bbox = models.GeometryField(geography=False, null=True)
     value = models.FloatField()
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
