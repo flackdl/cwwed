@@ -59,7 +59,7 @@ export class PsaComponent implements OnInit {
   public currentFeature: any;
   public extentCoords: Number[];
   public currentConfidence: Number;
-  public mapLayerInput = new FormControl(this.MAP_LAYER_OSM_STANDARD);
+  public mapLayerInput = new FormControl(this.MAP_LAYER_MAPBOX_LIGHT);
   public availableMapLayers: {
     variable: any,
     layer: VectorLayer,
