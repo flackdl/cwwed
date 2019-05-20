@@ -124,10 +124,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         return super().list(request, *args, **kwargs)
 
     def dates(self, request, *args, **kwargs):
-        dates = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem, date__isnull=False).order_by('date').distinct('date').values('date')
-        return Response(
-           [date['date'] for date in dates]
-        )
+        return Response(self.nsem.dates)
 
     def time_series(self, request, *args, **kwargs):
         # validate supplied coordinate
@@ -160,11 +157,8 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
         time_series = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
 
-        # sorted/unique dates
-        dates = sorted(set(data['date'] for data in time_series))
-
         result = {
-            'dates': dates,
+            'dates': self.nsem.dates,
         }
 
         # list of all variables
@@ -173,7 +167,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         # include data grouped by variable
         for variable in variables:
             result[variable] = []
-            for date in dates:
+            for date in self.nsem.dates:
                 # find matching record if it exists
                 value = next((v['value'] for v in time_series if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
                 result[variable].append(value)

@@ -143,6 +143,7 @@ class NSEM(models.Model):
     covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
     model_output_snapshot = models.TextField(blank=True)  # path to the model output snapshot
     model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
+    dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)
 
     def __str__(self):
         return str(self.named_storm)
