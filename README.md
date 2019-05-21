@@ -105,20 +105,14 @@ Create EFS and make sure it's in the same VPC as the cluster, along with the nod
     
 ### Load Balancing
 
-Install [Ambassador](https://www.getambassador.io) for load balancing.
+Using AWS Load Balancer.
 
-It avoids AWS's $20/month Elastic Load Balancing services which we would need for each exposed service.
+Once the `configs/service-cwwed.yml` service is created,
+monitor the new external Load Balancer and get it's external IP address.
 
-    kubectl apply -f configs/ambassador-rbac.yaml
-    kubectl apply -f configs/deployment-ambassador.yaml
-    kubectl apply -f configs/service-ambassador.yml
-    
-Monitor the new external Load Balancer and get it's external IP address.
-
-    kubectl get service -o wide
+    kubectl get service -o wide cwwed-service
     
 Use that IP and configure DNS via Cloudflare.
-
 
 ### Install all the services, volumes, deployments etc.
     

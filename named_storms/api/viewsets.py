@@ -1,5 +1,6 @@
+import json
 from django.db.models.functions import Cast
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
@@ -195,40 +196,29 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         return self.nsem_psa_variable.nsempsadata_set.all() if self.nsem_psa_variable else NsemPsaData.objects.none()
 
     def list(self, request, *args, **kwargs):
+        """
+        return geojson results by grouping all geometries together by same value which reduces total features
+        """
 
         self._validate()
 
-        # build and return geojson results
-
         features = []
+
         fields = ['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units']
         for data in self.filter_queryset(self.get_queryset().values(*fields).annotate(geom=Collect(Cast('geo', GeometryField())))):
-
-            features.append('''
-            {{
+            features.append({
                 "type": "Feature",
-                "properties": {{
-                    "name": "{name}",
-                    "unit": "{unit}",
-                    "value": {value},
-                    "date": "{date}",
-                    "color": "{color}"
-                }},
-                "geometry": {geo}
-            }}
-            '''.format(
-                unit=data['nsem_psa_variable__units'],
-                name=data['nsem_psa_variable__name'],
-                value=data['value'],
-                date=data['date'].isoformat() if data['date'] else None,
-                color=data['color'],
-                geo=data['geom'].json,
-            ))
+                "properties": {
+                    "name": data['nsem_psa_variable__name'],
+                    "unit": data['nsem_psa_variable__units'],
+                    "value": data['value'],
+                    "date": data['date'].isoformat() if data['date'] else None,
+                    "color": data['color'],
+                },
+                "geometry": json.loads(data['geom'].json),
+            })
 
-        return HttpResponse(
-            content='{{"type": "FeatureCollection", "features": [{}] }}'.format(','.join(features)),
-            content_type='application/json',
-        )
+        return JsonResponse({"type": "FeatureCollection", "features": features})
 
     def _validate(self):
 
