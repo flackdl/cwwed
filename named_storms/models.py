@@ -57,6 +57,7 @@ class NamedStorm(models.Model):
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
     active = models.BooleanField(default=True)
+    description = models.TextField(blank=True)
 
     def __str__(self):
         return self.name

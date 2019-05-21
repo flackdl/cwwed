@@ -3,11 +3,11 @@
   <ngx-loading [show]="isLoading"></ngx-loading>
   <div class="card">
     <div class="card-header">
-      <h1>Sandy</h1>
+      <h1>{{ namedStorm.name }}</h1>
     </div>
     <div class="card-body">
       <div class="card-text">
-        The following Post Storm Assessment (PSA) products; Mean Sea Level, Wave Height and Winds were created for the Atlantic and Gulf of Mexico coastal waters of the United States during the period of time that Hurricane Sandy formed in the central Caribbean on October 22, 2012. Sandy intensified into a hurricane as it tracked north across the Caribbean moved northeast of the United States until turning west toward the mid-Atlantic coast on October 28th.
+        {{ namedStorm.description }}
       </div>
       <div class="row">
 

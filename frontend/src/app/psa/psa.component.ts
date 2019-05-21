@@ -46,12 +46,12 @@ export class PsaComponent implements OnInit {
     { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
     { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
   ];
-  public demoDataURL = "/opendap/PSA_demo/Sandy_DBay/DBay-run_map.nc";
+  public demoDataURL = "/opendap/PSA_demo/sandy.nc";
   public isLoading = true;
   public isLoadingMap = true;
   public isLoadingOverlayPopup = false;
   public map: Map;
-  public namedStorms: any;
+  public namedStorm: any;
   public psaVariables: any[];
   public psaDates: string[] = [];
   public form: FormGroup;
@@ -90,7 +90,9 @@ export class PsaComponent implements OnInit {
     this.chartTooltipInjectionService.setContainerElement(this.mapEl.nativeElement);
 
     this.nsemList = this.cwwedService.nsemList;
-    this.namedStorms = this.cwwedService.namedStorms;
+    this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
+      return storm.id === this.DEMO_NAMED_STORM_ID;
+    });
 
     // create initial form group
     this.form = this.fb.group({
