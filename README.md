@@ -110,6 +110,7 @@ Install [Ambassador](https://www.getambassador.io) for load balancing.
 It avoids AWS's $20/month Elastic Load Balancing services which we would need for each exposed service.
 
     kubectl apply -f configs/ambassador-rbac.yaml
+    kubectl apply -f configs/deployment-ambassador.yaml
     kubectl apply -f configs/service-ambassador.yml
     
 Monitor the new external Load Balancer and get it's external IP address.

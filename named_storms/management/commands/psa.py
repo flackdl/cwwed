@@ -207,7 +207,7 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name='Wave Height',
             color_bar=self.color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
@@ -231,7 +231,7 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name='Water Level',
             color_bar=self.color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS,
         )
@@ -257,7 +257,7 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name='Water Level Max',
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
             units=NsemPsaVariable.UNITS_METERS,
             auto_displayed=True,
@@ -284,7 +284,7 @@ class Command(BaseCommand):
         nsem_psa_variable_speed = NsemPsaVariable(
             nsem=self.nsem,
             name='Wind Speed',
-            geo_type=NsemPsaVariable.GEO_TYPE_MULTIPOLYGON,
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
             auto_displayed=True,

@@ -1,8 +1,10 @@
+from django.db.models.functions import Cast
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.cache import cache_control
+from django.contrib.gis.db.models import Collect, GeometryField
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
@@ -199,8 +201,9 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         # build and return geojson results
 
         features = []
-        fields = ['geo', 'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units']
-        for data in self.filter_queryset(self.get_queryset()).values(*fields):
+        fields = ['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units']
+        for data in self.filter_queryset(self.get_queryset().values(*fields).annotate(geom=Collect(Cast('geo', GeometryField())))):
+
             features.append('''
             {{
                 "type": "Feature",
@@ -219,7 +222,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
                 value=data['value'],
                 date=data['date'].isoformat() if data['date'] else None,
                 color=data['color'],
-                geo=data['geo'].json,
+                geo=data['geom'].json,
             ))
 
         return HttpResponse(

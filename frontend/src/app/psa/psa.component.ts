@@ -59,7 +59,7 @@ export class PsaComponent implements OnInit {
   public currentFeature: any;
   public extentCoords: Number[];
   public currentConfidence: Number;
-  public mapLayerInput = new FormControl(this.MAP_LAYER_MAPBOX_LIGHT);
+  public mapLayerInput = new FormControl(this.MAP_LAYER_MAPBOX_STREETS);
   public availableMapLayers: {
     variable: any,
     layer: VectorLayer,
@@ -159,7 +159,7 @@ export class PsaComponent implements OnInit {
 
   public getColorBarVariables() {
     return this.psaVariables.filter((variable) => {
-      return variable.geo_type === 'multipolygon';
+      return variable.geo_type === 'polygon';
     });
   }
 
@@ -393,6 +393,7 @@ export class PsaComponent implements OnInit {
       layers: [
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
+          visible: false,
           source: new OSM(),
         }),
         new TileLayer({
@@ -409,9 +410,9 @@ export class PsaComponent implements OnInit {
             url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
           })
         }),
+        // DEFAULT
         new TileLayer({
           mapName: this.MAP_LAYER_MAPBOX_STREETS,
-          visible: false,
           source: new XYZ({
             url: `https://api.mapbox.com/styles/v1/mapbox/streets-v10/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
           })
