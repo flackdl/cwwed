@@ -142,7 +142,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         point = geos.Point(x=coordinate[0], y=coordinate[1])
 
         # find data covering bounding boxes
-        bbox_query = NsemPsaData.objects.annotate().filter(
+        bbox_query = NsemPsaData.objects.filter(
             nsem_psa_variable__nsem=self.nsem,
             bbox__covers=point,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
@@ -155,24 +155,23 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
             id__in=[bbox['id'] for bbox in bbox_data],
             geo__covers=point,
         )
-
         time_series_query = time_series_query.order_by('nsem_psa_variable__name', 'date')
         time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
-        time_series = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
+        time_series_data = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
 
         result = {
             'dates': self.nsem.dates,
         }
 
         # list of all variables
-        variables = set(map(lambda x: x['nsem_psa_variable__name'], time_series))
+        variables = set(map(lambda x: x['nsem_psa_variable__name'], time_series_data))
 
         # include data grouped by variable
         for variable in variables:
             result[variable] = []
             for date in self.nsem.dates:
                 # find matching record if it exists
-                value = next((v['value'] for v in time_series if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
+                value = next((v['value'] for v in time_series_data if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
                 result[variable].append(value)
 
         return Response(result)

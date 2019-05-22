@@ -120,10 +120,6 @@ export class PsaComponent implements OnInit {
     return this.psaDates ? this.psaDates.length - 1 : 0;
   }
 
-  public getSelectedDate() {
-    return this.getDateInputFormatted(this.form.get('date').value);
-  }
-
   public isOverlayVisible(): boolean {
     return this.popupOverlay.getPosition() !== undefined;
   }
@@ -134,6 +130,21 @@ export class PsaComponent implements OnInit {
 
   public getDataUrl(format: string): string {
     return `${this.demoDataURL}.${format}`;
+  }
+
+  public hasGraphVariablesDisplayed(): boolean {
+    let graphVariables = [];
+    _.each(this.form.get('variables').value, (enabled, name) => {
+      if (enabled) {
+        let psaVariable = _.find(this.psaVariables, (variable) => {
+          return variable.name == name;
+        });
+        if (psaVariable && psaVariable.geo_type === 'polygon' && psaVariable.data_type === 'time-series') {
+          graphVariables.push(psaVariable);
+        }
+      }
+    });
+    return graphVariables.length > 0;
   }
 
   public xAxisTickFormatting(value: string) {

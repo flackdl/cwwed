@@ -101,7 +101,7 @@
         <div class="col mt-3">
 
           <!-- map -->
-          <div #map class="position-relative">
+          <div #map class="position-relative" id="map-container">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- feature info -->
@@ -117,12 +117,12 @@
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!coordinateGraphData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
-              <div *ngIf="coordinateGraphData">
+              <div *ngIf="!hasGraphVariablesDisplayed()">
+                <div class="alert alert-info"><small>Please enable a time series variable to display graph</small></div>
+              </div>
+              <div *ngIf="hasGraphVariablesDisplayed() && coordinateGraphData">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <ngx-charts-line-chart [view]="[chartWidth, chartHeight]" [results]="coordinateGraphData" [autoScale]="true" [xAxisTickFormatting]="xAxisTickFormatting" [xAxis]="true" [yAxis]="true" [legend]="true" legendPosition="below" legendTitle=" "></ngx-charts-line-chart>
-                <div *ngIf="coordinateGraphData.length == 0 && !isLoadingOverlayPopup">
-                  <strong>There is no relevant data to display</strong>
-                </div>
               </div>
             </div>
 
