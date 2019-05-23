@@ -25,4 +25,5 @@ ds = xr.Dataset(
     },
 )
 
-ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+# save as netcdf classic because hyrax chokes on 64bit ints
+ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc', format='NETCDF4_CLASSIC')
