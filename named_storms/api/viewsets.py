@@ -110,26 +110,18 @@ class NsemPsaVariableViewset(NsemPsaBaseViewset):
         return self.nsem.nsempsavariable_set.all() if self.nsem else NsemPsaVariable.objects.none()
 
 
-class NsemPsaDataViewset(NsemPsaBaseViewset):
-    # Named Storm Event Model PSA Data Viewset
-    #     - expects to be nested under a NamedStormViewset detail
-    serializer_class = NsemPsaDataSerializer
-    filterset_class = NsemPsaDataFilter
-
-    def get_queryset(self):
-        if not self.nsem:
-            return NsemPsaData.objects.none()
-        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+class NsemPsaDatesViewset(NsemPsaBaseViewset):
+    # required but unnecessary since we're returning a specific nsem's dates
+    queryset = NSEM.objects.none()
 
     def list(self, request, *args, **kwargs):
-        if 'date' not in self.request.query_params:
-            raise exceptions.ValidationError({'date': ['missing value']})
-        return super().list(request, *args, **kwargs)
-
-    def dates(self, request, *args, **kwargs):
         return Response(self.nsem.dates)
 
-    def time_series(self, request, *args, **kwargs):
+
+class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
+    queryset = NsemPsaData.objects.all()  # manually defined in list()
+
+    def list(self, request, *args, **kwargs):
         # validate supplied coordinate
         coordinate = request.query_params.getlist('coordinate')
         if not coordinate or not len(coordinate) == 2:
@@ -179,6 +171,23 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
             results.append(result)
 
         return Response(results)
+
+
+class NsemPsaDataViewset(NsemPsaBaseViewset):
+    # Named Storm Event Model PSA Data Viewset
+    #     - expects to be nested under a NamedStormViewset detail
+    serializer_class = NsemPsaDataSerializer
+    filterset_class = NsemPsaDataFilter
+
+    def get_queryset(self):
+        if not self.nsem:
+            return NsemPsaData.objects.none()
+        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+
+    def list(self, request, *args, **kwargs):
+        if 'date' not in self.request.query_params:
+            raise exceptions.ValidationError({'date': ['missing value']})
+        return super().list(request, *args, **kwargs)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
