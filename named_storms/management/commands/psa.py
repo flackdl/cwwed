@@ -107,6 +107,10 @@ class Command(BaseCommand):
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
+        # save the datetime's on our nsem instance
+        self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset.time.values]
+        self.nsem.save()
+
         # delete any previous psa results for this nsem
         self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 

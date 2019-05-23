@@ -118,7 +118,7 @@
             <div #popup class="ol-popup" [class.invisible]="!coordinateGraphData && !isLoadingOverlayPopup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
               <div *ngIf="!hasGraphVariablesDisplayed()">
-                <div class="alert alert-info"><small>Please enable a time series variable to display graph</small></div>
+                <div class="alert alert-warning"><small>Please enable a time series variable for graph display</small></div>
               </div>
               <div *ngIf="hasGraphVariablesDisplayed() && coordinateGraphData">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>

@@ -569,7 +569,7 @@ export class PsaComponent implements OnInit {
         this._coordinateGraphDataAll = _.map(data, (variableData, variableName) => {
           return {
             name: variableName,
-            series: _.zip(data.dates, variableData).map((dateVal) => {
+            series: _.zip(this.psaDates, variableData).map((dateVal) => {
               return {
                 name: dateVal[0],
                 value: dateVal[1],
