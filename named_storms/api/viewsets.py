@@ -159,7 +159,7 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
         time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
         time_series_data = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
 
-        result = {}
+        results = []
 
         # list of all contour time-series variables
         query = self.nsem.nsempsavariable_set.filter(
@@ -168,13 +168,17 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
 
         # include data grouped by variable
         for variable in variables:
-            result[variable] = []
+            result = {
+                'name': variable,
+                'values': [],
+            }
             for date in self.nsem.dates:
                 # find matching record if it exists
                 value = next((v['value'] for v in time_series_data if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
-                result[variable].append(value)
+                result['values'].append(value)
+            results.append(result)
 
-        return Response(result)
+        return Response(results)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):

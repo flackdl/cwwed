@@ -566,10 +566,10 @@ export class PsaComponent implements OnInit {
     this.cwwedService.fetchPSACoordinateData(this.DEMO_NAMED_STORM_ID, latLon).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-        this._coordinateGraphDataAll = _.map(data, (variableData, variableName) => {
+        this._coordinateGraphDataAll = _.map(data, (variable: any) => {
           return {
-            name: variableName,
-            series: _.zip(this.psaDates, variableData).map((dateVal) => {
+            name: variable.name,
+            series: _.zip(this.psaDates, variable.values).map((dateVal) => {
               return {
                 name: dateVal[0],
                 value: dateVal[1],
