@@ -28,8 +28,8 @@ export class CwwedService {
 
   public fetchUser() {
     return this.http.get(API_USER).pipe(
-      map((data: any[]) => {
-        if (data.length) {
+      map((data: any) => {
+        if (data.results.length) {
             this.user = data[0];
             return this.user;
         }
@@ -39,8 +39,8 @@ export class CwwedService {
 
   public fetchNamedStorms() {
     return this.http.get(API_NAMED_STORMS).pipe(
-      map((data) => {
-        this.namedStorms = data;
+      map((data: any) => {
+        this.namedStorms = data.results;
         return this.namedStorms;
       }),
     );
@@ -65,8 +65,8 @@ export class CwwedService {
 
   public fetchCoveredData() {
     return this.http.get(API_COVERED_DATA).pipe(
-      map((data) => {
-        this.coveredDataList = data;
+      map((data: any) => {
+        this.coveredDataList = data.results;
         return this.coveredDataList;
       }),
     );
@@ -74,14 +74,14 @@ export class CwwedService {
 
   public fetchCoastalActProjects() {
     return this.http.get(API_COASTAL_ACT_PROJECTS).pipe(
-      map((data) => {
-        this.coastalActProjects = data;
+      map((data: any) => {
+        this.coastalActProjects = data.results;
         return this.coastalActProjects;
       }),
     );
   }
 
-  public fetchPSACoordinateData(namedStormId: number, coordinate: string[]) {
+  public fetchPSATimeSeriesData(namedStormId: number, coordinate: string[]) {
     const params = {
       coordinate: coordinate,
     };
@@ -95,8 +95,8 @@ export class CwwedService {
 
   public fetchPSAVariables(namedStormId: number) {
     return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/variable/`).pipe(
-      map((data) => {
-        return data;
+      map((data: any) => {
+        return data.results;
       }),
     );
   }
@@ -109,9 +109,9 @@ export class CwwedService {
     );
   }
 
-  public static getPsaVariableGeoUrl(named_storm_id: number, variable: string, date?: string) {
+  public static getPsaVariableGeoUrl(named_storm_id: number, variableId: string, date?: string) {
     const params = {
-      variable: variable,
+      nsem_psa_variable: variableId,
     };
     if (date) {
       params['date'] = date;

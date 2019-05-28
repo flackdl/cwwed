@@ -286,7 +286,7 @@ export class PsaComponent implements OnInit {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
     return new VectorSource({
-      url: CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.name, date),
+      url: CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.id, date),
       format: new GeoJSON()
     });
   }
@@ -563,7 +563,7 @@ export class PsaComponent implements OnInit {
 
     const latLon = toLonLat(event.coordinate);
 
-    this.cwwedService.fetchPSACoordinateData(this.DEMO_NAMED_STORM_ID, latLon).subscribe(
+    this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
         this._coordinateGraphDataAll = _.map(data, (variable: any) => {

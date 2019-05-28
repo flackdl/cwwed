@@ -1,9 +1,9 @@
 from django_filters import rest_framework as filters
-from named_storms.models import NsemPsaData
+from named_storms.models import NsemPsaData, NsemPsaVariable
 
 
 class NsemPsaDataFilter(filters.FilterSet):
-    variable = filters.CharFilter(field_name='nsem_psa_variable', lookup_expr='name')
+    nsem_psa_variable = filters.ModelChoiceFilter(queryset=NsemPsaVariable.objects.all(), label='Variable')
 
     class Meta:
         model = NsemPsaData

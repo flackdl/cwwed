@@ -1,6 +1,5 @@
 import json
 from django.db.models.functions import Cast
-from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
@@ -104,7 +103,7 @@ class NsemPsaVariableViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Variable Viewset
     #     - expects to be nested under a NamedStormViewset detail
     serializer_class = NsemPsaVariableSerializer
-    filterset_fields = ('name',)
+    filterset_fields = ('name', 'geo_type', 'data_type',)
 
     def get_queryset(self):
         return self.nsem.nsempsavariable_set.all() if self.nsem else NsemPsaVariable.objects.none()
@@ -153,7 +152,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
         results = []
 
-        # list of all contour time-series variables
+        # retrieve a list of all contour + time-series variables
         query = self.nsem.nsempsavariable_set.filter(
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON).only('name').values('name')
         variables = [v['name'] for v in query]
@@ -184,11 +183,6 @@ class NsemPsaDataViewset(NsemPsaBaseViewset):
             return NsemPsaData.objects.none()
         return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
 
-    def list(self, request, *args, **kwargs):
-        if 'date' not in self.request.query_params:
-            raise exceptions.ValidationError({'date': ['missing value']})
-        return super().list(request, *args, **kwargs)
-
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Geo Viewset
@@ -197,27 +191,41 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     filterset_class = NsemPsaDataFilter
 
-    nsem_psa_variable: NsemPsaVariable = None
-
     @method_decorator(gzip_page)
     @method_decorator(cache_control(max_age=3600))
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        return self.nsem_psa_variable.nsempsadata_set.all() if self.nsem_psa_variable else NsemPsaData.objects.none()
+        """
+        group all geometries together by same variable & value which reduces total features
+        """
+        qs = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+        qs = qs.values(*['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+        qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
+        qs = qs.order_by('nsem_psa_variable__name')
+        return qs
+
+    def filter_queryset(self, queryset):
+        return super().filter_queryset(queryset)
 
     def list(self, request, *args, **kwargs):
-        """
-        return geojson results by grouping all geometries together by same value which reduces total features
-        """
+
+        # invalid - no nsem exists
+        if not self.nsem:
+            raise exceptions.ValidationError('No post storm assessments exist for this storm')
+
+        # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
+        if 'nsem_psa_variable' not in request.query_params:
+            return Response([])
 
         self._validate()
 
+        queryset = self.filter_queryset(self.get_queryset())
+
         features = []
 
-        fields = ['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units']
-        for data in self.filter_queryset(self.get_queryset().values(*fields).annotate(geom=Collect(Cast('geo', GeometryField())))):
+        for data in queryset:
             features.append({
                 "type": "Feature",
                 "properties": {
@@ -230,20 +238,15 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
                 "geometry": json.loads(data['geom'].json),
             })
 
-        return JsonResponse({"type": "FeatureCollection", "features": features})
+        return Response({"type": "FeatureCollection", "features": features})
 
     def _validate(self):
 
-        if not self.nsem:
-            raise exceptions.ValidationError('No post storm assessments exist for this storm')
-
-        if 'variable' not in self.request.query_params:
-            raise exceptions.ValidationError({'variable': ['missing value']})
-
-        nsem_psa_variable = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['variable'])
-        if not nsem_psa_variable.exists():
+        # verify the requested variable exists
+        nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(id=self.request.query_params['nsem_psa_variable'])
+        if not nsem_psa_variable_query.exists():
             raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['variable']))
-        self.nsem_psa_variable = nsem_psa_variable[0]
 
-        if self.nsem_psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and 'date' not in self.request.query_params:
-            raise exceptions.ValidationError({'date': ['missing value']})
+        # verify if the variable requires a date filter
+        if nsem_psa_variable_query[0].data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and not self.request.query_params.get('date'):
+            raise exceptions.ValidationError({'date': ['required for this type of variable']})
