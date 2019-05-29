@@ -30,8 +30,8 @@ export class CwwedService {
     return this.http.get(API_USER).pipe(
       map((data: any) => {
         if (data.results.length) {
-            this.user = data[0];
-            return this.user;
+          this.user = data.results[0];
+          return this.user;
         }
       }),
     );

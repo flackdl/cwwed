@@ -156,19 +156,19 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         results = []
 
         # retrieve a list of all contour + time-series variables
-        query = self.nsem.nsempsavariable_set.filter(
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON).only('name').values('name')
-        variables = [v['name'] for v in query]
+        variables = self.nsem.nsempsavariable_set.filter(
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON)
 
         # include data grouped by variable
         for variable in variables:
             result = {
-                'name': variable,
+                'name': variable.name,
+                'units': variable.units,
                 'values': [],
             }
             for date in self.nsem.dates:
                 # find matching record if it exists
-                value = next((v['value'] for v in time_series_data if v['nsem_psa_variable__name'] == variable and v['date'] == date), 0)
+                value = next((v['value'] for v in time_series_data if v['nsem_psa_variable__name'] == variable.name and v['date'] == date), 0)
                 result['values'].append(value)
             results.append(result)
 

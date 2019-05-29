@@ -568,7 +568,8 @@ export class PsaComponent implements OnInit {
         this.isLoadingOverlayPopup = false;
         this._coordinateGraphDataAll = _.map(data, (variable: any) => {
           return {
-            name: variable.name,
+            variable_name: variable.name,  // include variable name (without units for later comparison against form variables)
+            name: `${variable.name} (${variable.units})`,
             series: _.zip(this.psaDates, variable.values).map((dateVal) => {
               return {
                 name: dateVal[0],
@@ -593,7 +594,7 @@ export class PsaComponent implements OnInit {
 
     // include the coordinate variable data if that variable is currently being displayed
     this._coordinateGraphDataAll.forEach((data) => {
-      if (this.form.get('variables').value[data.name]) {
+      if (this.form.get('variables').value[data.variable_name]) {
         coordinateGraphData.push(data);
       }
     });
