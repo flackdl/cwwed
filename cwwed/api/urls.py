@@ -13,7 +13,7 @@ router.registry.extend(coastal_act_urls.router.registry)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('docs/', include_docs_urls(title='CWWED API')),
+    path('docs/', include_docs_urls(title='CWWED API', public=False)),
     path('auth/', drf_views.obtain_auth_token),  # authenticates user and returns token
     *named_storms_urls.urlpatterns,
     *coastal_act_urls.urlpatterns,
