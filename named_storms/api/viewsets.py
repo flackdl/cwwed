@@ -21,6 +21,9 @@ from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerial
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Named Storms
+    """
     queryset = NamedStorm.objects.all()
     serializer_class = NamedStormSerializer
     filterset_fields = ('name',)
