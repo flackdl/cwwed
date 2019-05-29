@@ -59,6 +59,16 @@ Purge Celery
 
     celery -A cwwed purge -f
     
+Access OPENDaP behind CWWED's authenticated proxy
+
+    import requests
+    import xarray
+    session = requests.Session()
+    session.get('http://127.0.0.1:8000/accounts-login/')
+    session.post('http://127.0.0.1:8000/accounts/login/', data={'login': 'XXX', 'password': 'XXX', 'csrfmiddlewaretoken': session.cookies.get('csrftoken')})
+    store = xarray.backends.PydapDataStore.open('http://127.0.0.1:8000/opendap/PSA_demo/sandy.nc', session=session)
+    dataset = xarray.open_dataset(store)
+    
 ## Production
 
 Setup RDS (relational database service) with proper VPC and security group permissions.
