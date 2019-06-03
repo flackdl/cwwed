@@ -14,7 +14,6 @@ urlpatterns = [
     # nested storm -> psa routes
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/variable/$', viewsets.NsemPsaVariableViewset.as_view({'get': 'list'})),
-    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/$', viewsets.NsemPsaDataViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/dates/$', viewsets.NsemPsaDatesViewset.as_view({'get': 'list'})),
-    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/time-series/$', viewsets.NsemPsaTimeSeriesViewset.as_view({'get': 'list'})),
+    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/time-series/(?P<lat>[-+]?(\d*\.?\d+))/(?P<lon>[-+]?(\d*\.?\d+))/$', viewsets.NsemPsaTimeSeriesViewset.as_view({'get': 'list'})),
 ]

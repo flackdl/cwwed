@@ -17,7 +17,7 @@ from named_storms.tasks import (
     extract_nsem_covered_data_task,
 )
 from named_storms.models import NamedStorm, CoveredData, NSEM, NsemPsaVariable, NsemPsaData
-from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaDataSerializer
+from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -123,17 +123,16 @@ class NsemPsaDatesViewset(NsemPsaBaseViewset):
 class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
     queryset = NsemPsaData.objects.all()  # manually defined in list()
 
-    def list(self, request, *args, **kwargs):
-        # validate supplied coordinate
-        coordinate = request.query_params.getlist('coordinate')
-        if not coordinate or not len(coordinate) == 2:
-            raise exceptions.NotFound('Coordinate (2) not supplied')
-        try:
-            coordinate = tuple(map(float, coordinate))
-        except ValueError:
-            raise exceptions.NotFound('Coordinate should be floats')
+    def list(self, request, *args, lat=None, lon=None, **kwargs):
 
-        point = geos.Point(x=coordinate[0], y=coordinate[1])
+        # validate supplied coordinates
+        try:
+            lat = float(lat)
+            lon = float(lon)
+        except ValueError:
+            raise exceptions.NotFound('lat & lon should be floats')
+
+        point = geos.Point(x=lon, y=lat)
 
         # find data covering bounding boxes
         bbox_query = NsemPsaData.objects.filter(
@@ -173,18 +172,6 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
             results.append(result)
 
         return Response(results)
-
-
-class NsemPsaDataViewset(NsemPsaBaseViewset):
-    # Named Storm Event Model PSA Data Viewset
-    #     - expects to be nested under a NamedStormViewset detail
-    serializer_class = NsemPsaDataSerializer
-    filterset_class = NsemPsaDataFilter
-
-    def get_queryset(self):
-        if not self.nsem:
-            return NsemPsaData.objects.none()
-        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
 
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):

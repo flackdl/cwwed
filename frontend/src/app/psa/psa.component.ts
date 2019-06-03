@@ -132,19 +132,26 @@ export class PsaComponent implements OnInit {
     return `${this.demoDataURL}.${format}`;
   }
 
-  public hasGraphVariablesDisplayed(): boolean {
-    let graphVariables = [];
+  public timeSeriesVariables() {
+    return _.filter(this.psaVariables, (psaVariable) => {
+      return psaVariable.geo_type === 'polygon' && psaVariable.data_type === 'time-series';
+    });
+  }
+
+  public hasTimeSeriesVariablesDisplayed(): boolean {
+    let displayedVariables = [];
+    let timeSeriesVariables = this.timeSeriesVariables();
     _.each(this.form.get('variables').value, (enabled, name) => {
       if (enabled) {
-        let psaVariable = _.find(this.psaVariables, (variable) => {
+        let psaVariable = _.find(timeSeriesVariables, (variable) => {
           return variable.name == name;
         });
-        if (psaVariable && psaVariable.geo_type === 'polygon' && psaVariable.data_type === 'time-series') {
-          graphVariables.push(psaVariable);
+        if (psaVariable) {
+          displayedVariables.push(psaVariable);
         }
       }
     });
-    return graphVariables.length > 0;
+    return displayedVariables.length > 0;
   }
 
   public xAxisTickFormatting(value: string) {
@@ -563,7 +570,7 @@ export class PsaComponent implements OnInit {
 
     const latLon = toLonLat(event.coordinate);
 
-    this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon).subscribe(
+    this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
         this._coordinateGraphDataAll = _.map(data, (variable: any) => {
