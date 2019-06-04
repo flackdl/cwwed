@@ -108,6 +108,7 @@ export class CwwedService {
   public static getPsaVariableGeoUrl(named_storm_id: number, variableId: string, date?: string) {
     const params = {
       nsem_psa_variable: variableId,
+      value__gt: '0',  // TODO - dataset should already be filtered?
     };
     if (date) {
       params['date'] = date;
