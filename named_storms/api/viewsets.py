@@ -1,5 +1,6 @@
 import json
 from django.db.models.functions import Cast
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
@@ -8,7 +9,6 @@ from django.contrib.gis.db.models import Collect, GeometryField
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
-from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
@@ -28,7 +28,6 @@ class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = NamedStorm.objects.all()
     serializer_class = NamedStormSerializer
     filterset_fields = ('name',)
-    search_fields = ('name',)
 
     def get_serializer_class(self):
         # return a more detailed representation for a specific storm
@@ -92,13 +91,24 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
     nsem: NSEM = None
 
     def dispatch(self, request, *args, **kwargs):
-        # define the storm
-        self.storm = get_object_or_404(NamedStorm, id=kwargs.pop('storm_id'))
+        storm_id = kwargs.pop('storm_id')
 
-        # get most recent, valid, nsem
-        nsem = self.storm.nsem_set.filter(model_output_snapshot_extracted=True).order_by('-date_returned')
-        if nsem.exists():
-            self.nsem = nsem[0]
+        # get the storm instance
+        storm = NamedStorm.objects.filter(id=storm_id)
+
+        # get the storm's most recent & valid nsem
+        nsem = NSEM.objects.filter(named_storm__id=storm_id, model_output_snapshot_extracted=True).order_by('-date_returned')
+
+        # validate
+        if not storm.exists() or not nsem.exists():
+            # returning responses via dispatch isn't part of the drf workflow so manually returning JsonResponse instead
+            return JsonResponse(
+                status=exceptions.NotFound.status_code,
+                data={'detail': exceptions.NotFound.default_detail},
+            )
+
+        self.nsem = nsem.first()
+        self.storm = storm.first()
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -114,15 +124,16 @@ class NsemPsaVariableViewset(NsemPsaBaseViewset):
 
 
 class NsemPsaDatesViewset(NsemPsaBaseViewset):
-    # required but unnecessary since we're returning a specific nsem's dates
-    queryset = NSEM.objects.none()
+    queryset = NSEM.objects.none()  # required but unnecessary since we're returning a specific nsem's dates
+    pagination_class = None
 
     def list(self, request, *args, **kwargs):
         return Response(self.nsem.dates)
 
 
 class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
-    queryset = NsemPsaData.objects.all()  # manually defined in list()
+    queryset = NsemPsaData.objects.all()  # defined in list()
+    pagination_class = None
 
     def list(self, request, *args, lat=None, lon=None, **kwargs):
 
@@ -181,6 +192,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
     #     - returns geojson results
 
     filterset_class = NsemPsaDataFilter
+    pagination_class = None
 
     @method_decorator(gzip_page)
     @method_decorator(cache_control(max_age=3600))
