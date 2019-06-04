@@ -8,6 +8,7 @@ from django.contrib.gis.db.models import Collect, GeometryField
 from rest_framework import viewsets
 from rest_framework import exceptions
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
@@ -92,7 +93,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
 
     def dispatch(self, request, *args, **kwargs):
         # define the storm
-        self.storm = NamedStorm.objects.get(id=kwargs.pop('storm_id'))
+        self.storm = get_object_or_404(NamedStorm, id=kwargs.pop('storm_id'))
 
         # get most recent, valid, nsem
         nsem = self.storm.nsem_set.filter(model_output_snapshot_extracted=True).order_by('-date_returned')
