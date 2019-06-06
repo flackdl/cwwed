@@ -2,6 +2,7 @@ import json
 import logging
 import math
 from datetime import datetime
+import pytz
 import xarray
 import matplotlib
 from django.contrib.gis import geos
@@ -149,7 +150,7 @@ class Command(BaseCommand):
         unix_epoch = np.datetime64(0, 's')
         one_second = np.timedelta64(1, 's')
         seconds_since_epoch = (dt64 - unix_epoch) / one_second
-        return datetime.utcfromtimestamp(seconds_since_epoch)
+        return datetime.utcfromtimestamp(seconds_since_epoch).replace(tzinfo=pytz.utc)
 
     def build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None, mask_geojson: Callable = None):
 
@@ -184,22 +185,28 @@ class Command(BaseCommand):
                     color=feature['properties']['fill'],
                 ).save()
 
-    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, dt: datetime):
+    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, dt: datetime):
+
+        logging.info('building barbs at {}'.format(dt))
 
         nan_mask = ~np.isnan(wind_directions)
 
         # get a subset so we're not displaying every single point
-        wind_directions = wind_directions[nan_mask][::100]
-        x = self.dataset.x[self.mask][nan_mask][::100].values
-        y = self.dataset.y[self.mask][nan_mask][::100].values
+        wind_directions = wind_directions[nan_mask][::50]
+        wind_speeds = wind_speeds[nan_mask][::50]
+        x = self.dataset.x[self.mask][nan_mask][::50].values
+        y = self.dataset.y[self.mask][nan_mask][::50].values
 
-        # build new psa results from geojson output
         for i, direction in enumerate(wind_directions):
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=geos.Point(x[i], y[i]),
-                value=direction,
+                value=direction,  # we're storing speed and direction in "meta" but this is a required field
+                meta={
+                    'speed': {'value': wind_speeds[i].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
+                    'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_RADIAN},
+                }
             ).save()
 
     def process_wave_height(self):
@@ -207,7 +214,7 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
-        nsem_psa_variable = NsemPsaVariable(
+        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Wave Height',
             color_bar=self.color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
@@ -231,7 +238,7 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
-        nsem_psa_variable = NsemPsaVariable(
+        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Water Level',
             color_bar=self.color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
@@ -257,7 +264,7 @@ class Command(BaseCommand):
         z = self.dataset['water_level_max'][self.mask]
 
         # create psa variable to assign data
-        nsem_psa_variable = NsemPsaVariable(
+        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Water Level Max',
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
@@ -268,24 +275,23 @@ class Command(BaseCommand):
         )
         nsem_psa_variable.save()
 
-        # TODO - should we mask zero-values with self.water_level_mask_geojson?
-        self.build_contours(nsem_psa_variable, z, cmap)
+        self.build_contours(nsem_psa_variable, z, cmap, mask_geojson=self.water_level_mask_geojson)
 
     def process_wind(self):
 
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variables to assign data
-        nsem_psa_variable_direction = NsemPsaVariable(
+        nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind Direction',
-            geo_type=NsemPsaVariable.GEO_TYPE_WIND_ARROW,
+            name='Wind Barbs',
+            geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_RADIAN,
+            units=NsemPsaVariable.UNITS_RADIAN,  # placeholder since wind barbs use two units (speed & direction)
             auto_displayed=True,
         )
 
-        nsem_psa_variable_speed = NsemPsaVariable(
+        nsem_psa_variable_speed, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Wind Speed',
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
@@ -294,7 +300,7 @@ class Command(BaseCommand):
             auto_displayed=True,
         )
 
-        nsem_psa_variable_direction.save()
+        nsem_psa_variable_barbs.save()
         nsem_psa_variable_speed.save()
 
         min_speed = None
@@ -316,7 +322,7 @@ class Command(BaseCommand):
             # barbs
             #
 
-            self.build_wind_barbs(nsem_psa_variable_direction, wind_directions, dt)
+            self.build_wind_barbs(nsem_psa_variable_barbs, wind_directions, wind_speeds, dt)
 
             #
             # contours

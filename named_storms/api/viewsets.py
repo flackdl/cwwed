@@ -204,7 +204,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         group all geometries together by same variable & value which reduces total features
         """
         qs = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
-        qs = qs.values(*['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+        qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
         qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
@@ -233,8 +233,9 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
                 "type": "Feature",
                 "properties": {
                     "name": data['nsem_psa_variable__name'],
-                    "unit": data['nsem_psa_variable__units'],
+                    "units": data['nsem_psa_variable__units'],
                     "value": data['value'],
+                    "meta": data['meta'],
                     "date": data['date'].isoformat() if data['date'] else None,
                     "color": data['color'],
                 },

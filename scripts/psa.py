@@ -2,11 +2,12 @@ import xarray as xr
 
 
 water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/fort.63.nc'
+water_level_max_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc'
 wind_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_wnd.nc'
 wave_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc'
 
 dataset_water_level = xr.open_dataset(water_level_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
-dataset_water_level_max = xr.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/WW3/adcirc/maxele.63.nc', drop_variables=('max_nvdll', 'max_nvell'))
+dataset_water_level_max = xr.open_dataset(water_level_max_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
 dataset_wave_height = xr.open_dataset(wave_dataset_path)
 dataset_wind = xr.open_dataset(wind_dataset_path)
 

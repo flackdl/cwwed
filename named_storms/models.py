@@ -155,8 +155,7 @@ class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'
     DATA_TYPE_MAX_VALUES = 'max-values'
     GEO_TYPE_POLYGON = 'polygon'
-    GEO_TYPE_POINT = 'point'
-    GEO_TYPE_WIND_ARROW = 'wind-arrow'
+    GEO_TYPE_WIND_BARB = 'wind-barb'
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
     UNITS_RADIAN = 'rad'
@@ -174,8 +173,7 @@ class NsemPsaVariable(models.Model):
 
     GEO_TYPE_CHOICES = (
         (GEO_TYPE_POLYGON, GEO_TYPE_POLYGON),
-        (GEO_TYPE_POINT, GEO_TYPE_POINT),
-        (GEO_TYPE_WIND_ARROW, GEO_TYPE_WIND_ARROW),
+        (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
     )
 
     nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
@@ -200,6 +198,7 @@ class NsemPsaData(models.Model):
     geo = models.GeometryField(geography=True)
     bbox = models.GeometryField(geography=False, null=True)
     value = models.FloatField()
+    meta = fields.JSONField(default=dict, blank=True)
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
     def __str__(self):

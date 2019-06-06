@@ -203,7 +203,7 @@ export class PsaComponent implements OnInit {
         // update layers
         this.availableMapLayers.forEach((availableLayer) => {
           // wind barbs
-          if (availableLayer['variable']['geo_type'] === 'wind-arrow') {
+          if (availableLayer['variable']['geo_type'] === 'wind-barb') {
             availableLayer['layer'].setStyle((feature) => {
               return this._getWindLayerStyle(feature);
             });
@@ -299,14 +299,54 @@ export class PsaComponent implements OnInit {
   }
 
   protected _getWindLayerStyle(feature): Style {
+    let icon;
 
-    const icon = '/assets/psa/arrow.png';
+    // the speed is stored in the feature's "meta" key
+    const meta = feature.get('meta') || {};
+    const speedData = meta['speed'] || {};
+    const knots = (speedData['value'] || 0) * 1.94384;
+
+    // https://commons.wikimedia.org/wiki/Wind_speed
+    if (_.inRange(knots, 0, 2)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_00.svg.png';
+    } else if (_.inRange(knots, 2, 7)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_01.svg.png';
+    } else if (_.inRange(knots, 7, 12)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_02.svg.png';
+    } else if (_.inRange(knots, 12, 17)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_03.svg.png';
+    } else if (_.inRange(knots, 17, 22)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_04.svg.png';
+    } else if (_.inRange(knots, 22, 27)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_05.svg.png';
+    } else if (_.inRange(knots, 27, 32)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_06.svg.png';
+    } else if (_.inRange(knots, 32, 37)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_07.svg.png';
+    } else if (_.inRange(knots, 37, 42)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_08.svg.png';
+    } else if (_.inRange(knots, 42, 47)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_09.svg.png';
+    } else if (_.inRange(knots, 47, 52)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_10.svg.png';
+    } else if (_.inRange(knots, 52, 57)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_11.svg.png';
+    } else if (_.inRange(knots, 57, 62)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_12.svg.png';
+    } else if (_.inRange(knots, 62, 83)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_13.svg.png';
+    } else if (_.inRange(knots, 83, 102)) {
+      icon = '/assets/psa/50px-Symbol_wind_speed_14.svg.png';
+    } else {
+      icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
+    }
 
     return new Style({
       image: new Icon({
         rotation: -feature.get('value'),  // direction is in radians and rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
+        scale: .75,
       }),
     });
   }
@@ -371,7 +411,7 @@ export class PsaComponent implements OnInit {
     this.availableMapLayers = this.psaVariables.map((variable) => {
       let layer;
 
-      if (variable.geo_type === 'wind-arrow') {
+      if (variable.geo_type === 'wind-barb') {
         layer = new VectorLayer({
           source: this._getVariableVectorSource(variable),
           style: (feature) => {
@@ -534,11 +574,25 @@ export class PsaComponent implements OnInit {
 
           const variableName = feature.get('name');
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
-          const variableUnit = feature.get('unit');
+          const variableUnits = feature.get('units');
+          const variableMeta = feature.get('meta') || {};
 
-          // make sure not to overwrite an existing value from an overlapping feature of the same variable
-          if (variableName !== undefined && !_.has(currentFeature, variableName)) {
-            currentFeature[variableName] = `${variableValue} ${variableUnit}`;
+          // find feature's matching psa variable
+          const psaVariable = _.find(this.psaVariables, (variable) => {
+            return variable.name === variableName;
+          });
+
+          // don't overwrite an existing value from an overlapping feature of the same variable
+          if (!_.has(currentFeature, variableName)){
+            // special handling for wind barbs
+            if (psaVariable && psaVariable.geo_type === 'wind-barb') {
+              if (variableMeta['speed'] && variableMeta['direction']) {
+                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
+                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
+              }
+            } else {
+              currentFeature[variableName] = `${variableValue} ${variableUnits}`;
+            }
           }
         });
       }
