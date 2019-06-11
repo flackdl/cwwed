@@ -156,6 +156,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         bbox_data = bbox_query.only('id').values('id')
 
         # find data covering point from the bbox results
+        # TODO - need to find nearest wind point from supplied point
         time_series_query = NsemPsaData.objects.filter(
             id__in=[bbox['id'] for bbox in bbox_data],
             geo__covers=point,

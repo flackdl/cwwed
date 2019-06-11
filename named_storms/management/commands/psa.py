@@ -65,7 +65,7 @@ GEO_POLY = Polygon([
 
 
 class Command(BaseCommand):
-    help = 'Create Post Storm Assessments'
+    help = 'Create Post Storm Assessment'
 
     storm: NamedStorm = None
     nsem: NSEM = None
@@ -113,10 +113,10 @@ class Command(BaseCommand):
         self.nsem.save()
 
         # delete any previous psa results for this nsem
-        self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
+        #self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        self.process_water_level_max()
-        self.process_water_level()
+        #self.process_water_level_max()
+        #self.process_water_level()
         self.process_wave_height()
         self.process_wind()
 
@@ -214,7 +214,7 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
-        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
+        nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Wave Height',
             color_bar=self.color_bar_values(self.dataset['wave_height'].min(), self.dataset['wave_height'].max(), cmap),
@@ -238,7 +238,7 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
-        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
+        nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Water Level',
             color_bar=self.color_bar_values(self.dataset['water_level'].min(), self.dataset['water_level'].max(), cmap),
@@ -264,7 +264,7 @@ class Command(BaseCommand):
         z = self.dataset['water_level_max'][self.mask]
 
         # create psa variable to assign data
-        nsem_psa_variable, _ = NsemPsaVariable.objects.get_or_create(
+        nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
             name='Water Level Max',
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
@@ -282,26 +282,26 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variables to assign data
-        nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
+        nsem_psa_variable_barbs = NsemPsaVariable(
             nsem=self.nsem,
-            name='Wind Barbs',
+            name='Wind',
             geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             units=NsemPsaVariable.UNITS_RADIAN,  # placeholder since wind barbs use two units (speed & direction)
             auto_displayed=True,
         )
 
-        nsem_psa_variable_speed, _ = NsemPsaVariable.objects.get_or_create(
-            nsem=self.nsem,
-            name='Wind Speed',
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
-            auto_displayed=True,
-        )
+        #nsem_psa_variable_speed = NsemPsaVariable(
+        #    nsem=self.nsem,
+        #    name='Wind Speed',
+        #    geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+        #    data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+        #    units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+        #    auto_displayed=True,
+        #)
 
         nsem_psa_variable_barbs.save()
-        nsem_psa_variable_speed.save()
+        #nsem_psa_variable_speed.save()
 
         min_speed = None
         max_speed = None
@@ -328,12 +328,12 @@ class Command(BaseCommand):
             # contours
             #
 
-            wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
+            #wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
-            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
-            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
+            #min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
+            #max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
 
-            self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
+            #self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
 
-        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
-        nsem_psa_variable_speed.save()
+        #nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
+        #nsem_psa_variable_speed.save()
