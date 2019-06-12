@@ -1,4 +1,6 @@
 import json
+from django.contrib.gis.db.models.functions import Distance
+from django.db.models import Q
 from django.db.models.functions import Cast
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
@@ -151,15 +153,29 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
             nsem_psa_variable__nsem=self.nsem,
             bbox__covers=point,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-        )
+        ).only('id')
 
-        bbox_data = bbox_query.only('id').values('id')
+        wind_closest_query = NsemPsaData.objects.filter(
+            date=self.nsem.dates[0],  # wind points are geographically the same across all dates since they're just points and not contours
+            geo__dwithin=(point, 5000),
+            nsem_psa_variable__nsem=self.nsem,
+            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
+        )
+        wind_closest_query = wind_closest_query.annotate(distance=Distance('geo', point))
+        wind_closest_query = wind_closest_query.order_by('distance')
+        wind_closest_point = wind_closest_query.first()
+
+        # TODO - handle absent wind closest point
 
         # find data covering point from the bbox results
-        # TODO - need to find nearest wind point from supplied point
-        time_series_query = NsemPsaData.objects.filter(
-            id__in=[bbox['id'] for bbox in bbox_data],
-            geo__covers=point,
+        time_series_query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(
+            Q(id__in=bbox_query,
+              geo__covers=point) | Q(geom__equals=wind_closest_point.geo,
+                                     nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                                     nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
+                                     ),
+            nsem_psa_variable__nsem=self.nsem,
         )
         time_series_query = time_series_query.order_by('nsem_psa_variable__name', 'date')
         time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
@@ -167,9 +183,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
         results = []
 
-        # retrieve a list of all contour + time-series variables
-        variables = self.nsem.nsempsavariable_set.filter(
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON)
+        # time-series variables
+        variables = self.nsem.nsempsavariable_set.filter(data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES)
 
         # include data grouped by variable
         for variable in variables:

@@ -134,7 +134,7 @@ export class PsaComponent implements OnInit {
 
   public timeSeriesVariables() {
     return _.filter(this.psaVariables, (psaVariable) => {
-      return psaVariable.geo_type === 'polygon' && psaVariable.data_type === 'time-series';
+      return psaVariable.data_type === 'time-series';
     });
   }
 
