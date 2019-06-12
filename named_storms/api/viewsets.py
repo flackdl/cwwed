@@ -148,16 +148,18 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
         point = geos.Point(x=lon, y=lat)
 
-        # find data covering bounding boxes
+        # find contour data covering bounding boxes
         bbox_query = NsemPsaData.objects.filter(
             nsem_psa_variable__nsem=self.nsem,
             bbox__covers=point,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
         ).only('id')
 
+        # find the closest wind point to query against
         wind_closest_query = NsemPsaData.objects.filter(
             date=self.nsem.dates[0],  # wind points are geographically the same across all dates since they're just points and not contours
-            geo__dwithin=(point, 5000),
+            geo__dwithin=(point, 5000),  # a few miles
             nsem_psa_variable__nsem=self.nsem,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
@@ -166,15 +168,19 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         wind_closest_query = wind_closest_query.order_by('distance')
         wind_closest_point = wind_closest_query.first()
 
-        # TODO - handle absent wind closest point
-
         # find data covering point from the bbox results
         time_series_query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(
-            Q(id__in=bbox_query,
-              geo__covers=point) | Q(geom__equals=wind_closest_point.geo,
-                                     nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                                     nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-                                     ),
+            (
+                    Q(
+                        id__in=bbox_query,
+                        geo__covers=point,
+                    ) |
+                    Q(
+                        geom__equals=wind_closest_point.geo if wind_closest_point else geos.Point(),
+                        nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                        nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
+                    )
+            ),
             nsem_psa_variable__nsem=self.nsem,
         )
         time_series_query = time_series_query.order_by('nsem_psa_variable__name', 'date')
