@@ -164,26 +164,29 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
         )
+
+        # find wind point that's closest to supplied point
         wind_closest_query = wind_closest_query.annotate(distance=Distance('geo', point))
         wind_closest_query = wind_closest_query.order_by('distance')
         wind_closest_point = wind_closest_query.first()
 
         # find data covering point from the bbox results
-        time_series_query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(
-            (
-                    Q(
-                        id__in=bbox_query,
-                        geo__covers=point,
-                    ) |
-                    Q(
-                        geom__equals=wind_closest_point.geo if wind_closest_point else geos.Point(),
-                        nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                        nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-                    )
-            ),
+        contours_query = NsemPsaData.objects.filter(
+            id__in=bbox_query,
+            geo__covers=point,
             nsem_psa_variable__nsem=self.nsem,
         )
-        time_series_query = time_series_query.order_by('nsem_psa_variable__name', 'date')
+
+        # find data covering wind points
+        wind_barbs_query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(
+            geom__equals=wind_closest_point.geo if wind_closest_point else geos.Point(),
+            nsem_psa_variable__nsem=self.nsem,
+            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
+        )
+
+        # union the contour + wind barb queries
+        time_series_query = contours_query.union(wind_barbs_query).order_by('nsem_psa_variable__name', 'date')
         time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
         time_series_data = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
 
