@@ -113,10 +113,11 @@ class Command(BaseCommand):
         self.nsem.save()
 
         # delete any previous psa results for this nsem
-        #self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
+        if options['delete']:
+            self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        #self.process_water_level_max()
-        #self.process_water_level()
+        self.process_water_level_max()
+        self.process_water_level()
         self.process_wave_height()
         self.process_wind()
 
@@ -202,7 +203,7 @@ class Command(BaseCommand):
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=geos.Point(x[i], y[i]),
-                value=direction,  # we're storing speed and direction in "meta" but this is a required field
+                value=wind_speeds[i].astype('float'),  # storing speed here for simpler time-series queries
                 meta={
                     'speed': {'value': wind_speeds[i].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
                     'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_RADIAN},
@@ -291,17 +292,17 @@ class Command(BaseCommand):
             auto_displayed=True,
         )
 
-        #nsem_psa_variable_speed = NsemPsaVariable(
-        #    nsem=self.nsem,
-        #    name='Wind Speed',
-        #    geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-        #    data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-        #    units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
-        #    auto_displayed=True,
-        #)
+        nsem_psa_variable_speed = NsemPsaVariable(
+            nsem=self.nsem,
+            name='Wind Speed',
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            auto_displayed=True,
+        )
 
         nsem_psa_variable_barbs.save()
-        #nsem_psa_variable_speed.save()
+        nsem_psa_variable_speed.save()
 
         min_speed = None
         max_speed = None
@@ -328,12 +329,21 @@ class Command(BaseCommand):
             # contours
             #
 
-            #wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
+            wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
-            #min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
-            #max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
+            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
+            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
 
-            #self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
+            self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
 
-        #nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
-        #nsem_psa_variable_speed.save()
+        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
+        nsem_psa_variable_speed.save()
+
+    def add_arguments(self, parser):
+
+        # named (optional) arguments
+        parser.add_argument(
+            '--delete',
+            action='store_true',
+            help='Delete existing variables and data',
+        )

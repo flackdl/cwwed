@@ -1,6 +1,5 @@
 import json
 from django.contrib.gis.db.models.functions import Distance
-from django.db.models import Q
 from django.db.models.functions import Cast
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
