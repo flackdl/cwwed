@@ -169,25 +169,26 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         wind_closest_query = wind_closest_query.order_by('distance')
         wind_closest_point = wind_closest_query.first()
 
+        fields_order = ('nsem_psa_variable__name', 'date')
+        fields_values = ('nsem_psa_variable__name', 'value', 'date')
+
         # find data covering point from the bbox results
         contours_query = NsemPsaData.objects.filter(
             id__in=bbox_query,
             geo__covers=point,
             nsem_psa_variable__nsem=self.nsem,
-        )
+        ).order_by(*fields_order).only(*fields_values).values(*fields_values)
 
         # find data covering wind points
-        wind_barbs_query = NsemPsaData.objects.annotate(geom=Cast('geo', GeometryField())).filter(
-            geom__equals=wind_closest_point.geo if wind_closest_point else geos.Point(),
+        wind_barbs_query = NsemPsaData.objects.annotate(point=Cast('geo', GeometryField())).filter(
+            point=wind_closest_point.geo if wind_closest_point else geos.Point(),
             nsem_psa_variable__nsem=self.nsem,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-        )
+        ).order_by(*fields_order).only(*fields_values).values(*fields_values)
 
         # union the contour + wind barb queries
-        time_series_query = contours_query.union(wind_barbs_query).order_by('nsem_psa_variable__name', 'date')
-        time_series_query = time_series_query.only('nsem_psa_variable__name', 'value', 'date')
-        time_series_data = time_series_query.values('nsem_psa_variable__name', 'value', 'date')
+        time_series_query = contours_query.union(wind_barbs_query)
 
         results = []
 
@@ -203,7 +204,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
             }
             for date in self.nsem.dates:
                 # find matching record if it exists
-                value = next((v['value'] for v in time_series_data if v['nsem_psa_variable__name'] == variable.name and v['date'] == date), 0)
+                value = next((v['value'] for v in time_series_query if v['nsem_psa_variable__name'] == variable.name and v['date'] == date), 0)
                 result['values'].append(value)
             results.append(result)
 
