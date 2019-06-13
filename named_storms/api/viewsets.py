@@ -157,8 +157,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
         # find the closest wind point to query against
         wind_closest_query = NsemPsaData.objects.filter(
-            date=self.nsem.dates[0],  # wind points are geographically the same across all dates since they're just points and not contours
-            geo__dwithin=(point, 5000),  # several miles (in meters)
+            date=self.nsem.dates[0],  # wind points are geographically the same across all dates since they're static points and not contours
             nsem_psa_variable__nsem=self.nsem,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
@@ -167,7 +166,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         # find wind point that's closest to supplied point
         wind_closest_query = wind_closest_query.annotate(distance=Distance('geo', point))
         wind_closest_query = wind_closest_query.order_by('distance')
-        wind_closest_point = wind_closest_query.first()
+        wind_closest_point = wind_closest_query[:1].first()
 
         fields_order = ('nsem_psa_variable__name', 'date')
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
