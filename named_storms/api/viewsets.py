@@ -188,7 +188,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         ).order_by(*fields_order).only(*fields_values).values(*fields_values)
 
         # union the contour + wind barb queries
-        time_series_query = contours_query.union(wind_barbs_query)
+        time_series_query = contours_query.union(wind_barbs_query, all=True)
 
         results = []
 
