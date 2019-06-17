@@ -6,6 +6,7 @@ import pytz
 import xarray
 import matplotlib
 from django.contrib.gis import geos
+from django.contrib.gis.db.models.functions import GeoHash
 from named_storms.models import NSEM, NsemPsaData, NamedStorm, NsemPsaVariable
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
@@ -199,10 +200,12 @@ class Command(BaseCommand):
         y = self.dataset.y[self.mask][nan_mask][::50].values
 
         for i, direction in enumerate(wind_directions):
+            point = geos.Point(x[i], y[i])
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
-                geo=geos.Point(x[i], y[i]),
+                geo=point,
+                geo_hash=GeoHash(point),
                 value=wind_speeds[i].astype('float'),  # storing speed here for simpler time-series queries
                 meta={
                     'speed': {'value': wind_speeds[i].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
