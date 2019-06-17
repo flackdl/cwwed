@@ -200,7 +200,7 @@ class Command(BaseCommand):
         y = self.dataset.y[self.mask][nan_mask][::50].values
 
         for i, direction in enumerate(wind_directions):
-            point = geos.Point(x[i], y[i])
+            point = geos.Point(x[i], y[i], srid=4326)
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
