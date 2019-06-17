@@ -341,9 +341,10 @@ export class PsaComponent implements OnInit {
       icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
     }
 
+    const directionData = meta.direction || {};
     return new Style({
       image: new Icon({
-        rotation: -feature.get('value'),  // direction is in radians and rotates clockwise
+        rotation: -directionData.value,  // unit is radians and rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
         scale: .75,
