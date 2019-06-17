@@ -1,5 +1,5 @@
 import json
-from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.db.models.functions import Distance, GeoHash
 from django.db.models.functions import Cast
 from django.http import JsonResponse
 from django.utils.decorators import method_decorator
@@ -172,7 +172,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         fields_order = ('nsem_psa_variable__name', 'date')
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
-        # find data covering point from the bbox results
+        # find contours covering point from the bbox results
         contours_query = NsemPsaData.objects.filter(
             id__in=bbox_query,
             geo__covers=point,
@@ -180,8 +180,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         ).order_by(*fields_order).only(*fields_values).values(*fields_values)
 
         # find data covering wind points
-        wind_barbs_query = NsemPsaData.objects.annotate(point=Cast('geo', GeometryField())).filter(
-            point=wind_closest_point.geo if wind_closest_point else geos.Point(),
+        wind_barbs_query = NsemPsaData.objects.filter(
+            geo_hash=GeoHash(wind_closest_point.geo if wind_closest_point else geos.Point(srid=4326)),
             nsem_psa_variable__nsem=self.nsem,
             nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,

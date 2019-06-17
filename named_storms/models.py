@@ -196,7 +196,7 @@ class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
-    geo_hash = models.CharField(null=True, blank=True)  # only populated on Point geometries
+    geo_hash = models.CharField(max_length=20, null=True, blank=True)  # only populated on Point geometries
     bbox = models.GeometryField(geography=False, null=True)
     value = models.FloatField()
     meta = fields.JSONField(default=dict, blank=True)
@@ -208,4 +208,5 @@ class NsemPsaData(models.Model):
     class Meta:
         indexes = [
             Index(fields=['nsem_psa_variable', 'date']),
+            Index(fields=['nsem_psa_variable', 'geo_hash']),
         ]
