@@ -15,8 +15,7 @@ import numpy as np
 import geojsoncontour
 from typing import Callable
 from shapely.geometry import Polygon, Point
-from django.core.management import BaseCommand
-
+from django.core.management import BaseCommand, CommandError
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -24,8 +23,15 @@ CONTOUR_LEVELS = 30
 
 COLOR_STEPS = 10  # color bar range
 
+VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
+VARIABLE_WATER_LEVEL = 'water_level'
+VARIABLE_WAVE_HEIGHT = 'wave_height'
+VARIABLE_WIND = 'wind'
+VARIABLE_WIND_SPEED = 'wind_speed'
+VARIABLES = [VARIABLE_WATER_LEVEL_MAX, VARIABLE_WATER_LEVEL, VARIABLE_WAVE_HEIGHT, VARIABLE_WIND, VARIABLE_WIND_SPEED]
+
 # mid atlantic coast
-GEO_POLY = Polygon([
+LANDFALL_POLY = Polygon([
     [-78.50830078125, 33.76088200086917],
     [-77.82714843749999, 33.815666308702774],
     [-77.607421875, 34.161818161230386],
@@ -78,33 +84,38 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        logging.info('opening dataset')
+        if not options['variable']:
+            raise CommandError('Missing required variable(s) to process')
 
         self.dataset = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
-        logging.info('creating geo mask')
+        if VARIABLE_WIND_SPEED in options['variable']:
+            self.process_wind_speed()
+        else:
+            pass
+            #logging.info('creating geo mask')
 
-        # create a mask to subset data from the geo's convex hull
-        # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
-        self.mask = np.array([Point(coord).within(GEO_POLY.convex_hull) for coord in np.column_stack((self.dataset.x, self.dataset.y))])
+            ## create a mask to subset data from the landfall geo's convex hull
+            ## NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
+            #self.mask = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset.x, self.dataset.y))])
 
-        x = self.dataset.x[self.mask]
-        y = self.dataset.y[self.mask]
+            #x = self.dataset.x[self.mask]
+            #y = self.dataset.y[self.mask]
 
-        logging.info('building triangulation')
+            #logging.info('building triangulation')
 
-        # build delaunay triangles
-        self.triangulation = tri.Triangulation(x, y)
+            ## build delaunay triangles
+            #self.triangulation = tri.Triangulation(x, y)
 
-        logging.info('masking triangulation')
+            #logging.info('masking triangulation')
 
-        # mask triangles outside geo
-        tri_mask = [not GEO_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
-        self.triangulation.set_mask(tri_mask)
+            ## mask triangles outside geo
+            #tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+            #self.triangulation.set_mask(tri_mask)
 
-        # build grid constraints
-        self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-        self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+            ## build grid constraints
+            #self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+            #self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
@@ -117,10 +128,10 @@ class Command(BaseCommand):
         if options['delete']:
             self.nsem.nsempsavariable_set.filter(nsem=self.nsem).delete()
 
-        self.process_water_level_max()
-        self.process_water_level()
-        self.process_wave_height()
-        self.process_wind()
+        #self.process_water_level_max()
+        #self.process_water_level()
+        #self.process_wave_height()
+        self.process_wind_speed()
 
     @staticmethod
     def water_level_mask_geojson(geojson_result: dict):
@@ -281,11 +292,62 @@ class Command(BaseCommand):
 
         self.build_contours(nsem_psa_variable, z, cmap, mask_geojson=self.water_level_mask_geojson)
 
-    def process_wind(self):
+    def process_wind_speed(self):
+
+        ds = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/anil/wrfout_d01_2012-10-29_14_00.nc')
+
+        # landfall mask
+        mask = np.array([
+            [Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack([ds.lon[i], ds.lat[i]])]
+            for i in range(len(ds.lat))
+        ])
 
         cmap = matplotlib.cm.get_cmap('jet')
 
-        # create psa variables to assign data
+        # create psa variable to assign data
+        nsem_psa_variable_speed = NsemPsaVariable(
+            nsem=self.nsem,
+            name='Wind Speed',
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            auto_displayed=True,
+        )
+        nsem_psa_variable_speed.save()
+
+        #
+        # contours
+        #
+
+        min_speed = None
+        max_speed = None
+
+        for date in ds['time']:
+
+            # capture date and convert to datetime
+            dt = self.datetime64_to_datetime(date)
+
+            # TODO - need to refactor to use structured grid and right variable(s)
+
+            # get masked values
+            windx_values = ds.sel(time=date)['uwnd'][mask].values
+            windy_values = ds.sel(time=date)['vwnd'][mask].values
+
+            wind_speeds = np.abs(np.hypot(windx_values, windy_values))
+
+            wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
+
+            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
+            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
+
+            self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
+
+        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
+        nsem_psa_variable_speed.save()
+
+    def process_wind(self):
+
+        # create psa variable to assign data
         nsem_psa_variable_barbs = NsemPsaVariable(
             nsem=self.nsem,
             name='Wind',
@@ -295,20 +357,7 @@ class Command(BaseCommand):
             auto_displayed=True,
         )
 
-        nsem_psa_variable_speed = NsemPsaVariable(
-            nsem=self.nsem,
-            name='Wind Speed',
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
-            auto_displayed=True,
-        )
-
         nsem_psa_variable_barbs.save()
-        nsem_psa_variable_speed.save()
-
-        min_speed = None
-        max_speed = None
 
         for date in self.dataset['time']:
 
@@ -328,23 +377,16 @@ class Command(BaseCommand):
 
             self.build_wind_barbs(nsem_psa_variable_barbs, wind_directions, wind_speeds, dt)
 
-            #
-            # contours
-            #
-
-            wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
-
-            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
-            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
-
-            self.build_contours(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
-
-        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
-        nsem_psa_variable_speed.save()
-
     def add_arguments(self, parser):
 
-        # named (optional) arguments
+        parser.add_argument(
+            '--variable',
+            required=True,
+            choices=VARIABLES,
+            action='append',
+            help='Which variables to process',
+        )
+
         parser.add_argument(
             '--delete',
             action='store_true',
