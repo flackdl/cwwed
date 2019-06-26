@@ -251,6 +251,9 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
         queryset = self.filter_queryset(self.get_queryset())
 
+        # TODO
+        queryset = queryset.filter(value=9)
+
         features = []
 
         for data in queryset:
