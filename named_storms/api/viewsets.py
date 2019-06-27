@@ -251,9 +251,6 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
         queryset = self.filter_queryset(self.get_queryset())
 
-        # TODO
-        queryset = queryset.filter(value=9)
-
         features = []
 
         for data in queryset:
@@ -265,7 +262,8 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
                     "value": data['value'],
                     "meta": data['meta'],
                     "date": data['date'].isoformat() if data['date'] else None,
-                    "color": data['color'],
+                    "fill": data['color'],
+                    "stroke": data['color'],
                 },
                 "geometry": json.loads(data['geom'].json),
             })

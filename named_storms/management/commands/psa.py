@@ -15,7 +15,7 @@ import numpy as np
 import geojsoncontour
 from typing import Callable
 from shapely.geometry import Polygon, Point
-from django.core.management import BaseCommand, CommandError
+from django.core.management import BaseCommand
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -31,6 +31,12 @@ VARIABLE_WIND_SPEED = 'wind_speed'
 VARIABLES = [VARIABLE_WATER_LEVEL_MAX, VARIABLE_WATER_LEVEL, VARIABLE_WAVE_HEIGHT, VARIABLE_WIND, VARIABLE_WIND_SPEED]
 
 # mid atlantic coast
+"""
+LANDFALL_POLY = Polygon([
+    [-75.87158203125, 39.487084981687495], [-75.146484375, 39.487084981687495], [-75.146484375, 39.96870074491696], [-75.87158203125, 39.96870074491696],
+    [-75.87158203125, 39.487084981687495]
+])
+"""
 LANDFALL_POLY = Polygon([
     [-78.50830078125, 33.76088200086917],
     [-77.82714843749999, 33.815666308702774],
@@ -86,9 +92,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        if not options['variable']:
-            raise CommandError('Missing required variable(s) to process')
-
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
@@ -99,43 +102,43 @@ class Command(BaseCommand):
         else:
             pass
             ## delete any previous psa results for this nsem
-            #if options['delete']:
+            # if options['delete']:
             #    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=[
             #        VARIABLE_WIND, VARIABLE_WATER_LEVEL, VARIABLE_WATER_LEVEL_MAX, VARIABLE_WAVE_HEIGHT]).delete()
 
-            #self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+            # self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
             ## save the datetime's on our nsem instance
-            #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
-            #self.nsem.save()
+            # self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
+            # self.nsem.save()
 
-            #logging.info('creating geo mask')
+            # logging.info('creating geo mask')
 
             ## create a mask to subset data from the landfall geo's convex hull
             ## NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
-            #self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
+            # self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
 
-            #x = self.dataset_unstructured.x[self.mask_unstructured]
-            #y = self.dataset_unstructured.y[self.mask_unstructured]
+            # x = self.dataset_unstructured.x[self.mask_unstructured]
+            # y = self.dataset_unstructured.y[self.mask_unstructured]
 
-            #logging.info('building triangulation')
+            # logging.info('building triangulation')
 
             ## build delaunay triangles
-            #self.triangulation = tri.Triangulation(x, y)
+            # self.triangulation = tri.Triangulation(x, y)
 
-            #logging.info('masking triangulation')
+            # logging.info('masking triangulation')
 
             ## mask triangles outside geo
-            #tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
-            #self.triangulation.set_mask(tri_mask)
+            # tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+            # self.triangulation.set_mask(tri_mask)
 
             ## build grid constraints
-            #self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-            #self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+            # self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+            # self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
-            #self.process_water_level_max()
-            #self.process_water_level()
-            #self.process_wave_height()
+            # self.process_water_level_max()
+            # self.process_water_level()
+            # self.process_wave_height()
 
     @staticmethod
     def water_level_mask_geojson(geojson_result: dict):
@@ -169,9 +172,8 @@ class Command(BaseCommand):
         seconds_since_epoch = (dt64 - unix_epoch) / one_second
         return datetime.utcfromtimestamp(seconds_since_epoch).replace(tzinfo=pytz.utc)
 
-    def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None, mask_geojson: Callable = None):
-
-        # TODO - need to mask to landfall
+    def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
+                                  mask_geojson: Callable = None):
 
         lat_masked = np.ma.masked_array(self.dataset_structured.lat, self.mask_structured)
         lon_masked = np.ma.masked_array(self.dataset_structured.lon, self.mask_structured)
@@ -180,11 +182,12 @@ class Command(BaseCommand):
         logging.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
 
         # create the contour
-        contourf = plt.contourf(lon_masked, lat_masked, zi_masked, CONTOUR_LEVELS, cmap=cmap)
+        contourf = plt.contourf(lon_masked, lat_masked, zi_masked, cmap=cmap)
 
         self.process_contours(nsem_psa_variable, contourf, dt, mask_geojson)
 
-    def build_contours_unstructured(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None, mask_geojson: Callable = None):
+    def build_contours_unstructured(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
+                                    mask_geojson: Callable = None):
 
         logging.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
 
@@ -201,7 +204,7 @@ class Command(BaseCommand):
     def process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None, mask_geojson: Callable = None):
 
         # convert matplotlib contourf to geojson
-        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(contourf=contourf, ndigits=10))
+        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(contourf=contourf))
 
         # mask regions
         if mask_geojson is not None:
@@ -263,7 +266,6 @@ class Command(BaseCommand):
         nsem_psa_variable.save()
 
         for z in self.dataset_unstructured['wave_height']:
-
             z = z[self.mask_unstructured]
 
             # capture date and convert to datetime
@@ -287,7 +289,6 @@ class Command(BaseCommand):
         nsem_psa_variable.save()
 
         for z in self.dataset_unstructured['water_level']:
-
             z = z[self.mask_unstructured]
 
             # capture date and convert to datetime
@@ -321,7 +322,7 @@ class Command(BaseCommand):
 
         # landfall mask
         self.mask_structured = np.array([
-            [not Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
+            [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
             for i in range(len(self.dataset_structured.lat))
         ])
 
@@ -346,7 +347,6 @@ class Command(BaseCommand):
         max_speed = None
 
         for date in self.dataset_structured['time']:
-
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
@@ -377,7 +377,6 @@ class Command(BaseCommand):
         nsem_psa_variable_barbs.save()
 
         for date in self.dataset_unstructured['time']:
-
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 

@@ -391,7 +391,7 @@ export class PsaComponent implements OnInit {
   protected _getWaterLayerStyle(feature) {
     return new Style({
       fill: new Fill({
-        color: hexToRgba(feature.get('color'), this.form.get('opacity').value),
+        color: hexToRgba(feature.get('fill'), this.form.get('opacity').value),
       }),
     })
   }
