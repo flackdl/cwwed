@@ -155,45 +155,20 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
             nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
         ).only('id')
 
-        # find the closest wind point to query against
-        wind_closest_query = NsemPsaData.objects.filter(
-            # wind points are geographically the same across all dates since they're static points and not contours
-            date=self.nsem.dates[0] if self.nsem.dates else None,
-            nsem_psa_variable__nsem=self.nsem,
-            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-        )
-
-        # find wind point that's closest to supplied point
-        wind_closest_query = wind_closest_query.annotate(distance=Distance('geo', point))
-        wind_closest_query = wind_closest_query.order_by('distance')
-        wind_closest_point = wind_closest_query[:1].first()
-
         fields_order = ('nsem_psa_variable__name', 'date')
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
         # find contours covering point from the bbox results
-        contours_query = NsemPsaData.objects.filter(
+        time_series_query = NsemPsaData.objects.filter(
             id__in=bbox_query,
             geo__covers=point,
             nsem_psa_variable__nsem=self.nsem,
         ).order_by(*fields_order).only(*fields_values).values(*fields_values)
 
-        # find data covering wind points
-        wind_barbs_query = NsemPsaData.objects.filter(
-            geo_hash=GeoHash(wind_closest_point.geo if wind_closest_point else geos.Point(srid=4326)),
-            nsem_psa_variable__nsem=self.nsem,
-            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-        ).order_by(*fields_order).only(*fields_values).values(*fields_values)
-
-        # union the contour + wind barb queries
-        time_series_query = contours_query.union(wind_barbs_query, all=True)
-
         results = []
 
         # time-series variables
-        variables = self.nsem.nsempsavariable_set.filter(data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES)
+        variables = self.nsem.nsempsavariable_set.filter(data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON)
 
         # include data grouped by variable
         for variable in variables:

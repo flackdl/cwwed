@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import re
 import math
 from datetime import datetime
 import pytz
@@ -20,18 +22,8 @@ from django.core.management import BaseCommand
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
 CONTOUR_LEVELS = 30
-
 COLOR_STEPS = 10  # color bar range
-
-VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
-VARIABLE_WATER_LEVEL = 'water_level'
-VARIABLE_WAVE_HEIGHT = 'wave_height'
-VARIABLE_WIND = 'wind'
-VARIABLE_WIND_SPEED = 'wind_speed'
-VARIABLES = [VARIABLE_WATER_LEVEL_MAX, VARIABLE_WATER_LEVEL, VARIABLE_WAVE_HEIGHT, VARIABLE_WIND, VARIABLE_WIND_SPEED]
-
-# mid atlantic coast
-LANDFALL_POLY = Polygon([
+LANDFALL_POLY = Polygon([  # mid atlantic coast
     [-78.50830078125, 33.76088200086917],
     [-77.82714843749999, 33.815666308702774],
     [-77.607421875, 34.161818161230386],
@@ -70,6 +62,23 @@ LANDFALL_POLY = Polygon([
     [-78.50830078125, 33.76088200086917],
 ])
 
+WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/anil/'
+
+ARG_VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
+ARG_VARIABLE_WATER_LEVEL = 'water_level'
+ARG_VARIABLE_WAVE_HEIGHT = 'wave_height'
+ARG_VARIABLE_WIND = 'wind'
+ARG_VARIABLE_WIND_SPEED = 'wind_speed'
+ARG_VARIABLES = [ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT, ARG_VARIABLE_WIND, ARG_VARIABLE_WIND_SPEED]
+
+ARG_TO_VARIABLE = {
+    ARG_VARIABLE_WATER_LEVEL_MAX: 'Water Level Max',
+    ARG_VARIABLE_WATER_LEVEL: 'Water Level',
+    ARG_VARIABLE_WAVE_HEIGHT: 'Wave Height',
+    ARG_VARIABLE_WIND: 'Wind',
+    ARG_VARIABLE_WIND_SPEED: 'Wind Speed',
+}
+
 
 class Command(BaseCommand):
     help = 'Create Post Storm Assessment'
@@ -89,27 +98,35 @@ class Command(BaseCommand):
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
-        if {VARIABLE_WIND_SPEED, VARIABLE_WIND}.intersection(options['variable']):
-            # open dataset and define landfall mask
-            self.dataset_structured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/anil/wrfout_d01_2012-10-29_14_00.nc')
-            self.mask_structured = np.array([
-                [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
-                for i in range(len(self.dataset_structured.lat))
-            ])
-            if VARIABLE_WIND_SPEED in options['variable']:
-                if options['delete']:
-                    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name='Wind Speed').delete()
-                self.process_wind_speed()
-            elif VARIABLE_WIND in options['variable']:
-                if options['delete']:
-                    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name='Wind').delete()
-                self.process_wind()
+        # these use a different, structured dataset
+        wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND}.intersection(options['variable'])
+        wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
+
+        if wind_arg_variables:
+
+            # delete existing variables
+            if options['delete']:
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_variables).delete()
+            for dataset_file in sorted(os.listdir(WIND_PATH)):
+                # must be like "wrfout_d01_2012-10-29_14_00.nc", i.e on the hour since we're doing hourly right now, and using "domain 1"
+                if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
+                    # open dataset and define landfall mask
+                    self.dataset_structured = xarray.open_dataset(os.path.join(WIND_PATH, dataset_file))
+                    self.mask_structured = np.array([
+                        [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
+                        for i in range(len(self.dataset_structured.lat))
+                    ])
+                    if ARG_VARIABLE_WIND_SPEED in options['variable']:
+                        self.process_wind_speed()
+                    elif ARG_VARIABLE_WIND in options['variable']:
+                        self.process_wind()
         else:
             pass
+            # TODO
             ## delete any previous psa results for this nsem
             # if options['delete']:
             #    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=[
-            #        VARIABLE_WIND, VARIABLE_WATER_LEVEL, VARIABLE_WATER_LEVEL_MAX, VARIABLE_WAVE_HEIGHT]).delete()
+            #        ARG_VARIABLE_WIND, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WAVE_HEIGHT]).delete()
 
             # self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
@@ -250,7 +267,7 @@ class Command(BaseCommand):
                     value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
                     meta={
                         'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
-                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREE},
+                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREES},
                     }
                 ).save()
 
@@ -325,15 +342,16 @@ class Command(BaseCommand):
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
-        nsem_psa_variable_speed = NsemPsaVariable(
+        nsem_psa_variable_speed, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Wind Speed',
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
-            auto_displayed=True,
+            defaults=dict(
+                geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+                auto_displayed=True,
+            ),
         )
-        nsem_psa_variable_speed.save()
 
         #
         # contours
@@ -361,13 +379,15 @@ class Command(BaseCommand):
     def process_wind(self):
 
         # create psa variable to assign data
-        nsem_psa_variable_barbs = NsemPsaVariable(
+        nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
             name='Wind',
-            geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_DEGREE,  # placeholder since wind barbs use two units (speed & direction)
-            auto_displayed=True,
+            defaults=dict(
+                geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
+                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
+                auto_displayed=True,
+            ),
         )
 
         nsem_psa_variable_barbs.save()
@@ -377,10 +397,11 @@ class Command(BaseCommand):
             dt = self.datetime64_to_datetime(date)
 
             # masked values and subset so we're not displaying every single point
-            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wspd10m'][::20, ::20], self.mask_structured[::20, ::20])
-            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wdir10m'][::20, ::20], self.mask_structured[::20, ::20])
-            xi = np.ma.masked_array(self.dataset_structured['lon'][::20, ::20], self.mask_structured[::20, ::20])
-            yi = np.ma.masked_array(self.dataset_structured['lat'][::20, ::20], self.mask_structured[::20, ::20])
+            subset = 10
+            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wspd10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wdir10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            xi = np.ma.masked_array(self.dataset_structured['lon'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            yi = np.ma.masked_array(self.dataset_structured['lat'][::subset, ::subset], self.mask_structured[::subset, ::subset])
 
             #
             # barbs
@@ -393,7 +414,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--variable',
             required=True,
-            choices=VARIABLES,
+            choices=ARG_VARIABLES,
             action='append',
             help='Which variables to process',
         )

@@ -159,7 +159,7 @@ class NsemPsaVariable(models.Model):
     GEO_TYPE_WIND_BARB = 'wind-barb'
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
-    UNITS_DEGREE = 'degree'
+    UNITS_DEGREES = 'degrees'
 
     DATA_TYPE_CHOICES = (
         (DATA_TYPE_TIME_SERIES, DATA_TYPE_TIME_SERIES),
@@ -169,7 +169,7 @@ class NsemPsaVariable(models.Model):
     UNITS_CHOICES = (
         (UNITS_METERS_PER_SECOND, UNITS_METERS_PER_SECOND),
         (UNITS_METERS, UNITS_METERS),
-        (UNITS_DEGREE, UNITS_DEGREE),
+        (UNITS_DEGREES, UNITS_DEGREES),
     )
 
     GEO_TYPE_CHOICES = (
