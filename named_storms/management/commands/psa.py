@@ -31,12 +31,6 @@ VARIABLE_WIND_SPEED = 'wind_speed'
 VARIABLES = [VARIABLE_WATER_LEVEL_MAX, VARIABLE_WATER_LEVEL, VARIABLE_WAVE_HEIGHT, VARIABLE_WIND, VARIABLE_WIND_SPEED]
 
 # mid atlantic coast
-"""
-LANDFALL_POLY = Polygon([
-    [-75.87158203125, 39.487084981687495], [-75.146484375, 39.487084981687495], [-75.146484375, 39.96870074491696], [-75.87158203125, 39.96870074491696],
-    [-75.87158203125, 39.487084981687495]
-])
-"""
 LANDFALL_POLY = Polygon([
     [-78.50830078125, 33.76088200086917],
     [-77.82714843749999, 33.815666308702774],
@@ -95,10 +89,21 @@ class Command(BaseCommand):
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
-        if VARIABLE_WIND_SPEED in options['variable']:
-            if options['delete']:
-                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name='Wind Speed').delete()
-            self.process_wind_speed()
+        if {VARIABLE_WIND_SPEED, VARIABLE_WIND}.intersection(options['variable']):
+            # open dataset and define landfall mask
+            self.dataset_structured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/anil/wrfout_d01_2012-10-29_14_00.nc')
+            self.mask_structured = np.array([
+                [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
+                for i in range(len(self.dataset_structured.lat))
+            ])
+            if VARIABLE_WIND_SPEED in options['variable']:
+                if options['delete']:
+                    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name='Wind Speed').delete()
+                self.process_wind_speed()
+            elif VARIABLE_WIND in options['variable']:
+                if options['delete']:
+                    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name='Wind').delete()
+                self.process_wind()
         else:
             pass
             ## delete any previous psa results for this nsem
@@ -224,31 +229,30 @@ class Command(BaseCommand):
                     color=feature['properties']['fill'],
                 ).save()
 
-    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, dt: datetime):
+    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray,
+                         dt: datetime):
+        """
+        expects structured data
+        """
 
         logging.info('building barbs at {}'.format(dt))
 
-        nan_mask = ~np.isnan(wind_directions)
-
-        # get a subset so we're not displaying every single point
-        wind_directions = wind_directions[nan_mask][::50]
-        wind_speeds = wind_speeds[nan_mask][::50]
-        x = self.dataset_unstructured.x[self.mask_unstructured][nan_mask][::50].values
-        y = self.dataset_unstructured.y[self.mask_unstructured][nan_mask][::50].values
-
-        for i, direction in enumerate(wind_directions):
-            point = geos.Point(x[i], y[i], srid=4326)
-            NsemPsaData(
-                nsem_psa_variable=nsem_psa_variable,
-                date=dt,
-                geo=point,
-                geo_hash=GeoHash(point),
-                value=wind_speeds[i].astype('float'),  # storing speed here for simpler time-series queries
-                meta={
-                    'speed': {'value': wind_speeds[i].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
-                    'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_RADIAN},
-                }
-            ).save()
+        for i in range(len(wind_directions)):
+            for j, direction in enumerate(wind_directions[i]):
+                if np.ma.is_masked(direction):
+                    continue
+                point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
+                NsemPsaData(
+                    nsem_psa_variable=nsem_psa_variable,
+                    date=dt,
+                    geo=point,
+                    geo_hash=GeoHash(point),
+                    value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
+                    meta={
+                        'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
+                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREE},
+                    }
+                ).save()
 
     def process_wave_height(self):
 
@@ -318,14 +322,6 @@ class Command(BaseCommand):
 
     def process_wind_speed(self):
 
-        self.dataset_structured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/anil/wrfout_d01_2012-10-29_14_00.nc')
-
-        # landfall mask
-        self.mask_structured = np.array([
-            [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
-            for i in range(len(self.dataset_structured.lat))
-        ])
-
         cmap = matplotlib.cm.get_cmap('jet')
 
         # create psa variable to assign data
@@ -350,7 +346,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            wind_speeds = self.dataset_structured.sel(time=date)['spduv10max'].values
+            wind_speeds = self.dataset_structured.sel(time=date)['wspd10m'].values
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
@@ -370,28 +366,27 @@ class Command(BaseCommand):
             name='Wind',
             geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            units=NsemPsaVariable.UNITS_RADIAN,  # placeholder since wind barbs use two units (speed & direction)
+            units=NsemPsaVariable.UNITS_DEGREE,  # placeholder since wind barbs use two units (speed & direction)
             auto_displayed=True,
         )
 
         nsem_psa_variable_barbs.save()
 
-        for date in self.dataset_unstructured['time']:
+        for date in self.dataset_structured['time']:
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            # get masked values
-            windx_values = self.dataset_unstructured.sel(time=date)['uwnd'][self.mask].values
-            windy_values = self.dataset_unstructured.sel(time=date)['vwnd'][self.mask].values
-
-            wind_speeds = np.abs(np.hypot(windx_values, windy_values))
-            wind_directions = np.arctan2(windx_values, windy_values)
+            # masked values and subset so we're not displaying every single point
+            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wspd10m'][::20, ::20], self.mask_structured[::20, ::20])
+            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wdir10m'][::20, ::20], self.mask_structured[::20, ::20])
+            xi = np.ma.masked_array(self.dataset_structured['lon'][::20, ::20], self.mask_structured[::20, ::20])
+            yi = np.ma.masked_array(self.dataset_structured['lat'][::20, ::20], self.mask_structured[::20, ::20])
 
             #
             # barbs
             #
 
-            self.build_wind_barbs(nsem_psa_variable_barbs, wind_directions, wind_speeds, dt)
+            self.build_wind_barbs(nsem_psa_variable_barbs, wind_directions, wind_speeds, xi, yi, dt)
 
     def add_arguments(self, parser):
 

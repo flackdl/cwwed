@@ -344,7 +344,7 @@ export class PsaComponent implements OnInit {
     const directionData = meta.direction || {};
     return new Style({
       image: new Icon({
-        rotation: -directionData.value,  // unit is radians and rotates clockwise
+        rotation: -(directionData.value * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
         scale: .75,
