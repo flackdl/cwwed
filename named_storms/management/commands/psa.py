@@ -112,13 +112,16 @@ class Command(BaseCommand):
                 if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
                     # open dataset and define landfall mask
                     self.dataset_structured = xarray.open_dataset(os.path.join(WIND_PATH, dataset_file))
-                    self.mask_structured = np.array([
-                        [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
-                        for i in range(len(self.dataset_structured.lat))
-                    ])
-                    if ARG_VARIABLE_WIND_SPEED in options['variable']:
+                    # only need this once since the domain isn't currently changing
+                    if self.mask_structured is None:
+                        self.mask_structured = np.array([
+                            [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
+                            for i in range(len(self.dataset_structured.lat))
+                        ])
+
+                    if ARG_VARIABLE_WIND_SPEED in wind_arg_variables:
                         self.process_wind_speed()
-                    elif ARG_VARIABLE_WIND in options['variable']:
+                    if ARG_VARIABLE_WIND in wind_arg_variables:
                         self.process_wind()
         else:
             pass
