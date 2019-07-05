@@ -67,15 +67,15 @@ WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/anil/'
 ARG_VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
 ARG_VARIABLE_WATER_LEVEL = 'water_level'
 ARG_VARIABLE_WAVE_HEIGHT = 'wave_height'
-ARG_VARIABLE_WIND = 'wind'
+ARG_VARIABLE_WIND_BARBS = 'wind_barbs'
 ARG_VARIABLE_WIND_SPEED = 'wind_speed'
-ARG_VARIABLES = [ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT, ARG_VARIABLE_WIND, ARG_VARIABLE_WIND_SPEED]
+ARG_VARIABLES = [ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT, ARG_VARIABLE_WIND_BARBS, ARG_VARIABLE_WIND_SPEED]
 
 ARG_TO_VARIABLE = {
     ARG_VARIABLE_WATER_LEVEL_MAX: 'Water Level Max',
     ARG_VARIABLE_WATER_LEVEL: 'Water Level',
     ARG_VARIABLE_WAVE_HEIGHT: 'Wave Height',
-    ARG_VARIABLE_WIND: 'Wind',
+    ARG_VARIABLE_WIND_BARBS: 'Wind Barbs',
     ARG_VARIABLE_WIND_SPEED: 'Wind Speed',
 }
 
@@ -99,7 +99,7 @@ class Command(BaseCommand):
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
         # these use a different, structured dataset
-        wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND}.intersection(options['variable'])
+        wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
         wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
 
         if wind_arg_variables:
@@ -121,10 +121,9 @@ class Command(BaseCommand):
 
                     if ARG_VARIABLE_WIND_SPEED in wind_arg_variables:
                         self.process_wind_speed()
-                    if ARG_VARIABLE_WIND in wind_arg_variables:
+                    if ARG_VARIABLE_WIND_BARBS in wind_arg_variables:
                         self.process_wind()
         else:
-            pass
             # TODO
             ## delete any previous psa results for this nsem
             # if options['delete']:
