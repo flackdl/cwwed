@@ -69,6 +69,16 @@ Access OPENDaP behind CWWED's authenticated proxy
     store = xarray.backends.PydapDataStore.open('http://127.0.0.1:8000/opendap/PSA_demo/sandy.nc', session=session)
     dataset = xarray.open_dataset(store)
     
+Dump Postgres table(s)
+
+    # local: data only, specific tables
+    docker-compose exec postgis pg_dump -a -h localhost -U postgres -d postgres -t named_storms_nsempsavariable -t named_storms_nsempsadata > ~/Desktop/cwwed.wind.sql
+    
+Connect to remote Postgres:
+
+    docker-compose exec postgis psql -h XXX.rds.amazonaws.com -U XXX cwwed_dev
+    
+    
 ## Production
 
 Setup RDS (relational database service) with proper VPC and security group permissions.
