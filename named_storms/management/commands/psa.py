@@ -98,11 +98,14 @@ class Command(BaseCommand):
         self.storm = NamedStorm.objects.get(name='Sandy')
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
-        # these use a different, structured dataset
+        # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
-        wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
+
+        # water data is an unstructured dataset
+        water_arg_variables = {ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WAVE_HEIGHT}.intersection(options['variable'])
 
         if wind_arg_variables:
+            wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
 
             # delete existing variables
             if options['delete']:
@@ -123,46 +126,47 @@ class Command(BaseCommand):
                         self.process_wind_speed()
                     if ARG_VARIABLE_WIND_BARBS in wind_arg_variables:
                         self.process_wind()
-        else:
-            # TODO
-            ## delete any previous psa results for this nsem
-            # if options['delete']:
-            #    self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=[
-            #        ARG_VARIABLE_WIND, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WAVE_HEIGHT]).delete()
+        elif water_arg_variables:
+            water_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_variables]
 
-            # self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+            # delete any previous psa results for this nsem
+            if options['delete']:
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=water_variables).delete()
 
-            ## save the datetime's on our nsem instance
-            # self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
-            # self.nsem.save()
+            self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
-            # logging.info('creating geo mask')
+            # TODO - need an authoritative date range/resolution for a hurricane
+            # save the datetime's on our nsem instance
+            #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
+            #self.nsem.save()
 
-            ## create a mask to subset data from the landfall geo's convex hull
-            ## NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
-            # self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
+            logging.info('creating geo mask')
 
-            # x = self.dataset_unstructured.x[self.mask_unstructured]
-            # y = self.dataset_unstructured.y[self.mask_unstructured]
+            # create a mask to subset data from the landfall geo's convex hull
+            # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
+            self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
 
-            # logging.info('building triangulation')
+            x = self.dataset_unstructured.x[self.mask_unstructured]
+            y = self.dataset_unstructured.y[self.mask_unstructured]
 
-            ## build delaunay triangles
-            # self.triangulation = tri.Triangulation(x, y)
+            logging.info('building triangulation')
 
-            # logging.info('masking triangulation')
+            # build delaunay triangles
+            self.triangulation = tri.Triangulation(x, y)
 
-            ## mask triangles outside geo
-            # tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
-            # self.triangulation.set_mask(tri_mask)
+            logging.info('masking triangulation')
 
-            ## build grid constraints
-            # self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
-            # self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+            # mask triangles outside geo
+            tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
+            self.triangulation.set_mask(tri_mask)
 
-            # self.process_water_level_max()
-            # self.process_water_level()
-            # self.process_wave_height()
+            # build grid constraints
+            self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
+            self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
+
+            self.process_water_level_max()
+            self.process_water_level()
+            self.process_wave_height()
 
     @staticmethod
     def water_level_mask_geojson(geojson_result: dict):
