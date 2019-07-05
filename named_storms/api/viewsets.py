@@ -209,9 +209,6 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
 
-    def filter_queryset(self, queryset):
-        return super().filter_queryset(queryset)
-
     def list(self, request, *args, **kwargs):
 
         # invalid - no nsem exists

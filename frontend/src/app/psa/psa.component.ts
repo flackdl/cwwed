@@ -40,11 +40,11 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
 
   public mapLayerOptions = [
-    { name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD },
-    { name: 'MapBox Streets', value: this.MAP_LAYER_MAPBOX_STREETS },
-    { name: 'MapBox Light', value: this.MAP_LAYER_MAPBOX_LIGHT },
-    { name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE },
-    { name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER },
+    {name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD},
+    {name: 'MapBox Streets', value: this.MAP_LAYER_MAPBOX_STREETS},
+    {name: 'MapBox Light', value: this.MAP_LAYER_MAPBOX_LIGHT},
+    {name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE},
+    {name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER},
   ];
   public demoDataURL = "/opendap/PSA_demo/sandy.nc";
   public isLoading = true;
@@ -83,7 +83,8 @@ export class PsaComponent implements OnInit {
     private cwwedService: CwwedService,
     private modalService: NgbModal,
     private chartTooltipInjectionService: InjectionService,
-  ) {}
+  ) {
+  }
 
   ngOnInit() {
     // override chart tooltip container so it works in fullscreen
@@ -299,6 +300,17 @@ export class PsaComponent implements OnInit {
   }
 
   protected _getWindLayerStyle(feature): Style {
+    const zoom = this.map.getView().getZoom();
+    const shouldShow = zoom > 9 || (
+      (zoom <= 7 && Math.random() > .9) ||
+      (zoom === 8 && Math.random() > .8) ||
+      (zoom === 9 && Math.random() > .7)
+      )
+    ;
+    if (!shouldShow) {
+      return new Style();
+    }
+
     let icon;
 
     // the speed is stored in the feature's "meta" key
@@ -342,12 +354,24 @@ export class PsaComponent implements OnInit {
     }
 
     const directionData = meta.direction || {};
+
+    let scale = 1;
+    if (zoom === 10) {
+      scale = .7;
+    } else if (zoom === 9) {
+      scale = .6;
+    } else if (zoom === 8) {
+      scale = .5;
+    } else if (zoom <= 7) {
+      scale = .3;
+    }
+
     return new Style({
       image: new Icon({
         rotation: -(directionData.value * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
-        scale: .75,
+        scale: scale,
       }),
     });
   }
@@ -486,7 +510,11 @@ export class PsaComponent implements OnInit {
           })
         }),
         // only include the variable layers that are "auto displayed"
-        ...this.availableMapLayers.filter((ml) => { return ml.variable.auto_displayed}).map((l) => { return l.layer;}),
+        ...this.availableMapLayers.filter((ml) => {
+          return ml.variable.auto_displayed
+        }).map((l) => {
+          return l.layer;
+        }),
       ],
       target: this.mapEl.nativeElement,
       overlays: [this.popupOverlay],
@@ -526,6 +554,15 @@ export class PsaComponent implements OnInit {
         queryParams: {
           zoom: zoom,
           center: center,
+        }
+      });
+
+      // update wind barb scale
+      this.availableMapLayers.forEach((mapLayer) => {
+        if (mapLayer.variable.geo_type === 'wind-barb') {
+          mapLayer.layer.getSource().forEachFeatureInExtent(this.map.getView().calculateExtent(), (feature) => {
+            feature.setStyle(this._getWindLayerStyle(feature));
+          });
         }
       });
     });
@@ -584,7 +621,7 @@ export class PsaComponent implements OnInit {
           });
 
           // don't overwrite an existing value from an overlapping feature of the same variable
-          if (!_.has(currentFeature, variableName)){
+          if (!_.has(currentFeature, variableName)) {
             // special handling for wind barbs
             if (psaVariable && psaVariable.geo_type === 'wind-barb') {
               if (variableMeta['speed'] && variableMeta['direction']) {
@@ -685,8 +722,8 @@ export class PsaComponent implements OnInit {
       if (event.keyCode == 16) {
         const extentCoords = this._extentInteraction.getExtent();
         if (extentCoords && extentCoords.length === 4) {
-            this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
-              toLonLat(<any>[extentCoords[2], extentCoords[3]]));
+          this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
+            toLonLat(<any>[extentCoords[2], extentCoords[3]]));
         } else {
           this.extentCoords = null;
         }
