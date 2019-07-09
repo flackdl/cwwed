@@ -231,26 +231,48 @@ class Command(BaseCommand):
 
     def process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None, mask_geojson: Callable = None):
 
+        contours = []
+
         # convert matplotlib contourf to geojson
-        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(contourf=contourf))
+        # https://gis.stackexchange.com/a/246861
+        for col in contourf.collections:
+            # loop through all polygons that have the same intensity level
+            for contour_path in col.get_paths():
+                # create the polygon for this intensity level
+                # the first polygon in the path is the main one, the following ones are "holes"
+                poly = Polygon()
+                for ncp, cp in enumerate(contour_path.to_polygons()):
+                    x = cp[:, 0]
+                    y = cp[:, 1]
+                    new_shape = Polygon([(i[0], i[1]) for i in zip(x, y)])
+                    if ncp == 0:
+                        poly = new_shape
+                    else:
+                        # Remove the holes if there are any
+                        poly = poly.difference(new_shape)
 
+                contours.append({
+                    'polygon': poly,
+                    'value': '',
+                    'color': '',
+                })
+
+        # TODO - mask polygon/data vs geojson
         # mask regions
-        if mask_geojson is not None:
-            mask_geojson(geojson_result)
+        #if mask_geojson is not None:
+        #    mask_geojson(geojson_result)
 
-        # build new psa results from geojson output
-        for feature in geojson_result['features']:
-            # save individual contours as separate polygons
-            for coords in feature['geometry']['coordinates'][0]:
-                polygon = geos.Polygon(coords)
-                NsemPsaData(
-                    nsem_psa_variable=nsem_psa_variable,
-                    date=dt,
-                    geo=polygon,
-                    bbox=geos.Polygon.from_bbox(polygon.extent),
-                    value=feature['properties']['title'],
-                    color=feature['properties']['fill'],
-                ).save()
+        # build new psa results from contours
+        for contour in contours:
+            polygon = geos.Polygon(coords)
+            NsemPsaData(
+                nsem_psa_variable=nsem_psa_variable,
+                date=dt,
+                geo=polygon,
+                bbox=geos.Polygon.from_bbox(polygon.extent),
+                value=feature['properties']['title'],
+                color=feature['properties']['fill'],
+            ).save()
 
     def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray,
                          dt: datetime):

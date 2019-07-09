@@ -99,7 +99,7 @@ export class PsaComponent implements OnInit {
     this.form = this.fb.group({
       opacity: new FormControl(.5),
       variables: new FormControl(),
-      date: new FormControl(0),
+      date: new FormControl(this.route.snapshot.queryParams['date'] || 0),
     });
 
     this._fetchDataAndBuildMap();
@@ -229,6 +229,7 @@ export class PsaComponent implements OnInit {
       }
     );
 
+    // listen for variable changes
     this.form.get('variables').valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
@@ -267,6 +268,8 @@ export class PsaComponent implements OnInit {
       }),
       debounceTime(1000),
     ).subscribe((value) => {
+
+      this._updateNavigationURL();
 
       // remove all layers first then apply chosen ones
       this.availableMapLayers.forEach((mapLayer) => {
@@ -458,11 +461,11 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    let zoom = 8;
-    let center = fromLonLat(<any>[-75.249730, 39.153332]);
+    let zoom = 9;
+    let center = fromLonLat(<any>[-74.37052594737246, 39.360018072433775]);
 
     if (this.route.snapshot.queryParams['zoom']) {
-      zoom = this.route.snapshot.queryParams['zoom'];
+      zoom = parseFloat(this.route.snapshot.queryParams['zoom']) || zoom;
     }
     if (this.route.snapshot.queryParams['center']) {
       let centerParams = this.route.snapshot.queryParams['center'].map((coord) => {
@@ -546,25 +549,7 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('moveend', (event: any) => {
-      const zoom = this.map.getView().getZoom();
-      const center = toLonLat(this.map.getView().getCenter());
-
-      // update the url params when the map zooms or moves
-      this.router.navigate([], {
-        queryParams: {
-          zoom: zoom,
-          center: center,
-        }
-      });
-
-      // update wind barb scale
-      this.availableMapLayers.forEach((mapLayer) => {
-        if (mapLayer.variable.geo_type === 'wind-barb') {
-          mapLayer.layer.getSource().forEachFeatureInExtent(this.map.getView().calculateExtent(), (feature) => {
-            feature.setStyle(this._getWindLayerStyle(feature));
-          });
-        }
-      });
+      this._updateNavigationURL();
     });
 
     this.map.on('singleclick', (event) => {
@@ -576,6 +561,20 @@ export class PsaComponent implements OnInit {
 
     this._configureFeatureHover();
 
+  }
+
+  protected _updateNavigationURL() {
+    const zoom = this.map.getView().getZoom();
+    const center = toLonLat(this.map.getView().getCenter());
+
+    // update the url params when the map zooms or moves
+    this.router.navigate([], {
+      queryParams: {
+        zoom: zoom,
+        center: center,
+        date: this.form.get('date').value,
+      }
+    });
   }
 
   protected _getConfidenceValueAtPixel(pixel) {
@@ -620,6 +619,8 @@ export class PsaComponent implements OnInit {
             return variable.name === variableName;
           });
 
+          // TODO - this is wrong because the import script didn't correctly remove holes, i.e
+          //        there shouldn't actually be overlapping features
           // don't overwrite an existing value from an overlapping feature of the same variable
           if (!_.has(currentFeature, variableName)) {
             // special handling for wind barbs
