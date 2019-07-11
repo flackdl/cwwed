@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import re
@@ -14,7 +13,6 @@ from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import numpy as np
-import geojsoncontour
 from typing import Callable
 from shapely.geometry import Polygon, Point
 from django.core.management import BaseCommand
@@ -93,6 +91,10 @@ class Command(BaseCommand):
     mask_unstructured: np.ndarray = None
     mask_structured: np.ndarray = None
 
+    # storing min/max wind speed since dataset is multiple files
+    _wind_speed_min = None
+    _wind_speed_max = None
+
     def handle(self, *args, **options):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
@@ -135,7 +137,7 @@ class Command(BaseCommand):
 
             self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
-            # TODO - need an authoritative date range/resolution for a hurricane
+            # TODO - need an authoritative dataset to define the date range for a hurricane
             # save the datetime's on our nsem instance
             #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
             #self.nsem.save()
@@ -169,11 +171,11 @@ class Command(BaseCommand):
             self.process_wave_height()
 
     @staticmethod
-    def water_level_mask_geojson(geojson_result: dict):
+    def water_level_mask_results(results: list):
         # mask values not greater than zero
-        for feature in geojson_result['features'][:]:
-            if float(feature['properties']['title']) <= 0:
-                geojson_result['features'].remove(feature)
+        for result in results:
+            if result['value'] <= 0:
+                results.pop(result)
 
     @staticmethod
     def color_bar_values(z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
@@ -201,7 +203,7 @@ class Command(BaseCommand):
         return datetime.utcfromtimestamp(seconds_since_epoch).replace(tzinfo=pytz.utc)
 
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
-                                  mask_geojson: Callable = None):
+                                  mask_contours: Callable = None):
 
         lat_masked = np.ma.masked_array(self.dataset_structured.lat, self.mask_structured)
         lon_masked = np.ma.masked_array(self.dataset_structured.lon, self.mask_structured)
@@ -212,10 +214,10 @@ class Command(BaseCommand):
         # create the contour
         contourf = plt.contourf(lon_masked, lat_masked, zi_masked, cmap=cmap)
 
-        self.process_contours(nsem_psa_variable, contourf, dt, mask_geojson)
+        self.build_contours(nsem_psa_variable, contourf, dt, mask_contours)
 
     def build_contours_unstructured(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
-                                    mask_geojson: Callable = None):
+                                    mask_contours: Callable = None):
 
         logging.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
 
@@ -227,30 +229,48 @@ class Command(BaseCommand):
         # create the contour
         contourf = plt.contourf(self.xi, self.yi, zi, CONTOUR_LEVELS, cmap=cmap)
 
-        self.process_contours(nsem_psa_variable, contourf, dt, mask_geojson)
+        self.build_contours(nsem_psa_variable, contourf, dt, mask_contours)
 
-    def process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None, mask_geojson: Callable = None):
+    def build_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None, mask_contours: Callable = None):
 
-        # convert matplotlib contourf to geojson
-        geojson_result = json.loads(geojsoncontour.contourf_to_geojson(contourf=contourf))
+        cmap = contourf.get_cmap()
 
-        # mask regions
-        if mask_geojson is not None:
-            mask_geojson(geojson_result)
+        results = []
 
-        # build new psa results from geojson output
-        for feature in geojson_result['features']:
-            # save individual contours as separate polygons
-            for coords in feature['geometry']['coordinates'][0]:
-                polygon = geos.Polygon(coords)
-                NsemPsaData(
-                    nsem_psa_variable=nsem_psa_variable,
-                    date=dt,
-                    geo=polygon,
-                    bbox=geos.Polygon.from_bbox(polygon.extent),
-                    value=feature['properties']['title'],
-                    color=feature['properties']['fill'],
-                ).save()
+        # process matplotlib contourf results
+        for collection_idx, collection in enumerate(contourf.collections):
+
+            # contour level's value
+            value = contourf.levels[collection_idx]
+
+            # loop through all polygons that have the same intensity level
+            for path in collection.get_paths():
+
+                polygons = path.to_polygons()
+
+                # the first polygon of the path is the exterior ring while the following are interior rings (holes)
+                polygon = geos.Polygon(polygons[0], *polygons[1:])
+
+                results.append({
+                    'polygon': polygon,
+                    'value': value,
+                    'color': matplotlib.colors.to_hex(cmap(contourf.norm(value))),
+                })
+
+        # conditionally mask contours using supplied callable
+        if mask_contours is not None:
+            mask_contours(results)
+
+        # build new psa results from contour results
+        for result in results:
+            NsemPsaData(
+                nsem_psa_variable=nsem_psa_variable,
+                date=dt,
+                geo=result['polygon'],
+                bbox=geos.Polygon.from_bbox(result['polygon'].extent),
+                value=result['value'],
+                color=result['color'],
+            ).save()
 
     def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray,
                          dt: datetime):
@@ -298,7 +318,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
-            self.build_contours_unstructured(nsem_psa_variable, z, cmap, dt, mask_geojson=self.water_level_mask_geojson)
+            self.build_contours_unstructured(nsem_psa_variable, z, cmap, dt, mask_contours=self.water_level_mask_results)
 
     def process_water_level(self):
 
@@ -321,7 +341,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(z.time)
 
-            self.build_contours_unstructured(nsem_psa_variable, z, cmap, dt, mask_geojson=self.water_level_mask_geojson)
+            self.build_contours_unstructured(nsem_psa_variable, z, cmap, dt, mask_contours=self.water_level_mask_results)
 
     def process_water_level_max(self):
 
@@ -341,7 +361,7 @@ class Command(BaseCommand):
         )
         nsem_psa_variable.save()
 
-        self.build_contours_unstructured(nsem_psa_variable, z, cmap, mask_geojson=self.water_level_mask_geojson)
+        self.build_contours_unstructured(nsem_psa_variable, z, cmap, mask_contours=self.water_level_mask_results)
 
     def process_wind_speed(self):
 
@@ -363,9 +383,6 @@ class Command(BaseCommand):
         # contours
         #
 
-        min_speed = None
-        max_speed = None
-
         for date in self.dataset_structured['time']:
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
@@ -374,12 +391,12 @@ class Command(BaseCommand):
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
-            min_speed = min(wind_speeds_data_array.min(), min_speed) if min_speed is not None else wind_speeds_data_array.min()
-            max_speed = max(wind_speeds_data_array.max(), max_speed) if max_speed is not None else wind_speeds_data_array.max()
+            self._wind_speed_min = min(wind_speeds_data_array.min(), self._wind_speed_min) if self._wind_speed_min is not None else wind_speeds_data_array.min()
+            self._wind_speed_max = max(wind_speeds_data_array.max(), self._wind_speed_max) if self._wind_speed_max is not None else wind_speeds_data_array.max()
 
             self.build_contours_structured(nsem_psa_variable_speed, wind_speeds_data_array, cmap, dt)
 
-        nsem_psa_variable_speed.color_bar = self.color_bar_values(min_speed, max_speed, cmap)
+        nsem_psa_variable_speed.color_bar = self.color_bar_values(self._wind_speed_min, self._wind_speed_max, cmap)
         nsem_psa_variable_speed.save()
 
     def process_wind(self):
