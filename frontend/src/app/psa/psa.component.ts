@@ -619,19 +619,14 @@ export class PsaComponent implements OnInit {
             return variable.name === variableName;
           });
 
-          // TODO - this is wrong because the import script didn't correctly remove holes, i.e
-          //        there shouldn't actually be overlapping features
-          // don't overwrite an existing value from an overlapping feature of the same variable
-          if (!_.has(currentFeature, variableName)) {
-            // special handling for wind barbs
-            if (psaVariable && psaVariable.geo_type === 'wind-barb') {
-              if (variableMeta['speed'] && variableMeta['direction']) {
-                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
-                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
-              }
-            } else {
-              currentFeature[variableName] = `${variableValue} ${variableUnits}`;
+          // special handling for wind barbs
+          if (psaVariable && psaVariable.geo_type === 'wind-barb') {
+            if (variableMeta['speed'] && variableMeta['direction']) {
+              currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
+              currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
             }
+          } else {
+            currentFeature[variableName] = `${variableValue} ${variableUnits}`;
           }
         });
       }
