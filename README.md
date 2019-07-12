@@ -72,7 +72,7 @@ Access OPENDaP behind CWWED's authenticated proxy
 Dump Postgres table(s)
 
     # local: data only, specific tables
-    docker-compose exec postgis pg_dump -a -h localhost -U postgres -d postgres -t named_storms_nsempsavariable -t named_storms_nsempsadata > ~/Desktop/cwwed.wind.sql
+    docker-compose exec postgis pg_dump -a -h localhost -U postgres -d postgres -t named_storms_nsempsavariable -t named_storms_nsempsadata > ~/Desktop/cwwed.sql
     
 Connect to remote Postgres:
 

@@ -304,15 +304,6 @@ export class PsaComponent implements OnInit {
 
   protected _getWindLayerStyle(feature): Style {
     const zoom = this.map.getView().getZoom();
-    const shouldShow = zoom > 9 || (
-      (zoom <= 7 && Math.random() > .9) ||
-      (zoom === 8 && Math.random() > .8) ||
-      (zoom === 9 && Math.random() > .7)
-      )
-    ;
-    if (!shouldShow) {
-      return new Style();
-    }
 
     let icon;
 
@@ -362,11 +353,11 @@ export class PsaComponent implements OnInit {
     if (zoom === 10) {
       scale = .7;
     } else if (zoom === 9) {
-      scale = .6;
-    } else if (zoom === 8) {
       scale = .5;
-    } else if (zoom <= 7) {
+    } else if (zoom === 8) {
       scale = .3;
+    } else if (zoom <= 7) {
+      scale = .15;
     }
 
     return new Style({

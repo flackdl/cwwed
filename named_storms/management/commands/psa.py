@@ -67,14 +67,16 @@ ARG_VARIABLE_WATER_LEVEL = 'water_level'
 ARG_VARIABLE_WAVE_HEIGHT = 'wave_height'
 ARG_VARIABLE_WIND_BARBS = 'wind_barbs'
 ARG_VARIABLE_WIND_SPEED = 'wind_speed'
+ARG_VARIABLE_WIND_SPEED_MAX = 'wind_speed_max'
 ARG_VARIABLES = [ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT, ARG_VARIABLE_WIND_BARBS, ARG_VARIABLE_WIND_SPEED]
 
 ARG_TO_VARIABLE = {
-    ARG_VARIABLE_WATER_LEVEL_MAX: 'Water Level Max',
+    ARG_VARIABLE_WATER_LEVEL_MAX: 'Water Level',
     ARG_VARIABLE_WATER_LEVEL: 'Water Level',
     ARG_VARIABLE_WAVE_HEIGHT: 'Wave Height',
     ARG_VARIABLE_WIND_BARBS: 'Wind Barbs',
     ARG_VARIABLE_WIND_SPEED: 'Wind Speed',
+    ARG_VARIABLE_WIND_SPEED_MAX: 'Wind Speed',
 }
 
 
@@ -101,17 +103,26 @@ class Command(BaseCommand):
         self.nsem = self.storm.nsem_set.order_by('-id')[0]
 
         # wind data is a structured dataset
-        wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
+        wind_arg_time_series_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
+        wind_arg_max_variables = {ARG_VARIABLE_WIND_SPEED_MAX}.intersection(options['variable'])
 
         # water data is an unstructured dataset
-        water_arg_variables = {ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WAVE_HEIGHT}.intersection(options['variable'])
+        water_arg_time_series_variables = {ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT}.intersection(options['variable'])
+        water_arg_max_variables = {ARG_VARIABLE_WATER_LEVEL_MAX}.intersection(options['variable'])
 
-        if wind_arg_variables:
-            wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
+        if wind_arg_time_series_variables or water_arg_max_variables:
+            wind_time_series_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_time_series_variables]
+            wind_max_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_max_variables]
 
             # delete existing variables
             if options['delete']:
-                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_variables).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_time_series_variables, data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_max_variables, data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES).delete()
+
+            # TODO - need a combined dataset showing max wind speed for each point
+            if ARG_VARIABLE_WIND_SPEED_MAX in wind_arg_max_variables:
+                self.process_wind_speed_max()
+
             for dataset_file in sorted(os.listdir(WIND_PATH)):
                 # must be like "wrfout_d01_2012-10-29_14_00.nc", i.e on the hour since we're doing hourly right now, and using "domain 1"
                 if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
@@ -124,16 +135,18 @@ class Command(BaseCommand):
                             for i in range(len(self.dataset_structured.lat))
                         ])
 
-                    if ARG_VARIABLE_WIND_SPEED in wind_arg_variables:
+                    if ARG_VARIABLE_WIND_SPEED in wind_arg_time_series_variables:
                         self.process_wind_speed()
-                    if ARG_VARIABLE_WIND_BARBS in wind_arg_variables:
+                    if ARG_VARIABLE_WIND_BARBS in wind_arg_time_series_variables:
                         self.process_wind()
-        elif water_arg_variables:
-            water_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_variables]
+        elif water_arg_time_series_variables:
+            water_time_series_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_time_series_variables]
+            water_max_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_max_variables]
 
             # delete any previous psa results for this nsem
             if options['delete']:
-                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=water_variables).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=water_time_series_variables, data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=water_max_variables, data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES).delete()
 
             self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
@@ -363,6 +376,10 @@ class Command(BaseCommand):
 
         self.build_contours_unstructured(nsem_psa_variable, z, cmap, mask_contours=self.water_level_mask_results)
 
+    def process_wind_speed_max(self):
+        # TODO
+        pass
+
     def process_wind_speed(self):
 
         cmap = matplotlib.cm.get_cmap('jet')
@@ -387,7 +404,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            wind_speeds = self.dataset_structured.sel(time=date)['wspd10m'].values
+            wind_speeds = self.dataset_structured.sel(time=date)['spduv10max'].values
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
