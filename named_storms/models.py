@@ -186,7 +186,7 @@ class NsemPsaVariable(models.Model):
     auto_displayed = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('nsem', 'name', 'data_type')
+        unique_together = ('nsem', 'name')
         ordering = ['name']
 
     def __str__(self):

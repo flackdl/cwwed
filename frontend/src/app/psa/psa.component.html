@@ -21,7 +21,7 @@
                   <div class="form-check" *ngFor="let psaVariable of psaVariables">
                     <input class="form-check-input" type="checkbox" [formControlName]="psaVariable.name" [id]="psaVariable.id">
                     <label class="form-check-label" [for]="psaVariable.id">
-                      {{ psaVariable.name }}
+                      {{ getPsaVariableNameFormatted(psaVariable) }}
                     </label>
                     <span *ngIf="psaVariable.data_type == 'max-values'" class="badge badge-secondary ml-2">Max</span>
                   </div>
@@ -122,8 +122,10 @@
               <div *ngIf="!hasTimeSeriesVariablesDisplayed()">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <div class="mt-4">
-                  <div class="text-warning"><small>Please enable one of the following variables for time series graph:</small></div>
-                  <small><span *ngFor="let variable of timeSeriesVariables(); let last = last">{{ variable.name }}<span *ngIf="!last">, </span></span></small>
+                  <div class="text-info"><small>Please enable one of the following variables for a time series graph:</small></div>
+                  <ul>
+                    <li *ngFor="let variable of timeSeriesVariables()"><small>{{ variable.name }}</small></li>
+                  </ul>
                 </div>
               </div>
               <div *ngIf="hasTimeSeriesVariablesDisplayed() && coordinateGraphData">

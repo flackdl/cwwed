@@ -135,7 +135,7 @@ export class PsaComponent implements OnInit {
 
   public timeSeriesVariables() {
     return _.filter(this.psaVariables, (psaVariable) => {
-      return psaVariable.data_type === 'time-series';
+      return psaVariable.data_type === 'time-series' && psaVariable.geo_type == 'polygon';
     });
   }
 
@@ -182,6 +182,14 @@ export class PsaComponent implements OnInit {
     return this.psaVariables.filter((variable) => {
       return variable.geo_type === 'polygon';
     });
+  }
+
+  public getPsaVariableNameFormatted(psaVariable) {
+    // remove "maximum" from `max-values` data types
+    if (psaVariable.data_type === 'max-values') {
+      return psaVariable.name.replace(/ maximum/i, '');
+    }
+    return psaVariable.name;
   }
 
   @HostListener('window:resize', ['$event'])
