@@ -75,7 +75,8 @@ ARG_VARIABLES = [
     ARG_VARIABLE_WAVE_HEIGHT,
     ARG_VARIABLE_WIND_BARBS,
     ARG_VARIABLE_WIND_SPEED,
-    ARG_VARIABLE_WIND_SPEED_MAX]
+    ARG_VARIABLE_WIND_SPEED_MAX,
+]
 
 ARG_TO_VARIABLE = {
     ARG_VARIABLE_WATER_LEVEL_MAX: 'Water Level Maximum',
@@ -117,26 +118,28 @@ class Command(BaseCommand):
 
         if wind_arg_variables:
             wind_time_series_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
+            wind_dataset_paths = sorted(os.listdir(WIND_PATH))
+
+            # build the mask from the first dataset since the domain isn't currently changing
+            ds = xarray.open_dataset(os.path.join(WIND_PATH, wind_dataset_paths[0]))
+            self.mask_structured = np.array([
+                [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([ds.lon[i], ds.lat[i]])]
+                for i in range(len(ds.lat))
+            ])
 
             # delete existing variables
             if options['delete']:
                 self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_time_series_variables).delete()
 
-            # TODO - need a combined dataset showing max wind speed for each point
             if ARG_VARIABLE_WIND_SPEED_MAX in wind_arg_variables:
+                self.dataset_structured = xarray.open_dataset(os.path.join('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-wind-max.nc'))
                 self.process_wind_speed_max()
 
-            for dataset_file in sorted(os.listdir(WIND_PATH)):
+            for dataset_file in wind_dataset_paths:
                 # must be like "wrfout_d01_2012-10-29_14_00.nc", i.e on the hour since we're doing hourly right now, and using "domain 1"
                 if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
                     # open dataset and define landfall mask
                     self.dataset_structured = xarray.open_dataset(os.path.join(WIND_PATH, dataset_file))
-                    # only need this once since the domain isn't currently changing
-                    if self.mask_structured is None:
-                        self.mask_structured = np.array([
-                            [not Point(coord).within(LANDFALL_POLY) for coord in np.column_stack([self.dataset_structured.lon[i], self.dataset_structured.lat[i]])]
-                            for i in range(len(self.dataset_structured.lat))
-                        ])
 
                     if ARG_VARIABLE_WIND_SPEED in wind_arg_variables:
                         self.process_wind_speed()
@@ -366,7 +369,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Water Level Max',
+            name='Water Level Maximum',
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
@@ -378,8 +381,24 @@ class Command(BaseCommand):
         self.build_contours_unstructured(nsem_psa_variable, z, cmap, mask_contours=self.water_level_mask_results)
 
     def process_wind_speed_max(self):
-        # TODO
-        pass
+
+        cmap = matplotlib.cm.get_cmap('jet')
+
+        z = np.ma.masked_array(self.dataset_structured['wind_speed_max'], self.mask_structured)
+
+        # create psa variable to assign data
+        nsem_psa_variable = NsemPsaVariable(
+            nsem=self.nsem,
+            name='Wind Speed Maximum',
+            color_bar=self.color_bar_values(z.min(), z.max(), cmap),
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
+            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            auto_displayed=True,
+        )
+        nsem_psa_variable.save()
+
+        self.build_contours_structured(nsem_psa_variable, z, cmap)
 
     def process_wind_speed(self):
 
