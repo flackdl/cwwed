@@ -412,7 +412,6 @@ class Command(BaseCommand):
                 geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
                 units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
-                auto_displayed=True,
             ),
         )
 
@@ -446,7 +445,6 @@ class Command(BaseCommand):
                 geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
                 units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
-                auto_displayed=True,
             ),
         )
 

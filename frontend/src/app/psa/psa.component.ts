@@ -211,15 +211,17 @@ export class PsaComponent implements OnInit {
 
         // update layers
         this.availableMapLayers.forEach((availableLayer) => {
-          // wind barbs
-          if (availableLayer['variable']['geo_type'] === 'wind-barb') {
-            availableLayer['layer'].setStyle((feature) => {
-              return this._getWindLayerStyle(feature);
-            });
-          } else { // water contours
-            availableLayer['layer'].setStyle((feature) => {
-              return this._getWaterLayerStyle(feature);
-            });
+          if (availableLayer['layer']) {
+            // wind barbs
+            if (availableLayer['variable']['geo_type'] === 'wind-barb') {
+              availableLayer['layer'].setStyle((feature) => {
+                return this._getWindBarbLayerStyle(feature);
+              });
+            } else { // water contours
+              availableLayer['layer'].setStyle((feature) => {
+                return this._getContourLayerStyle(feature);
+              });
+            }
           }
         });
       }
@@ -248,20 +250,22 @@ export class PsaComponent implements OnInit {
         this._updateCoordinateGraphData();
 
         this.availableMapLayers.forEach((availableLayer) => {
-          // remove layer
+          // variable toggled off so remove layer from map & available layers
           if (!variablesValues[availableLayer['variable']['name']]) {
-            this.map.removeLayer(availableLayer['layer']);
-          } else {
-            // check to see if the layer is already present
-            let layerExists = false;
-            this.map.getLayers().getArray().forEach((layer) => {
-              if (layer === availableLayer['layer']) {
-                layerExists = true;
-              }
-            });
+            // verify it's populated
+            if (availableLayer['layer']) {
+              this.map.removeLayer(availableLayer['layer']);
+              delete availableLayer['layer'];
+            }
+          } else {  // variable toggled on
             // layer isn't present so add it
-            if (!layerExists) {
-              availableLayer['layer'].setSource(this._getVariableVectorSource(availableLayer['variable']));
+            if (!availableLayer['layer']) {
+              availableLayer['layer'] = new VectorLayer({
+                style: (feature) => {
+                  return availableLayer['variable']['geo_type'] === 'wind-barb' ? this._getWindBarbLayerStyle(feature) : this._getContourLayerStyle(feature);
+                },
+                source: this._getVariableVectorSource(availableLayer['variable']),
+              });
               this.map.addLayer(availableLayer['layer']);
             }
           }
@@ -281,13 +285,15 @@ export class PsaComponent implements OnInit {
 
       // remove all layers first then apply chosen ones
       this.availableMapLayers.forEach((mapLayer) => {
-        this.map.removeLayer(mapLayer.layer);
+        if (mapLayer.layer) {
+          this.map.removeLayer(mapLayer.layer);
+        }
       });
 
       let updated = false;
 
       this.availableMapLayers.forEach((mapLayer) => {
-        if (this.form.get('variables').get(mapLayer.variable.name).value) {
+        if (mapLayer.layer && this.form.get('variables').get(mapLayer.variable.name).value) {
           mapLayer.layer.setSource(this._getVariableVectorSource(mapLayer.variable));
           this.map.addLayer(mapLayer.layer);
           updated = true;
@@ -310,7 +316,7 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _getWindLayerStyle(feature): Style {
+  protected _getWindBarbLayerStyle(feature): Style {
     const zoom = this.map.getView().getZoom();
 
     let icon;
@@ -414,7 +420,7 @@ export class PsaComponent implements OnInit {
       });
   }
 
-  protected _getWaterLayerStyle(feature) {
+  protected _getContourLayerStyle(feature) {
     return new Style({
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.form.get('opacity').value),
@@ -437,21 +443,31 @@ export class PsaComponent implements OnInit {
 
     this.availableMapLayers = this.psaVariables.map((variable) => {
       let layer;
+      let source = this._getVariableVectorSource(variable);
 
+      //
+      // only populate the layers which are set as "auto displayed"
+      //
+
+      // wind barbs are displayed as points vs contours
       if (variable.geo_type === 'wind-barb') {
-        layer = new VectorLayer({
-          source: this._getVariableVectorSource(variable),
-          style: (feature) => {
-            return this._getWindLayerStyle(feature);
-          },
-        })
+        if (variable.auto_displayed) {
+          layer = new VectorLayer({
+            source: source,
+            style: (feature) => {
+              return this._getWindBarbLayerStyle(feature);
+            },
+          });
+        }
       } else {
-        layer = new VectorLayer({
-          source: this._getVariableVectorSource(variable),
-          style: (feature) => {
-            return this._getWaterLayerStyle(feature);
-          },
-        })
+        if (variable.auto_displayed) {
+          layer = new VectorLayer({
+            source: source,
+            style: (feature) => {
+              return this._getContourLayerStyle(feature);
+            },
+          });
+        }
       }
 
       return {
@@ -618,14 +634,16 @@ export class PsaComponent implements OnInit {
             return variable.name === variableName;
           });
 
-          // special handling for wind barbs
-          if (psaVariable && psaVariable.geo_type === 'wind-barb') {
-            if (variableMeta['speed'] && variableMeta['direction']) {
-              currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
-              currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
+          if (psaVariable) {
+            // special handling for wind barbs
+            if (psaVariable.geo_type === 'wind-barb') {
+              if (variableMeta['speed'] && variableMeta['direction']) {
+                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
+                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
+              }
+            } else {
+              currentFeature[variableName] = `${variableValue} ${variableUnits}`;
             }
-          } else {
-            currentFeature[variableName] = `${variableValue} ${variableUnits}`;
           }
         });
       }

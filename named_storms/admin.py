@@ -72,7 +72,7 @@ class NSEMAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsaVariable)
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'nsem', 'name', 'data_type')
+    list_display = ('id', 'nsem', 'name', 'data_type', 'auto_displayed')
 
 
 @admin.register(NsemPsaData)
