@@ -26,7 +26,7 @@ class NsemPsaVariableInline(admin.TabularInline):
     model = NsemPsaVariable
     show_change_link = True
     extra = 0
-    fields = ('nsem', 'name',)
+    fields = ('nsem', 'name', 'data_type')
 
     def has_add_permission(self, request):
         # disabled since we can't edit geo which is a required field
@@ -72,7 +72,7 @@ class NSEMAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsaVariable)
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'nsem', 'name')
+    list_display = ('id', 'nsem', 'name', 'data_type', 'auto_displayed')
 
 
 @admin.register(NsemPsaData)
