@@ -72,8 +72,17 @@
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 170px;
+  min-width: 220px;
   min-height: 100px;
+
+  @include media-breakpoint-up(lg) {
+    min-width: 390px;
+    min-height: 225px;
+  }
+  @include media-breakpoint-up(xl) {
+    min-width: 440px;
+    min-height: 275px;
+  }
 }
 .ol-popup:after, .ol-popup:before {
   top: 100%;
