@@ -12,7 +12,7 @@ dataset_wave_height = xr.open_dataset(wave_dataset_path)
 
 
 def date_mask(dataset: xr.Dataset):
-    start = '2012-10-29 12:00:00'
+    start = '2012-10-29 13:00:00'
     end = '2012-10-30 09:00:00'
     return (
             (dataset['time'] >= np.datetime64(start)) &

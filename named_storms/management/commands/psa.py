@@ -19,7 +19,6 @@ from django.core.management import BaseCommand
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
-CONTOUR_LEVELS = 30
 COLOR_STEPS = 10  # color bar range
 LANDFALL_POLY = Polygon([  # mid atlantic coast
     [-78.50830078125, 33.76088200086917],
@@ -117,7 +116,7 @@ class Command(BaseCommand):
         water_arg_variables = {ARG_VARIABLE_WATER_LEVEL_MAX, ARG_VARIABLE_WATER_LEVEL, ARG_VARIABLE_WAVE_HEIGHT}.intersection(options['variable'])
 
         if wind_arg_variables:
-            wind_time_series_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
+            wind_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in wind_arg_variables]
             wind_dataset_paths = sorted(os.listdir(WIND_PATH))
 
             # build the mask from the first dataset since the domain isn't currently changing
@@ -129,7 +128,7 @@ class Command(BaseCommand):
 
             # delete existing variables
             if options['delete']:
-                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_time_series_variables).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=wind_variables).delete()
 
             if ARG_VARIABLE_WIND_SPEED_MAX in wind_arg_variables:
                 self.dataset_structured = xarray.open_dataset(os.path.join('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-wind-max.nc'))
@@ -150,7 +149,7 @@ class Command(BaseCommand):
 
             # delete any previous psa results for this nsem
             if options['delete']:
-                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, named__in=water_variables).delete()
+                self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=water_variables).delete()
 
             self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
 
@@ -183,16 +182,19 @@ class Command(BaseCommand):
             self.xi = np.linspace(np.floor(x.min()), np.ceil(x.max()), GRID_SIZE)
             self.yi = np.linspace(np.floor(y.min()), np.ceil(y.max()), GRID_SIZE)
 
-            self.process_water_level_max()
-            self.process_water_level()
-            self.process_wave_height()
+            if ARG_VARIABLE_WATER_LEVEL_MAX in water_arg_variables:
+                self.process_water_level_max()
+            if ARG_VARIABLE_WATER_LEVEL in water_arg_variables:
+                self.process_water_level()
+            if ARG_VARIABLE_WAVE_HEIGHT in water_arg_variables:
+                self.process_wave_height()
 
     @staticmethod
     def water_level_mask_results(results: list):
         # mask values not greater than zero
         for result in results:
             if result['value'] <= 0:
-                results.pop(result)
+                results.remove(result)
 
     @staticmethod
     def color_bar_values(z_min: float, z_max: float, cmap: matplotlib.colors.Colormap):
@@ -244,7 +246,7 @@ class Command(BaseCommand):
         zi = interpolator(Xi, Yi)
 
         # create the contour
-        contourf = plt.contourf(self.xi, self.yi, zi, CONTOUR_LEVELS, cmap=cmap)
+        contourf = plt.contourf(self.xi, self.yi, zi, cmap=cmap)
 
         self.build_contours(nsem_psa_variable, contourf, dt, mask_contours)
 
