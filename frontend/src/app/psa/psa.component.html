@@ -132,7 +132,7 @@
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <canvas baseChart
                         [datasets]="lineChartData"
-                        [labels]="psaDates"
+                        [labels]="psaDatesFormatted"
                         [options]="lineChartOptions"
                         [colors]="lineChartColors"
                         chartType="line"

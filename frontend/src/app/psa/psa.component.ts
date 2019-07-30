@@ -1,6 +1,6 @@
 import { ActivatedRoute, Router } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, mergeMap, tap } from 'rxjs/operators';
@@ -20,6 +20,7 @@ import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { DecimalPipe } from "@angular/common";
 import { ChartOptions } from 'chart.js';
 
+const moment = require('moment');
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
 const randomColor = require('randomcolor');
@@ -54,6 +55,7 @@ export class PsaComponent implements OnInit {
   public namedStorm: any;
   public psaVariables: any[];
   public psaDates: string[] = [];
+  public psaDatesFormatted: string[] = [];
   public form: FormGroup;
   public nsemList: any;
   public currentFeature: any;
@@ -671,11 +673,11 @@ export class PsaComponent implements OnInit {
     );
   }
 
-  protected _getColorForVariable(variableName: string) {
+  protected _getColorForVariable(variableName: string, alpha?: number) {
     return randomColor.randomColor({
-      luminosity: 'dark',
+      luminosity: 'bright',
       seed: variableName,
-      alpha: .5,
+      alpha: alpha || 1,
       format: 'rgba',
     });
   }
@@ -709,10 +711,14 @@ export class PsaComponent implements OnInit {
     };
 
     this.lineChartColors = lineChartData.map((data) => {
-      const color = this._getColorForVariable(data.variable_name);
+      const color = this._getColorForVariable(data.variable_name, .5);
       return {
         backgroundColor: color,
       }
+    });
+
+    this.psaDatesFormatted = this.psaDates.map((date) => {
+      return moment(date).format('MM/DD HH:mm');
     });
 
     this.lineChartData = lineChartData;
