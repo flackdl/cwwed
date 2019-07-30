@@ -1,4 +1,3 @@
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute, Router } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
@@ -18,8 +17,8 @@ import { Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
-import { InjectionService } from "../../ngx-charts/common/tooltip/injection.service";
 import { DecimalPipe } from "@angular/common";
+import { ChartDataSets, ChartOptions } from 'chart.js';
 
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
@@ -65,9 +64,7 @@ export class PsaComponent implements OnInit {
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
-  public coordinateGraphData: any[];
-  public chartWidth: number;
-  public chartHeight: number;
+  public coordinateGraphData: any[] = [];
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
@@ -81,14 +78,10 @@ export class PsaComponent implements OnInit {
     private fb: FormBuilder,
     private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
-    private modalService: NgbModal,
-    private chartTooltipInjectionService: InjectionService,
   ) {
   }
 
   ngOnInit() {
-    // override chart tooltip container so it works in fullscreen
-    this.chartTooltipInjectionService.setContainerElement(this.mapEl.nativeElement);
 
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
@@ -190,17 +183,6 @@ export class PsaComponent implements OnInit {
       return psaVariable.name.replace(/ maximum/i, '');
     }
     return psaVariable.name;
-  }
-
-  @HostListener('window:resize', ['$event'])
-  protected _setMapWidth() {
-    this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
-  }
-
-  @HostListener('window:resize', ['$event'])
-  protected _setMapHeight() {
-    const chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
-    this.chartHeight = chartWidth / 2.0;
   }
 
   protected _listenForInputChanges() {
@@ -558,9 +540,6 @@ export class PsaComponent implements OnInit {
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
       this.isLoadingMap = false;
-      // reset the map's dimensions
-      this._setMapHeight();
-      this._setMapWidth();
     });
 
     this.map.on('moveend', (event: any) => {
@@ -681,13 +660,8 @@ export class PsaComponent implements OnInit {
         this._coordinateGraphDataAll = _.map(data, (variable: any) => {
           return {
             variable_name: variable.name,  // include variable name (without units for later comparison against form variables)
-            name: `${variable.name} (${variable.units})`,
-            series: _.zip(this.psaDates, variable.values).map((dateVal) => {
-              return {
-                name: dateVal[0],
-                value: dateVal[1],
-              }
-            })
+            label: `${variable.name} (${variable.units})`,
+            data: variable.values,
           };
         });
 

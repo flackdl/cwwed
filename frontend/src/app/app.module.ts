@@ -6,7 +6,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
 import { RouterModule, Routes} from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
-import { NgxChartsModule } from '../ngx-charts';
+import { ChartsModule } from "ng2-charts";
 import * as Sentry from "@sentry/browser";
 
 
@@ -90,7 +90,7 @@ const appRoutes: Routes = [
     HttpClientModule,
     NgxLoadingModule,
     ReactiveFormsModule,
-    NgxChartsModule,
+    ChartsModule,
   ],
   entryComponents: [],
   providers: [{ provide: ErrorHandler, useClass: SentryErrorHandler }],
