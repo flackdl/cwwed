@@ -18,10 +18,11 @@ import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { DecimalPipe } from "@angular/common";
-import { ChartDataSets, ChartOptions } from 'chart.js';
+import { ChartOptions } from 'chart.js';
 
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
+const randomColor = require('randomcolor');
 
 
 @Component({
@@ -64,12 +65,14 @@ export class PsaComponent implements OnInit {
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
-  public coordinateGraphData: any[] = [];
+  public lineChartData: any[] = [];
+  public lineChartColors: any[] = [];
+  public lineChartOptions: ChartOptions;
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
-  protected _coordinateGraphDataAll: any[] = [];
+  protected _lineChartDataAll: any[] = [];
 
   constructor(
     private http: HttpClient,
@@ -148,13 +151,6 @@ export class PsaComponent implements OnInit {
     return displayedVariables.length > 0;
   }
 
-  public xAxisTickFormatting(value: string) {
-    const date = new Date(value);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}/${day}`;
-  }
-
   public hasExtentSelection(): boolean {
     return this._extentInteraction && this._extentInteraction.getExtent();
   }
@@ -229,7 +225,7 @@ export class PsaComponent implements OnInit {
     ).subscribe(
       (variablesValues) => {
 
-        this._updateCoordinateGraphData();
+        this._updateLineChart();
 
         this.availableMapLayers.forEach((availableLayer) => {
           // variable toggled off so remove layer from map & available layers
@@ -657,15 +653,16 @@ export class PsaComponent implements OnInit {
     this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-        this._coordinateGraphDataAll = _.map(data, (variable: any) => {
+        this._lineChartDataAll = _.map(data, (variable: any) => {
           return {
             variable_name: variable.name,  // include variable name (without units for later comparison against form variables)
             label: `${variable.name} (${variable.units})`,
             data: variable.values,
+            yAxisID: variable.name,
           };
         });
 
-        this._updateCoordinateGraphData();
+        this._updateLineChart();
       },
       (error) => {
         console.error(error);
@@ -674,18 +671,51 @@ export class PsaComponent implements OnInit {
     );
   }
 
-  protected _updateCoordinateGraphData() {
+  protected _getColorForVariable(variableName: string) {
+    return randomColor.randomColor({
+      luminosity: 'dark',
+      seed: variableName,
+      alpha: .5,
+      format: 'rgba',
+    });
+  }
 
-    const coordinateGraphData = [];
+  protected _updateLineChart() {
 
-    // include the coordinate variable data if that variable is currently being displayed
-    this._coordinateGraphDataAll.forEach((data) => {
+    const lineChartData = [];
+
+    // include the line data if that variable is currently being displayed
+    this._lineChartDataAll.forEach((data) => {
       if (this.form.get('variables').value[data.variable_name]) {
-        coordinateGraphData.push(data);
+        lineChartData.push(data);
       }
     });
 
-    this.coordinateGraphData = coordinateGraphData;
+    this.lineChartOptions = {
+      responsive: true,
+      scales: {
+        // We use this empty structure as a placeholder for dynamic theming.
+        xAxes: [{}],
+        yAxes: lineChartData.map((data) => {
+          return {
+            id: data.variable_name,
+            position: 'left',
+            ticks: {
+              fontColor: this._getColorForVariable(data.variable_name),
+            }
+          }
+        }),
+      },
+    };
+
+    this.lineChartColors = lineChartData.map((data) => {
+      const color = this._getColorForVariable(data.variable_name);
+      return {
+        backgroundColor: color,
+      }
+    });
+
+    this.lineChartData = lineChartData;
   }
 
   protected _configureMapExtentInteraction() {

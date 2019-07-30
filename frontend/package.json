@@ -35,6 +35,7 @@
     "ngx-loading": "^3.0.1",
     "ol": "^5.2.0",
     "ol-geocoder": "^3.2.0",
+    "randomcolor": "^0.5.4",
     "rxjs": "^6.3.3",
     "seedrandom": "^2.4.4",
     "zone.js": "~0.8.26"
