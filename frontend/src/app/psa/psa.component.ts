@@ -697,7 +697,11 @@ export class PsaComponent implements OnInit {
       responsive: true,
       scales: {
         // We use this empty structure as a placeholder for dynamic theming.
-        xAxes: [{}],
+        xAxes: [{
+          ticks: {
+            fontSize: 9,
+          }
+        }],
         yAxes: lineChartData.map((data) => {
           return {
             id: data.variable_name,
@@ -718,7 +722,7 @@ export class PsaComponent implements OnInit {
     });
 
     this.psaDatesFormatted = this.psaDates.map((date) => {
-      return moment(date).format('MM/DD HH:mm');
+      return moment(date).format('MM/DD/YYYY HH:mm');
     });
 
     this.lineChartData = lineChartData;
