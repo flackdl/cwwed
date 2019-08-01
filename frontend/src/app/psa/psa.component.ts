@@ -655,12 +655,13 @@ export class PsaComponent implements OnInit {
     this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-        this._lineChartDataAll = _.map(data, (variable: any) => {
+        this._lineChartDataAll = _.map(data, (variableData: any) => {
+          const variable = variableData.variable;
           return {
-            variable_name: variable.name,  // include variable name (without units for later comparison against form variables)
             label: `${variable.name} (${variable.units})`,
-            data: variable.values,
-            yAxisID: variable.name,
+            data: variableData.values,
+            yAxisID: variable.element_type,
+            variable: variable,  // also include actual variable for later comparison against form variables
           };
         });
 
@@ -686,9 +687,9 @@ export class PsaComponent implements OnInit {
 
     const lineChartData = [];
 
-    // include the line data if that variable is currently being displayed
+    // include the line chart data if that variable is currently being displayed
     this._lineChartDataAll.forEach((data) => {
-      if (this.form.get('variables').value[data.variable_name]) {
+      if (this.form.get('variables').value[data.variable.name]) {
         lineChartData.push(data);
       }
     });
@@ -696,33 +697,38 @@ export class PsaComponent implements OnInit {
     this.lineChartOptions = {
       responsive: true,
       scales: {
-        // We use this empty structure as a placeholder for dynamic theming.
-        xAxes: [{
-          ticks: {
-            fontSize: 9,
-          }
-        }],
-        yAxes: lineChartData.map((data) => {
-          return {
-            id: data.variable_name,
+        // use an empty structure as a placeholder for dynamic theming
+        xAxes: [{}],
+        yAxes: [
+          {
+            id: 'water',
+            scaleLabel: {
+              display: true,
+              labelString: 'Water (m)',
+            },
             position: 'left',
-            ticks: {
-              fontColor: this._getColorForVariable(data.variable_name),
-            }
-          }
-        }),
+          },
+          {
+            id: 'wind',
+            scaleLabel: {
+              display: true,
+              labelString: 'Wind (m/s)',
+            },
+            position: 'right',
+          },
+        ],
       },
     };
 
     this.lineChartColors = lineChartData.map((data) => {
-      const color = this._getColorForVariable(data.variable_name, .5);
+      const color = this._getColorForVariable(data.variable.name, .5);
       return {
         backgroundColor: color,
       }
     });
 
     this.psaDatesFormatted = this.psaDates.map((date) => {
-      return moment(date).format('MM/DD/YYYY HH:mm');
+      return moment(date).format('YYYY-MM-DD HH:mm');
     });
 
     this.lineChartData = lineChartData;

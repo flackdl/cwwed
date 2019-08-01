@@ -72,16 +72,30 @@
   border: 1px solid #cccccc;
   bottom: 12px;
   left: -50px;
-  min-width: 220px;
-  min-height: 100px;
+  width: 175px;
+  height: 75px;
 
+  @include media-breakpoint-up(sm) {
+    width: 300px;
+    height: 190px;
+  }
+
+  @include media-breakpoint-up(md) {
+    width: 420px;
+    height: 230px;
+  }
+  /*
+  the values are smaller than you'd think here because
+  map in the "large" breakpoint is actually pretty small because the
+  left hand column for the controls is visible
+  */
   @include media-breakpoint-up(lg) {
-    min-width: 390px;
-    min-height: 225px;
+    width: 390px;
+    height: 225px;
   }
   @include media-breakpoint-up(xl) {
-    min-width: 440px;
-    min-height: 275px;
+    width: 640px;
+    height: 340px;
   }
 }
 .ol-popup:after, .ol-popup:before {

@@ -117,7 +117,7 @@
             </div>
 
             <!-- overlay graph -->
-            <div #popup class="ol-popup" [class.invisible]="lineChartData.length === 0 && !isLoadingOverlayPopup">
+            <div #popup class="ol-popup">
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
               <div *ngIf="!hasTimeSeriesVariablesDisplayed()">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>

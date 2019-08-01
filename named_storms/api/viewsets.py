@@ -173,8 +173,7 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         # include data grouped by variable
         for variable in variables:
             result = {
-                'name': variable.name,
-                'units': variable.units,
+                'variable': NsemPsaVariableSerializer(variable).data,
                 'values': [],
             }
             for date in self.nsem.dates:
