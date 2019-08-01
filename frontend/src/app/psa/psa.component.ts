@@ -723,7 +723,9 @@ export class PsaComponent implements OnInit {
     this.lineChartColors = lineChartData.map((data) => {
       const color = this._getColorForVariable(data.variable.name, .5);
       return {
+        borderColor: color,
         backgroundColor: color,
+        fill: false,
       }
     });
 
