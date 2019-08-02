@@ -1,7 +1,6 @@
-import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ActivatedRoute, Router } from "@angular/router";
 import { HttpClient } from "@angular/common/http";
-import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, mergeMap, tap } from 'rxjs/operators';
@@ -18,11 +17,13 @@ import { Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
-import { InjectionService } from "../../ngx-charts/common/tooltip/injection.service";
 import { DecimalPipe } from "@angular/common";
+import { ChartOptions } from 'chart.js';
 
+const moment = require('moment');
 const seedrandom = require('seedrandom');
 const hexToRgba = require("hex-to-rgba");
+const randomColor = require('randomcolor');
 
 
 @Component({
@@ -54,6 +55,7 @@ export class PsaComponent implements OnInit {
   public namedStorm: any;
   public psaVariables: any[];
   public psaDates: string[] = [];
+  public psaDatesFormatted: string[] = [];
   public form: FormGroup;
   public nsemList: any;
   public currentFeature: any;
@@ -65,14 +67,14 @@ export class PsaComponent implements OnInit {
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
-  public coordinateGraphData: any[];
-  public chartWidth: number;
-  public chartHeight: number;
+  public lineChartData: any[] = [];
+  public lineChartColors: any[] = [];
+  public lineChartOptions: ChartOptions;
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
-  protected _coordinateGraphDataAll: any[] = [];
+  protected _lineChartDataAll: any[] = [];
 
   constructor(
     private http: HttpClient,
@@ -81,14 +83,10 @@ export class PsaComponent implements OnInit {
     private fb: FormBuilder,
     private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
-    private modalService: NgbModal,
-    private chartTooltipInjectionService: InjectionService,
   ) {
   }
 
   ngOnInit() {
-    // override chart tooltip container so it works in fullscreen
-    this.chartTooltipInjectionService.setContainerElement(this.mapEl.nativeElement);
 
     this.nsemList = this.cwwedService.nsemList;
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
@@ -155,13 +153,6 @@ export class PsaComponent implements OnInit {
     return displayedVariables.length > 0;
   }
 
-  public xAxisTickFormatting(value: string) {
-    const date = new Date(value);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}/${day}`;
-  }
-
   public hasExtentSelection(): boolean {
     return this._extentInteraction && this._extentInteraction.getExtent();
   }
@@ -190,17 +181,6 @@ export class PsaComponent implements OnInit {
       return psaVariable.name.replace(/ maximum/i, '');
     }
     return psaVariable.name;
-  }
-
-  @HostListener('window:resize', ['$event'])
-  protected _setMapWidth() {
-    this.chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
-  }
-
-  @HostListener('window:resize', ['$event'])
-  protected _setMapHeight() {
-    const chartWidth = this.mapEl.nativeElement.offsetWidth * .5;
-    this.chartHeight = chartWidth / 2.0;
   }
 
   protected _listenForInputChanges() {
@@ -247,7 +227,7 @@ export class PsaComponent implements OnInit {
     ).subscribe(
       (variablesValues) => {
 
-        this._updateCoordinateGraphData();
+        this._updateLineChart();
 
         this.availableMapLayers.forEach((availableLayer) => {
           // variable toggled off so remove layer from map & available layers
@@ -558,9 +538,6 @@ export class PsaComponent implements OnInit {
     // flag we're finished loading the map
     this.map.on('rendercomplete', () => {
       this.isLoadingMap = false;
-      // reset the map's dimensions
-      this._setMapHeight();
-      this._setMapWidth();
     });
 
     this.map.on('moveend', (event: any) => {
@@ -678,20 +655,17 @@ export class PsaComponent implements OnInit {
     this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
-        this._coordinateGraphDataAll = _.map(data, (variable: any) => {
+        this._lineChartDataAll = _.map(data, (variableData: any) => {
+          const variable = variableData.variable;
           return {
-            variable_name: variable.name,  // include variable name (without units for later comparison against form variables)
-            name: `${variable.name} (${variable.units})`,
-            series: _.zip(this.psaDates, variable.values).map((dateVal) => {
-              return {
-                name: dateVal[0],
-                value: dateVal[1],
-              }
-            })
+            label: `${variable.name} (${variable.units})`,
+            data: variableData.values,
+            yAxisID: variable.element_type,
+            variable: variable,  // also include actual variable for later comparison against form variables
           };
         });
 
-        this._updateCoordinateGraphData();
+        this._updateLineChart();
       },
       (error) => {
         console.error(error);
@@ -700,18 +674,66 @@ export class PsaComponent implements OnInit {
     );
   }
 
-  protected _updateCoordinateGraphData() {
+  protected _getColorForVariable(variableName: string, alpha?: number) {
+    return randomColor.randomColor({
+      luminosity: 'bright',
+      seed: variableName,
+      alpha: alpha || 1,
+      format: 'rgba',
+    });
+  }
 
-    const coordinateGraphData = [];
+  protected _updateLineChart() {
 
-    // include the coordinate variable data if that variable is currently being displayed
-    this._coordinateGraphDataAll.forEach((data) => {
-      if (this.form.get('variables').value[data.variable_name]) {
-        coordinateGraphData.push(data);
+    const lineChartData = [];
+
+    // include the line chart data if that variable is currently being displayed
+    this._lineChartDataAll.forEach((data) => {
+      if (this.form.get('variables').value[data.variable.name]) {
+        lineChartData.push(data);
       }
     });
 
-    this.coordinateGraphData = coordinateGraphData;
+    this.lineChartOptions = {
+      responsive: true,
+      scales: {
+        // use an empty structure as a placeholder for dynamic theming
+        xAxes: [{}],
+        yAxes: [
+          {
+            id: 'water',
+            scaleLabel: {
+              display: true,
+              labelString: 'Water (m)',
+            },
+            position: 'left',
+          },
+          {
+            id: 'wind',
+            scaleLabel: {
+              display: true,
+              labelString: 'Wind (m/s)',
+            },
+            position: 'right',
+          },
+        ],
+      },
+    };
+
+    this.lineChartColors = lineChartData.map((data) => {
+      const color = this._getColorForVariable(data.variable.name, .5);
+      return {
+        borderColor: color,
+        backgroundColor: color,
+        fill: false,
+      }
+    });
+
+    this.psaDatesFormatted = this.psaDates.map((date) => {
+      return moment(date).format('YYYY-MM-DD HH:mm');
+    });
+
+    this.lineChartData = lineChartData;
   }
 
   protected _configureMapExtentInteraction() {

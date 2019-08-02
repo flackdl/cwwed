@@ -327,6 +327,7 @@ class Command(BaseCommand):
             color_bar=self.color_bar_values(self.dataset_unstructured['wave_height'].min(), self.dataset_unstructured['wave_height'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            element_type=NsemPsaVariable.ELEMENT_WATER,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
@@ -350,6 +351,7 @@ class Command(BaseCommand):
             color_bar=self.color_bar_values(self.dataset_unstructured['water_level'].min(), self.dataset_unstructured['water_level'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            element_type=NsemPsaVariable.ELEMENT_WATER,
             units=NsemPsaVariable.UNITS_METERS,
         )
         nsem_psa_variable.save()
@@ -375,6 +377,7 @@ class Command(BaseCommand):
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
+            element_type=NsemPsaVariable.ELEMENT_WATER,
             units=NsemPsaVariable.UNITS_METERS,
             auto_displayed=True,
         )
@@ -395,6 +398,7 @@ class Command(BaseCommand):
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
+            element_type=NsemPsaVariable.ELEMENT_WIND,
             units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
             auto_displayed=True,
         )
@@ -413,6 +417,7 @@ class Command(BaseCommand):
             defaults=dict(
                 geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                element_type=NsemPsaVariable.ELEMENT_WIND,
                 units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
             ),
         )

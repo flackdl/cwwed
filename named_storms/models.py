@@ -160,6 +160,13 @@ class NsemPsaVariable(models.Model):
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
     UNITS_DEGREES = 'degrees'
+    ELEMENT_WATER = 'water'
+    ELEMENT_WIND = 'wind'
+
+    ELEMENT_CHOICES = (
+        (ELEMENT_WATER, ELEMENT_WATER),
+        (ELEMENT_WIND, ELEMENT_WIND),
+    )
 
     DATA_TYPE_CHOICES = (
         (DATA_TYPE_TIME_SERIES, DATA_TYPE_TIME_SERIES),
@@ -181,6 +188,7 @@ class NsemPsaVariable(models.Model):
     name = models.CharField(max_length=50)  # i.e "water_level"
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
+    element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
     color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
     units = models.CharField(choices=UNITS_CHOICES, max_length=20)
     auto_displayed = models.BooleanField(default=False)
