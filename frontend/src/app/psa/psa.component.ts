@@ -70,6 +70,7 @@ export class PsaComponent implements OnInit {
   public lineChartData: any[] = [];
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
+  public lineChartExportURL: string;
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
@@ -651,6 +652,8 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(event.coordinate);
 
     const latLon = toLonLat(event.coordinate);
+
+    this.lineChartExportURL = `${this.cwwedService.getPSATimeSeriesDataURL(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0])}?export=csv`;
 
     this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
       (data: any) => {

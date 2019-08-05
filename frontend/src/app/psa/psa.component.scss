@@ -82,7 +82,7 @@
 
   @include media-breakpoint-up(md) {
     width: 420px;
-    height: 230px;
+    height: 245px;
   }
   /*
   the values are smaller than you'd think here because
@@ -91,11 +91,11 @@
   */
   @include media-breakpoint-up(lg) {
     width: 390px;
-    height: 225px;
+    height: 230px;
   }
   @include media-breakpoint-up(xl) {
     width: 640px;
-    height: 340px;
+    height: 355px;
   }
 }
 .ol-popup:after, .ol-popup:before {

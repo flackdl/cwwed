@@ -81,8 +81,12 @@ export class CwwedService {
     );
   }
 
+  public getPSATimeSeriesDataURL(namedStormId: number, lat: number, lon: number) {
+    return `${API_NAMED_STORMS}${namedStormId}/psa/data/time-series/${lat}/${lon}`;
+  }
+
   public fetchPSATimeSeriesData(namedStormId: number, lat: number, lon: number) {
-    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/data/time-series/${lat}/${lon}`).pipe(
+    return this.http.get(this.getPSATimeSeriesDataURL(namedStormId, lat, lon)).pipe(
       map((data) => {
         return data;
       }),
