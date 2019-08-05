@@ -117,8 +117,11 @@
             </div>
 
             <!-- overlay graph -->
-            <div #popup class="ol-popup">
+            <div #popup class="ol-popup" [class.invisible]="!isOverlayVisible()">
+
               <ngx-loading [show]="isLoadingOverlayPopup"></ngx-loading>
+
+              <!-- no relevant variables are selected -->
               <div *ngIf="!hasTimeSeriesVariablesDisplayed()">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <div class="mt-4">
@@ -128,7 +131,9 @@
                   </ul>
                 </div>
               </div>
-              <div *ngIf="hasTimeSeriesVariablesDisplayed() && lineChartData.length > 0">
+
+              <!-- time-series graph -->
+              <div *ngIf="hasTimeSeriesVariablesDisplayed() && lineChartData.length">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <canvas baseChart
                         [datasets]="lineChartData"

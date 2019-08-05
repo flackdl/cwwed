@@ -120,7 +120,7 @@ export class PsaComponent implements OnInit {
   }
 
   public isOverlayVisible(): boolean {
-    return this.popupOverlay.getPosition() !== undefined;
+    return this.popupOverlay ? this.popupOverlay.getPosition() !== undefined : false;
   }
 
   public closeOverlayPopup() {
@@ -658,10 +658,10 @@ export class PsaComponent implements OnInit {
         this._lineChartDataAll = _.map(data, (variableData: any) => {
           const variable = variableData.variable;
           return {
-            label: `${variable.name} (${variable.units})`,
+            label: variable.name,
             data: variableData.values,
             yAxisID: variable.element_type,
-            variable: variable,  // also include actual variable for later comparison against form variables
+            variable: variable,  // include actual variable for later comparison against form variables
           };
         });
 
@@ -684,7 +684,6 @@ export class PsaComponent implements OnInit {
   }
 
   protected _updateLineChart() {
-
     const lineChartData = [];
 
     // include the line chart data if that variable is currently being displayed

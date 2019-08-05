@@ -149,7 +149,7 @@ class NSEM(models.Model):
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: collections.Iterable
 
     def __str__(self):
-        return str(self.named_storm)
+        return '{} ({})'.format(self.named_storm, self.id)
 
 
 class NsemPsaVariable(models.Model):
