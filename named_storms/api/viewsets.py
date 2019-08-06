@@ -1,7 +1,8 @@
+import csv
 import json
-from django.contrib.gis.db.models.functions import Distance, GeoHash
+import pytz
 from django.db.models.functions import Cast
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
@@ -136,6 +137,26 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
 
+    def _as_csv(self, results, lat, lon):
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="{}-time-series.csv"'.format(self.nsem.named_storm)
+
+        writer = csv.writer(response)
+        writer.writerow(['date', 'lat', 'lon', 'name', 'units', 'value'])
+        for result in results:
+            for i, value in enumerate(result['values']):
+                writer.writerow([
+                    # TODO - remove timezone localization once data is correctly consumed in UTC
+                    pytz.timezone('US/Pacific').localize(self.nsem.dates[i].replace(tzinfo=None)),
+                    lat,
+                    lon,
+                    result['variable']['name'],
+                    result['variable']['units'],
+                    value,
+                ])
+
+        return response
+
     def list(self, request, *args, lat=None, lon=None, **kwargs):
 
         # validate supplied coordinates
@@ -181,6 +202,9 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
                 value = next((v['value'] for v in time_series_query if v['nsem_psa_variable__name'] == variable.name and v['date'] == date), 0)
                 result['values'].append(value)
             results.append(result)
+
+        if request.query_params.get('export') == 'csv':
+            return self._as_csv(results, lat, lon)
 
         return Response(results)
 
