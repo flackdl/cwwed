@@ -1,5 +1,6 @@
 import csv
 import json
+import pytz
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
@@ -145,7 +146,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         for result in results:
             for i, value in enumerate(result['values']):
                 writer.writerow([
-                    self.nsem.dates[i].isoformat(),
+                    # TODO - remove timezone conversion once data is consumed in UTC
+                    self.nsem.dates[i].astimezone(pytz.timezone('US/Pacific')),
                     lat,
                     lon,
                     result['variable']['name'],
