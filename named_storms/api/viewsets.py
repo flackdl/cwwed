@@ -139,10 +139,10 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = 'attachment; filename="cwwed-time-series.csv"'
+        response['Content-Disposition'] = 'attachment; filename="{}-time-series.csv"'.format(self.nsem.named_storm)
 
         writer = csv.writer(response)
-        writer.writerow(['date', 'lat', 'lon', 'variable_name', 'variable_units', 'value'])
+        writer.writerow(['date', 'lat', 'lon', 'name', 'units', 'value'])
         for result in results:
             for i, value in enumerate(result['values']):
                 writer.writerow([
