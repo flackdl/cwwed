@@ -146,8 +146,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         for result in results:
             for i, value in enumerate(result['values']):
                 writer.writerow([
-                    # TODO - remove timezone conversion once data is consumed in UTC
-                    self.nsem.dates[i].astimezone(pytz.timezone('US/Pacific')),
+                    # TODO - remove timezone localization once data is correctly consumed in UTC
+                    pytz.timezone('US/Pacific').localize(self.nsem.dates[i].replace(tzinfo=None)),
                     lat,
                     lon,
                     result['variable']['name'],
