@@ -6,7 +6,6 @@ import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, mergeMap, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
-import {defaults as defaultControls, FullScreen} from 'ol/control.js';
 import { platformModifierKeyOnly } from 'ol/events/condition.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
@@ -182,6 +181,17 @@ export class PsaComponent implements OnInit {
       return psaVariable.name.replace(/ maximum/i, '');
     }
     return psaVariable.name;
+  }
+
+  public toggleFullscreen(psaContainer: HTMLElement) {
+    if (this.isFullscreen()) {
+      document.exitFullscreen();
+    }
+    psaContainer.requestFullscreen();
+  }
+
+  public isFullscreen(): boolean {
+    return Boolean(document['fullscreenElement']);
   }
 
   protected _listenForInputChanges() {
@@ -471,9 +481,6 @@ export class PsaComponent implements OnInit {
     }
 
     this.map = new Map({
-      controls: defaultControls().extend([
-        new FullScreen(),
-      ]),
       layers: [
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
