@@ -143,6 +143,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# allauth
+# https://django-allauth.readthedocs.io/en/latest/configuration.html
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # username or email
+
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
 
