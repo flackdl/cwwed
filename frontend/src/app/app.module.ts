@@ -4,7 +4,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ErrorHandler, Injectable, NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule } from '@angular/common/http';
-import { RouterModule, Routes} from "@angular/router";
+import { RouterModule, Routes } from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
 import { ChartsModule } from "ng2-charts";
 import * as Sentry from "@sentry/browser";
@@ -19,6 +19,7 @@ import { MainComponent } from './main/main.component';
 import { CoastalActComponent } from './coastal-act/coastal-act.component';
 import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-projects.component';
 import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
+import { PsaExportComponent } from './psa/psa-export.component';
 
 Sentry.init({
   dsn: "https://80b326e2a7fa4e6abf9d3a9d19481c40@sentry.io/1281345",
@@ -55,8 +56,14 @@ const appRoutes: Routes = [
     ]
   },
   { path: 'covered-data/:id', component: CoveredDataMainComponent },
-  { path: 'post-storm-assessment', component: PsaComponent },
-  { path: 'post-storm-assessment/:id', component: PsaComponent },
+  {
+    path: 'post-storm-assessment',
+    children: [
+      { path: '', component: PsaComponent },  // TODO - remove path entry once we're dynamically choosing storms
+      { path: ':id', component: PsaComponent },
+      { path: ':id/export', component: PsaExportComponent },
+    ],
+  },
   { path: 'page-not-found', component: PageNotFoundComponent },
   { path: '**', component: PageNotFoundComponent }
 ];
@@ -73,6 +80,7 @@ const appRoutes: Routes = [
     CoastalActComponent,
     CoastalActProjectsComponent,
     CoastalActProjectsDetailComponent,
+    PsaExportComponent,
   ],
   imports: [
     RouterModule.forRoot(

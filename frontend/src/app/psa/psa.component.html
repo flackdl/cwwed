@@ -82,21 +82,11 @@
                       <span class="oi oi-cloud-download"></span>
                     </a>
                   </dd>
-                  <!-- TODO - openap timesout/crashes for large datasets
-                  <dt class="col-sm-6">All Data</dt>
-                  <dd class="col-sm-6">
-                    <a target="_blank" class="d-block" [href]="getDataUrl('ascii')">ASCII</a>
-                    <a target="_blank" class="d-block" [href]="getDataUrl('nc')">NetCDF</a>
-                    <a target="_blank" class="d-block" [href]="getDataUrl('csv')">CSV</a>
-                  </dd>
-                  -->
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
-                    <i *ngIf="!extentCoords">(none selected)</i>
-                    <!-- TODO - need grid dataset to use geogrid() feature -->
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.ascii?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">ASCII</a>
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.nc?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">NetCDF</a>
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.csv?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">CSV</a>
+                    <a class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export', {'hiya': 'there'}]">Shapefile</a>
+                    <a class="d-block">NetCDF</a>
+                    <a class="d-block">CSV</a>
                   </dd>
                 </dl>
               </ng-template>
