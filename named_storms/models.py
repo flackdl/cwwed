@@ -135,7 +135,7 @@ class NamedStormCoveredDataLog(models.Model):
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
 
 
-class NSEM(models.Model):
+class NsemPsa(models.Model):
     """
     Named Storm Event Model
     """
@@ -184,7 +184,7 @@ class NsemPsaVariable(models.Model):
         (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
     )
 
-    nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
@@ -222,7 +222,7 @@ class NsemPsaData(models.Model):
 
 
 class NsemPsaUserExport(models.Model):
-    nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(max_length=1500)
     bbox = models.GeometryField(geography=True)

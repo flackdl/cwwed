@@ -19,7 +19,7 @@ from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NSEM, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
+from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
 )
@@ -49,7 +49,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     """
     Named Storm Event Model Viewset
     """
-    queryset = NSEM.objects.all()
+    queryset = NsemPsa.objects.all()
     serializer_class = NSEMSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
     filterset_fields = ('named_storm__id', 'model_output_snapshot_extracted')
@@ -92,7 +92,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
     # Named Storm Event Model PSA BASE Viewset
     #     - expects to be nested under a NamedStormViewset detail
     storm: NamedStorm = None
-    nsem: NSEM = None
+    nsem: NsemPsa = None
 
     def dispatch(self, request, *args, **kwargs):
         storm_id = kwargs.pop('storm_id')
@@ -101,7 +101,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NSEM.objects.filter(named_storm__id=storm_id, model_output_snapshot_extracted=True).order_by('-date_returned')
+        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, model_output_snapshot_extracted=True).order_by('-date_returned')
 
         # validate
         if not storm.exists() or not nsem.exists():
@@ -128,7 +128,7 @@ class NsemPsaVariableViewset(NsemPsaBaseViewset):
 
 
 class NsemPsaDatesViewset(NsemPsaBaseViewset):
-    queryset = NSEM.objects.none()  # required but unnecessary since we're returning a specific nsem's dates
+    queryset = NsemPsa.objects.none()  # required but unnecessary since we're returning a specific nsem's dates
     pagination_class = None
 
     def list(self, request, *args, **kwargs):

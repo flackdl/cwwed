@@ -9,7 +9,7 @@ from django.core.files import File
 
 from cwwed import slack
 from named_storms.models import (
-    CoveredDataProvider, NamedStorm, NSEM, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
+    CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
     PROCESSOR_DATA_SOURCE_FILE_HDF,
 )
 
@@ -102,9 +102,9 @@ def named_storm_covered_data_archive_path(named_storm: NamedStorm, covered_data:
     )
 
 
-def named_storm_nsem_path(nsem: NSEM) -> str:
+def named_storm_nsem_path(nsem: NsemPsa) -> str:
     """
-    Returns a path to a storm's NSEM product
+    Returns a path to a storm's NsemPsa product
     """
     return os.path.join(
         named_storm_path(nsem.named_storm),
@@ -112,9 +112,9 @@ def named_storm_nsem_path(nsem: NSEM) -> str:
     )
 
 
-def named_storm_nsem_version_path(nsem: NSEM) -> str:
+def named_storm_nsem_version_path(nsem: NsemPsa) -> str:
     """
-    Returns a path to a storm's NSEM product's version
+    Returns a path to a storm's NsemPsa product's version
     """
     return os.path.join(
         named_storm_nsem_path(nsem),
@@ -159,7 +159,7 @@ def get_opendap_url_named_storm_root(request: HttpRequest, named_storm: NamedSto
     )
 
 
-def get_opendap_url_nsem_root(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_root(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_named_storm_root(request, nsem.named_storm),
         parse.quote(settings.CWWED_NSEM_DIR_NAME),
@@ -167,14 +167,14 @@ def get_opendap_url_nsem_root(request: HttpRequest, nsem: NSEM) -> str:
     )
 
 
-def get_opendap_url_nsem(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_nsem_root(request, nsem),
         'catalog.html',
     )
 
 
-def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_nsem_root(request, nsem),
         parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
@@ -182,14 +182,14 @@ def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NSEM) -> str:
     )
 
 
-def get_opendap_url_nsem_covered_data_root(request: HttpRequest, nsem: NSEM) -> str:
+def get_opendap_url_nsem_covered_data_root(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_nsem_root(request, nsem),
         parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
     )
 
 
-def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NSEM, covered_data: CoveredData) -> str:
+def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NsemPsa, covered_data: CoveredData) -> str:
     return os.path.join(
         get_opendap_url_nsem_covered_data_root(request, nsem),
         parse.quote(covered_data.name),

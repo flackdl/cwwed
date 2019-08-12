@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
 
@@ -54,7 +54,7 @@ class NSEMSerializer(serializers.ModelSerializer):
     """
 
     class Meta:
-        model = NSEM
+        model = NsemPsa
         fields = '__all__'
 
     model_output_upload_path = serializers.SerializerMethodField()
@@ -63,26 +63,26 @@ class NSEMSerializer(serializers.ModelSerializer):
     opendap_url_psa = serializers.SerializerMethodField()
     opendap_url_covered_data = serializers.SerializerMethodField()
 
-    def get_opendap_url_psa(self, obj: NSEM):
+    def get_opendap_url_psa(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
         return get_opendap_url_nsem_psa(self.context['request'], obj)
 
-    def get_opendap_url_covered_data(self, obj: NSEM):
+    def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
         if not obj.covered_data_snapshot:
             return None
         return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_logs.all())
 
-    def get_opendap_url(self, obj: NSEM):
+    def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
         if not obj.model_output_snapshot_extracted:
             return None
         return get_opendap_url_nsem(self.context['request'], obj)
 
-    def get_covered_data_storage_url(self, obj: NSEM):
+    def get_covered_data_storage_url(self, obj: NsemPsa):
         storage = S3ObjectStoragePrivate()
         if obj.covered_data_snapshot:
             return storage.storage_url(obj.covered_data_snapshot)
@@ -94,7 +94,7 @@ class NSEMSerializer(serializers.ModelSerializer):
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
-        obj = self.instance  # type: NSEM
+        obj = self.instance  # type: NsemPsa
         if obj:
 
             # already extracted
@@ -119,11 +119,11 @@ class NSEMSerializer(serializers.ModelSerializer):
             return s3_path
         return value
 
-    def get_model_output_upload_path(self, obj: NSEM) -> str:
+    def get_model_output_upload_path(self, obj: NsemPsa) -> str:
         return self._get_model_output_upload_path(obj)
 
     @staticmethod
-    def _get_model_output_upload_path(obj: NSEM) -> str:
+    def _get_model_output_upload_path(obj: NsemPsa) -> str:
         storage = S3ObjectStoragePrivate()
         return storage.path(os.path.join(
             settings.CWWED_NSEM_DIR_NAME,

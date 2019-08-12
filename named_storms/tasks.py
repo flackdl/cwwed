@@ -15,7 +15,7 @@ from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails,
@@ -118,13 +118,13 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 def archive_nsem_covered_data_task(nsem_id):
     """
     - Copies all covered data archives to a versioned NSEM location in object storage so users can download them directly
-    :param nsem_id: id of NSEM record
+    :param nsem_id: id of NsemPsa record
     """
 
     # retrieve all the successful covered data by querying the logs
     # exclude any logs where the snapshot archive hasn't been created yet
     # sort by date descending and retrieve unique results
-    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
     if not logs.exists():
         return None
@@ -157,9 +157,9 @@ def archive_nsem_covered_data_task(nsem_id):
 def extract_nsem_covered_data_task(nsem_data: dict):
     """
     Downloads and extracts nsem covered data into file storage
-    :param nsem_data: dictionary of NSEM record
+    :param nsem_data: dictionary of NsemPsa record
     """
-    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
+    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
         settings.CWWED_COVERED_DATA_DIR_NAME,
@@ -192,7 +192,7 @@ class ExtractNSEMTaskBase(app.Task):
 
         # the first arg should be the nsem
         if args:
-            nsem = NSEM.objects.filter(pk=args[0])
+            nsem = NsemPsa.objects.filter(pk=args[0])
             if nsem.exists():
                 nsem = nsem.get()
                 nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
@@ -220,7 +220,7 @@ def extract_nsem_model_output_task(nsem_id):
     Downloads the model product output from object storage and puts it in file storage
     """
 
-    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     uploaded_file_path = nsem.model_output_snapshot
     storage = S3ObjectStoragePrivate()
 
@@ -285,10 +285,10 @@ def extract_nsem_model_output_task(nsem_id):
 def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
     """
     Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
-    :param nsem_data serialized NSEM instance
+    :param nsem_data serialized NsemPsa instance
     :param base_url the scheme & domain that this request arrived
     """
-    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
+    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
 
     body = """
