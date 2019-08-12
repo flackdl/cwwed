@@ -1,21 +1,20 @@
-from __future__ import absolute_import, unicode_literals
 import json
-from datetime import datetime
-from django.contrib.auth.models import User
 import os
 import tarfile
 import requests
+from datetime import datetime, timedelta
+from django.contrib.auth.models import User
+from django.contrib.gis.geos import WKTReader
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails,
@@ -314,3 +313,21 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         recipient_list=recipients,
     )
     return nsem_data
+
+
+@app.task(**TASK_ARGS)
+def create_psa_user_export(nsem_id, user_id, bbox_wkt):
+    user = get_object_or_404(User, id=user_id)
+    nsem = get_object_or_404(NsemPsa, id=nsem_id)
+    wkt_r = WKTReader()
+    bbox_polygon = wkt_r.read(bbox_wkt)
+    date_expires = datetime.utcnow() + timedelta(days=2)
+
+    # TODO - create export data, upload to S3 using signed url and temporary object lifespan
+
+    NsemPsaUserExport(
+        user=user,
+        nsem=nsem,
+        bbox=bbox_polygon,
+        date_expires=date_expires,
+    )
