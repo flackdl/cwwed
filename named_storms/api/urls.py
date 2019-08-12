@@ -7,6 +7,7 @@ router = routers.DefaultRouter()
 router.register(r'named-storms', viewsets.NamedStormViewSet)
 router.register(r'covered-data', viewsets.CoveredDataViewSet)
 router.register(r'nsem', viewsets.NSEMViewset)
+router.register(r'nsem-psa-user-export', viewsets.NsemPsaUserExportViewset)
 
 
 urlpatterns = [

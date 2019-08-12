@@ -19,8 +19,10 @@ from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NSEM, NsemPsaVariable, NsemPsaData
-from named_storms.api.serializers import NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer
+from named_storms.models import NamedStorm, CoveredData, NSEM, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
+from named_storms.api.serializers import (
+    NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
+)
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -275,3 +277,11 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         # verify if the variable requires a date filter
         if nsem_psa_variable_query[0].data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and not self.request.query_params.get('date'):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
+
+
+class NsemPsaUserExportViewset(viewsets.ModelViewSet):
+    serializer_class = NsemPsaUserExportSerializer
+    queryset = NsemPsaUserExport.objects.all()
+
+    def get_queryset(self):
+        return NsemPsaUserExport.objects.filter(user=self.request.user)

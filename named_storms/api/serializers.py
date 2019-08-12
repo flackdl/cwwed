@@ -3,7 +3,7 @@ from django.conf import settings
 from rest_framework import serializers
 
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider, NsemPsaVariable, NsemPsaData
+from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NSEM, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
 
@@ -139,4 +139,14 @@ class NsemPsaVariableSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = NsemPsaVariable
+        fields = '__all__'
+
+
+class NsemPsaUserExportSerializer(serializers.ModelSerializer):
+    """
+    Named Storm Event Model PSA User Export Serializer
+    """
+
+    class Meta:
+        model = NsemPsaUserExport
         fields = '__all__'

@@ -1,5 +1,5 @@
-import collections
 from datetime import datetime
+from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Index
@@ -219,3 +219,13 @@ class NsemPsaData(models.Model):
             Index(fields=['nsem_psa_variable', 'date']),
             Index(fields=['nsem_psa_variable', 'geo_hash']),
         ]
+
+
+class NsemPsaUserExport(models.Model):
+    nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    url = models.CharField(max_length=1500)
+    bbox = models.GeometryField(geography=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)
+    date_expires = models.DateTimeField()
