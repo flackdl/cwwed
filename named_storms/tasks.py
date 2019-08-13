@@ -1,5 +1,6 @@
 import json
 import os
+import pytz
 import tarfile
 import requests
 from datetime import datetime, timedelta
@@ -16,8 +17,7 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    get_superuser_emails,
-)
+    get_superuser_emails, named_storm_nsem_psa_version_path)
 
 
 TASK_ARGS = dict(
@@ -206,7 +206,7 @@ class ExtractNSEMTaskBase(app.Task):
                 )
 
 
-EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()
+EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()  # type: dict
 EXTRACT_NSEM_TASK_ARGS.update({
     'base': ExtractNSEMTaskBase,
 })
@@ -317,12 +317,12 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
 @app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
-    date_expires = datetime.utcnow() + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
+    date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
+
+    psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
 
     # TODO - create export data, upload to S3 using signed url and temporary object lifespan
+    #        convert every .nc file in psa_path, then tar+gzip and upload to S3
 
-    import logging
-    logging.info('=========================')
-    logging.info(nsem_psa_user_export)
-    logging.info(date_expires)
-    logging.info('=========================')
+    nsem_psa_user_export.date_expires = date_expires
+    nsem_psa_user_export.save()

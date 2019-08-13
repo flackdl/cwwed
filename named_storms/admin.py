@@ -87,7 +87,7 @@ class NsemPsaDataAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsaUserExport)
 class NsemPsaUserExportAdmin(admin.GeoModelAdmin):
-    list_display = ('nsem', 'named_storm', 'user', 'date_created', 'date_expires')
+    list_display = ('id', 'nsem', 'user', 'date_created', 'date_expires')
     list_filter = ('nsem__named_storm__name',)
 
     def named_storm(self, obj):
