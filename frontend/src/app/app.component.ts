@@ -34,13 +34,13 @@ export class AppComponent implements OnInit {
   }
 
   ngOnInit() {
-    forkJoin(
+    forkJoin([
       this.cwwedService.fetchCoveredData(),
       this.cwwedService.fetchNamedStorms(),
       this.cwwedService.fetchNSEMPerStorm(),
       this.cwwedService.fetchCoastalActProjects(),
       this.cwwedService.fetchUser(),
-    ).subscribe(
+    ]).subscribe(
       () => {
         this.isLoading = false;
       },

@@ -224,8 +224,8 @@ class NsemPsaData(models.Model):
 class NsemPsaUserExport(models.Model):
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    url = models.CharField(max_length=1500)
+    url = models.CharField(max_length=1500, null=True, blank=True)  # signed download url
     bbox = models.GeometryField(geography=True)
     date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
-    date_expires = models.DateTimeField()
+    date_expires = models.DateTimeField(null=True, blank=True)

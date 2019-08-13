@@ -4,7 +4,6 @@ import tarfile
 import requests
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
-from django.contrib.gis.geos import WKTReader
 from django.conf import settings
 from django.core.mail import send_mail
 from django.http import Http404
@@ -316,18 +315,14 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
 
 
 @app.task(**TASK_ARGS)
-def create_psa_user_export(nsem_id, user_id, bbox_wkt):
-    user = get_object_or_404(User, id=user_id)
-    nsem = get_object_or_404(NsemPsa, id=nsem_id)
-    wkt_r = WKTReader()
-    bbox_polygon = wkt_r.read(bbox_wkt)
-    date_expires = datetime.utcnow() + timedelta(days=2)
+def create_psa_user_export_task(nsem_psa_user_export_id: int):
+    nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+    date_expires = datetime.utcnow() + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
     # TODO - create export data, upload to S3 using signed url and temporary object lifespan
 
-    NsemPsaUserExport(
-        user=user,
-        nsem=nsem,
-        bbox=bbox_polygon,
-        date_expires=date_expires,
-    )
+    import logging
+    logging.info('=========================')
+    logging.info(nsem_psa_user_export)
+    logging.info(date_expires)
+    logging.info('=========================')

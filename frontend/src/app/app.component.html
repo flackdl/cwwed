@@ -47,7 +47,7 @@
     </nav>
   </header>
 
-  <div class="position-relative">
+  <div class="position-relative" id="router-outlet">
     <ngx-loading [show]="isLoading"></ngx-loading>
     <router-outlet *ngIf="!isLoading"></router-outlet>
   </div>

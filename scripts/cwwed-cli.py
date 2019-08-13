@@ -13,7 +13,7 @@ import requests
 API_ROOT = 'https://dev.cwwed-staging.com/api/'
 #API_ROOT = 'http://localhost:8000/api/'
 
-ENDPOINT_NSEM = 'nsem/'
+ENDPOINT_NSEM = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'
 ENDPOINT_STORMS = 'named-storms/'
 

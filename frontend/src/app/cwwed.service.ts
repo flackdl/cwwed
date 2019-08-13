@@ -9,7 +9,7 @@ let API_ROOT = environment.production ? API_ROOT_PROD : API_ROOT_DEV;
 let API_USER = `${API_ROOT}/user/`;
 let API_COVERED_DATA = `${API_ROOT}/covered-data/`;
 let API_NAMED_STORMS = `${API_ROOT}/named-storms/`;
-let API_NSEM_PER_STORM = `${API_ROOT}/nsem/per-storm/`;
+let API_NSEM_PER_STORM = `${API_ROOT}/nsem-psa/per-storm/`;
 let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-projects/`;
 
 @Injectable({

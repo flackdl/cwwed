@@ -15,9 +15,10 @@ from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 
 from named_storms.api.filters import NsemPsaDataFilter
+from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
-    extract_nsem_covered_data_task,
+    extract_nsem_covered_data_task, create_psa_user_export_task,
 )
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
@@ -279,9 +280,14 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
 
 
-class NsemPsaUserExportViewset(viewsets.ModelViewSet):
+class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet):
     serializer_class = NsemPsaUserExportSerializer
     queryset = NsemPsaUserExport.objects.all()
 
     def get_queryset(self):
         return NsemPsaUserExport.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        super().perform_create(serializer)
+        # create task for the psa export
+        create_psa_user_export_task.delay(nsem_psa_user_export_id=serializer.instance.id)

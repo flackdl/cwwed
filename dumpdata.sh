@@ -1,6 +1,6 @@
 #!/bin/bash
 
-excluded_apps=(account sites auth admin sessions authtoken socialaccount contenttypes audit named_storms.namedstormcovereddatalog named_storms.nsem)
+excluded_apps=(account sites auth admin sessions authtoken socialaccount contenttypes audit named_storms.namedstormcovereddatalog named_storms.nsempsa)
 
 exclusions=''
 for app in ${excluded_apps[*]}; do
