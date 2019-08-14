@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import pytz
 import tarfile
 import requests
@@ -324,10 +325,14 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
     psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
-    tmp_user_export_path = os.path.join(root_data_path(), settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME)
-    tar_path = os.path.join(tmp_user_export_path, '.tgz')
+    tmp_user_export_path = os.path.join(
+        root_data_path(),
+        settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
+        str(nsem_psa_user_export.id),
+    )
+    tar_path = os.path.join(tmp_user_export_path, '{}.tgz'.format(nsem_psa_user_export.nsem.named_storm))
 
-    # create temp directory if it doesn't exist
+    # create temporary directory
     create_directory(tmp_user_export_path)
 
     for ds_file in os.listdir(psa_path):
@@ -395,6 +400,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         Body=open(tar_path, 'rb'),
         Expires=date_expires,
     )
+
+    # remove temporary directory
+    shutil.rmtree(tmp_user_export_path)
 
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
