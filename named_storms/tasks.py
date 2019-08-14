@@ -3,6 +3,9 @@ import os
 import pytz
 import tarfile
 import requests
+import xarray as xr
+import boto3
+from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -17,7 +20,8 @@ from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    get_superuser_emails, named_storm_nsem_psa_version_path)
+    get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
+    create_directory)
 
 
 TASK_ARGS = dict(
@@ -320,9 +324,81 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
     psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
+    tmp_user_export_path = os.path.join(root_data_path(), settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME)
+    tar_path = os.path.join(tmp_user_export_path, '.tgz')
 
-    # TODO - create export data, upload to S3 using signed url and temporary object lifespan
-    #        convert every .nc file in psa_path, then tar+gzip and upload to S3
+    # create temp directory if it doesn't exist
+    create_directory(tmp_user_export_path)
+
+    for ds_file in os.listdir(psa_path):
+        if not ds_file.endswith('.nc'):
+            continue
+
+        ds_file_path = os.path.join(psa_path, ds_file)
+
+        # open dataset
+        ds = xr.open_dataset(ds_file_path)
+
+        # subset using user-defined bounding box
+        ds = ds.where(
+            (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &
+            (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &
+            (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
+            (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
+
+        # store in temporary directory
+        ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+
+    # create tar in local storage
+    tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
+    tar.add(tmp_user_export_path, arcname=str(nsem_psa_user_export.nsem.named_storm))
+    tar.close()
+
+    #
+    # create pre-signed url and upload to S3
+    # https://aws.amazon.com/premiumsupport/knowledge-center/presigned-url-s3-bucket-expiration/
+    #
+
+    # get the service client with sigv4 configured
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+        config=BotoCoreConfig(signature_version='s3v4'))
+
+    # user export key name (using the export_id enforces uniqueness)
+    key_name = '{dir}/{export_id}-{storm_name}.{extension}'.format(
+        dir=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
+        export_id=nsem_psa_user_export.id,
+        storm_name=nsem_psa_user_export.nsem.named_storm,
+        extension=settings.CWWED_ARCHIVE_EXTENSION,
+    )
+
+    # generate the pre-signed URL
+    presigned_url = s3_client.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={
+            'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
+            'Key': key_name,
+        },
+        ExpiresIn=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS * 24 * 60 * 60,
+    )
+
+    # upload tar to s3 object with expiration
+    s3_resource = boto3.resource(
+        's3',
+        aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+    )
+    s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
+        Key=key_name,
+        Body=open(tar_path, 'rb'),
+        Expires=date_expires,
+    )
 
     nsem_psa_user_export.date_expires = date_expires
+    nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
+    nsem_psa_user_export.url = presigned_url
     nsem_psa_user_export.save()
+
+    return presigned_url
