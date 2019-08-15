@@ -285,7 +285,10 @@ class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet)
     queryset = NsemPsaUserExport.objects.all()
 
     def get_queryset(self):
-        return NsemPsaUserExport.objects.filter(user=self.request.user)
+        if self.request.user.is_authenticated:
+            return NsemPsaUserExport.objects.filter(user=self.request.user)
+        else:
+            return NsemPsaUserExport.objects.none()
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
