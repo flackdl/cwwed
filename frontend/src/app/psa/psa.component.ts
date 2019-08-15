@@ -597,7 +597,7 @@ export class PsaComponent implements OnInit {
     this.map.on('pointermove', (event) => {
 
       // don't show feature details if there's any popup overlay already present
-      if (this.popupOverlay && this.popupOverlay.rendered.visible) {
+      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.hasExtentSelection()) {
         return;
       }
 

@@ -84,9 +84,12 @@
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
-                    <a class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export', {'extent': extentCoords || ''}]">Shapefile</a>
-                    <a class="d-block">NetCDF</a>
-                    <a class="d-block">CSV</a>
+                    <i *ngIf="!extentCoords">(none selected)</i>
+                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'netcdf'}">NetCDF</a>
+                    <!--
+                    <a class="d-block" *ngIf="extentCoords">Shapefile</a>
+                    <a class="d-block" *ngIf="extentCoords">CSV</a>
+                    -->
                   </dd>
                 </dl>
               </ng-template>
@@ -102,7 +105,7 @@
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- feature info -->
-            <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
+            <div id="map-info" *ngIf="currentFeature && !hasExtentSelection() && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div *ngFor="let feature of currentFeature | keyvalue">
                 <!-- manually display coordinate value at bottom -->
                 <span *ngIf="feature.key !== 'coordinate'">{{ feature.key }}: {{ feature.value }} ({{ currentConfidence }}% accuracy)</span>

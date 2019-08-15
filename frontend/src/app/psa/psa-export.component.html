@@ -1,9 +1,30 @@
 <nav aria-label="breadcrumb" *ngIf="storm">
-  <ol class="breadcrumb">
+  <ol class="breadcrumb bg-light">
     <li class="breadcrumb-item"><a [routerLink]="['/post-storm-assessment', storm.id]">{{ storm.name }}</a></li>
-    <li class="breadcrumb-item active" aria-current="page">Data Export</li>
+    <li class="breadcrumb-item active" aria-current="page">Export</li>
   </ol>
 </nav>
-<p>
-  psa-export works!
-</p>
+<div class="card">
+  <div class="card-header">
+      Post Storm Assessment Export
+  </div>
+  <div class="card-body">
+    <div class="card-text">
+
+      <div [formGroup]="form">
+        <strong>Variables to export:</strong>
+        <div class="form-group ml-3" formGroupName="variables">
+          <div class="form-check" *ngFor="let psaVariable of psaVariables">
+            <input class="form-check-input" type="checkbox" [formControlName]="psaVariable.name" [id]="psaVariable.id">
+            <label class="form-check-label" [for]="psaVariable.id">
+              {{ psaVariable.name }}
+            </label>
+          </div>
+        </div>
+        <div class="form-group d-flex justify-content-end">
+          <button class="btn btn-primary" type="button">Export</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
