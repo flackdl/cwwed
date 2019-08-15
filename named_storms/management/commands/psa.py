@@ -107,7 +107,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
-        self.nsem = self.storm.nsem_set.order_by('-id')[0]
+        self.nsem = self.storm.nsempsa_set.order_by('-id')[0]
 
         # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_SPEED_MAX, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
