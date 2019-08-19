@@ -6,6 +6,7 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { HttpClientModule, HttpClientXsrfModule } from '@angular/common/http';
 import { RouterModule, Routes } from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
+import { MomentModule } from 'ngx-moment';
 import { ChartsModule } from "ng2-charts";
 import * as Sentry from "@sentry/browser";
 
@@ -102,6 +103,7 @@ const appRoutes: Routes = [
       headerName: 'X-CSRFToken',
     }),
     NgxLoadingModule,
+    MomentModule,
     ReactiveFormsModule,
     ChartsModule,
   ],

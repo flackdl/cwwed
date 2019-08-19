@@ -4,6 +4,7 @@ import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormGroup } from "@angular/forms";
 import WKT from 'ol/format/WKT.js';
 import { fromExtent } from 'ol/geom/Polygon.js';
+import { timer } from 'rxjs';
 import * as _ from 'lodash';
 
 @Component({
@@ -17,6 +18,9 @@ export class PsaExportComponent implements OnInit {
   public format: string;
   public extentCoords: [number, number, number, number];
   public form: FormGroup;
+  public psaUserExport: any;
+  public isLoading = false;
+  public isComplete = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -68,12 +72,32 @@ export class PsaExportComponent implements OnInit {
     const bbox_polygon = fromExtent(this.extentCoords);
     const bbox_wkt = wkt.writeGeometry(bbox_polygon);
     this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format).subscribe(
-      (data) => {
-        console.log(data);
+      (data: any) => {
+        this.isLoading = true;
+        this._checkExport(0, data.id);
       },
       (error) => {
         console.error(error);
       }
     );
+  }
+
+  protected _checkExport(delay: number, id: number) {
+    timer(delay).subscribe(
+      (data) => {
+        this.cwwedService.fetchPSAUserExport(id).subscribe(
+          (data: any) => {
+            if (data.date_completed) {
+              this.psaUserExport = data;
+              this.isComplete = true;
+              this.isLoading = false;
+            } else {
+              this._checkExport(1000, id);
+            }
+          }
+        )
+      }
+    );
+
   }
 }

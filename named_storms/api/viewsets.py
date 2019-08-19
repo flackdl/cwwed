@@ -92,7 +92,7 @@ class NSEMViewset(viewsets.ModelViewSet):
 
 class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
     # Named Storm Event Model PSA BASE Viewset
-    #     - expects to be nested under a NamedStormViewset detail
+    #   - expects to be nested under a NamedStormViewset detail
     storm: NamedStorm = None
     nsem: NsemPsa = None
 
@@ -121,7 +121,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
 
 class NsemPsaVariableViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Variable Viewset
-    #     - expects to be nested under a NamedStormViewset detail
+    #   - expects to be nested under a NamedStormViewset detail
     serializer_class = NsemPsaVariableSerializer
     filterset_fields = ('name', 'geo_type', 'data_type',)
 
@@ -215,8 +215,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
 
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Geo Viewset
-    #     - expects to be nested under a NamedStormViewset detail
-    #     - returns geojson results
+    #   - expects to be nested under a NamedStormViewset detail
+    #   - returns geojson results
 
     filterset_class = NsemPsaDataFilter
     pagination_class = None
@@ -281,14 +281,9 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
 
 
-class NsemPsaUserExportViewset(UserReferenceViewSetMixin, NsemPsaBaseViewset, viewsets.ModelViewSet):
+class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet):
     serializer_class = NsemPsaUserExportSerializer
     queryset = NsemPsaUserExport.objects.all()
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['nsem'] = self.nsem
-        return context
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
@@ -304,3 +299,13 @@ class NsemPsaUserExportViewset(UserReferenceViewSetMixin, NsemPsaBaseViewset, vi
             create_psa_user_export_task.s(nsem_psa_user_export_id=serializer.instance.id),
             email_psa_user_export_task.si(nsem_psa_user_export_id=serializer.instance.id),
         ).apply_async()
+
+
+class NsemPsaUserExportNestedViewset(NsemPsaBaseViewset, NsemPsaUserExportViewset):
+    # Named Storm Event Model PSA User Export
+    #   - expects to be nested under a NamedStormViewset detail
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['nsem'] = self.nsem
+        return context
