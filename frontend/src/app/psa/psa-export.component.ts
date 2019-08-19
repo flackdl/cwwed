@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from "@angular/router";
 import { CwwedService } from "../cwwed.service";
-import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
+import { FormBuilder, FormGroup } from "@angular/forms";
+import WKT from 'ol/format/WKT.js';
+import { fromExtent } from 'ol/geom/Polygon.js';
 import * as _ from 'lodash';
-import { tap } from "rxjs/operators";
 
 @Component({
   selector: 'app-psa-export',
@@ -15,7 +16,6 @@ export class PsaExportComponent implements OnInit {
   public storm: any;
   public format: string;
   public extentCoords: [number, number, number, number];
-  public psaVariables: any[] = [];
   public form: FormGroup;
 
   constructor(
@@ -54,38 +54,26 @@ export class PsaExportComponent implements OnInit {
       this.router.navigate(['/post-storm-assessment']);
     }
 
-    this._fetchDataAndBuildForm();
-  }
-
-  protected _fetchDataAndBuildForm() {
-
     // create initial form group
     this.form = this.fb.group({
-      variables: new FormControl(),
     });
+  }
 
-    // fetch psa variables
-    this.cwwedService.fetchPSAVariables(this.storm.id).pipe(
-      tap(
-        (data: any[]) => {
-          //this.isLoading = false;
-          this.psaVariables = data;
+  public getUser() {
+    return this.cwwedService.user;
+  }
 
-          // create and populate variables form group
-          let psaVariablesFormGroup = this.fb.group({});
-          this.psaVariables.forEach((psaVariable) => {
-            psaVariablesFormGroup.addControl(psaVariable.name, new FormControl(true));
-          });
-          this.form.setControl('variables', psaVariablesFormGroup);
-        }),
-    ).subscribe(
+  public submit() {
+    const wkt = new WKT();
+    const bbox_polygon = fromExtent(this.extentCoords);
+    const bbox_wkt = wkt.writeGeometry(bbox_polygon);
+    this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format).subscribe(
       (data) => {
-        console.log(this.form);
+        console.log(data);
       },
       (error) => {
         console.error(error);
-        //this.isLoading = false;
-      });
+      }
+    );
   }
-
 }

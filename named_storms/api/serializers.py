@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.fields import CurrentUserDefault
 from cwwed.storage_backends import S3ObjectStoragePrivate
+from named_storms.api.fields import CurrentNsemPsaDefault
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
@@ -147,7 +148,10 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model PSA User Export Serializer
     """
+
+    # overriding these fields to use the provided serializer context
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), default=CurrentUserDefault())
+    nsem = serializers.PrimaryKeyRelatedField(queryset=NsemPsa.objects.all(), default=CurrentNsemPsaDefault())
 
     class Meta:
         model = NsemPsaUserExport

@@ -109,6 +109,21 @@ export class CwwedService {
     );
   }
 
+  public createPsaUserExport(namedStormId: number, bbox: string, format: string) {
+    return this.http.post(`${API_NAMED_STORMS}${namedStormId}/psa/export/`, {
+      bbox: bbox,
+      format: format,
+    }).pipe(
+      map((data) => {
+        return data;
+      }),
+    );
+  }
+
+  //
+  // static methods
+  //
+
   public static getPsaVariableGeoUrl(named_storm_id: number, variableId: string, date?: string) {
     const params = {
       nsem_psa_variable: variableId,

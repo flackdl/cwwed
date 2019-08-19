@@ -1,6 +1,7 @@
 import csv
 import json
 import pytz
+from celery import chain
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
@@ -19,7 +20,7 @@ from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
-)
+    email_psa_user_export_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
@@ -280,9 +281,14 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
 
 
-class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet):
+class NsemPsaUserExportViewset(UserReferenceViewSetMixin, NsemPsaBaseViewset, viewsets.ModelViewSet):
     serializer_class = NsemPsaUserExportSerializer
     queryset = NsemPsaUserExport.objects.all()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['nsem'] = self.nsem
+        return context
 
     def get_queryset(self):
         if self.request.user.is_authenticated:
@@ -292,5 +298,9 @@ class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet)
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
-        # create task for the psa export
-        create_psa_user_export_task.delay(nsem_psa_user_export_id=serializer.instance.id)
+
+        # create tasks to build the export and email the user when complete
+        chain(
+            create_psa_user_export_task.s(nsem_psa_user_export_id=serializer.instance.id),
+            email_psa_user_export_task.si(nsem_psa_user_export_id=serializer.instance.id),
+        ).apply_async()

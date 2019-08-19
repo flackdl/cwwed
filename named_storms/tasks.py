@@ -372,7 +372,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         config=BotoCoreConfig(signature_version='s3v4'))
 
     # user export key name (using the export_id enforces uniqueness)
-    key_name = '{dir}/{export_id}-{storm_name}.{extension}'.format(
+    key_name = '{dir}/{storm_name}-{export_id}.{extension}'.format(
         dir=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
         export_id=nsem_psa_user_export.id,
         storm_name=nsem_psa_user_export.nsem.named_storm,
@@ -409,4 +409,30 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export.url = presigned_url
     nsem_psa_user_export.save()
 
-    return presigned_url
+    return nsem_psa_user_export.id
+
+
+@app.task(**TASK_ARGS)
+def email_psa_user_export_task(nsem_psa_user_export_id: int):
+    nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+
+    body = """
+        Storm: {storm}
+        Bounding Box: {bbox}
+        Format: {format}
+        Download Link: {url}
+    """.format(
+        storm=nsem_psa_user_export.nsem.named_storm,
+        bbox=nsem_psa_user_export.bbox.wkt,
+        format=nsem_psa_user_export.format,
+        url=nsem_psa_user_export.url,
+    )
+
+    # email the user
+    send_mail(
+        subject='Post Storm Assessment export: {}'.format(
+            nsem_psa_user_export.nsem.named_storm),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[nsem_psa_user_export.user.email],
+    )

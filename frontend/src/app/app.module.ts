@@ -3,7 +3,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { ErrorHandler, Injectable, NgModule } from '@angular/core';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HttpClientXsrfModule } from '@angular/common/http';
 import { RouterModule, Routes } from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
 import { ChartsModule } from "ng2-charts";
@@ -96,6 +96,11 @@ const appRoutes: Routes = [
     BrowserAnimationsModule,
     NgbModule,
     HttpClientModule,
+    HttpClientXsrfModule.withOptions({
+      // specify django's csrf settings
+      cookieName: 'csrftoken',
+      headerName: 'X-CSRFToken',
+    }),
     NgxLoadingModule,
     ReactiveFormsModule,
     ChartsModule,
