@@ -379,6 +379,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         extension=settings.CWWED_ARCHIVE_EXTENSION,
     )
 
+    # handle staging base paths (i.e "local", "dev", "test")
+    s3_base_location = S3ObjectStoragePrivate().location
+    if s3_base_location:
+        key_name = '{}/{}'.format(s3_base_location, key_name)
+
     # generate the pre-signed URL
     presigned_url = s3_client.generate_presigned_url(
         ClientMethod='get_object',
@@ -418,13 +423,15 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
 
     body = """
         Storm: {storm}
-        Bounding Box: {bbox}
         Format: {format}
+        Expires: {expires}
+        Bounding Box: {bbox}
         Download Link: {url}
     """.format(
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
         format=nsem_psa_user_export.format,
+        expires=nsem_psa_user_export.date_expires.isoformat(),
         url=nsem_psa_user_export.url,
     )
 
