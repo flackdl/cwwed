@@ -18,7 +18,7 @@
         <ngx-loading [show]="isLoading"></ngx-loading>
         <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="!isComplete">
           <div class="form-group d-flex justify-content-end">
-            <button class="btn btn-primary">Export</button>
+            <button class="btn btn-primary">Create Export</button>
           </div>
         </form>
         <div *ngIf="isComplete" class="my-2 d-flex justify-content-center">

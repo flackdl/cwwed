@@ -11,14 +11,18 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import connection
+from django.db.models import CharField
+from django.db.models.functions import Cast
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
+from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, NsemPsaVariable
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
@@ -330,12 +334,17 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
         str(nsem_psa_user_export.id),
     )
-    tar_path = os.path.join(tmp_user_export_path, '{}.tgz'.format(nsem_psa_user_export.nsem.named_storm))
+    tar_path = os.path.join(
+        tmp_user_export_path,
+        '{}.tgz'.format(nsem_psa_user_export.nsem.named_storm),
+    )
 
     # create temporary directory
     create_directory(tmp_user_export_path)
 
     for ds_file in os.listdir(psa_path):
+
+        # only processing netcdf files
         if not ds_file.endswith('.nc'):
             continue
 
@@ -351,8 +360,41 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
             (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
 
-        # store in temporary directory
-        ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+        if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
+            # use xarray to create the netcdf export
+            ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+
+        elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
+            # generate shapefiles for all polygon variables
+            for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
+
+                #
+                # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
+                #
+
+                # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
+                # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
+                # technique is a workaround
+
+                # fetch the ids of the data we want
+                kwargs = {
+                    'nsem_psa_variable__id': psa_geom_variable.id,
+                }
+                # only include date if it's a time series variable
+                if psa_geom_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                    kwargs['date'] = nsem_psa_user_export.date_filter
+                qs = NsemPsaData.objects.filter(**kwargs)
+                data_ids = [r['id'] for r in qs.values('id')]
+
+                # generate raw sql query to send to geopanda's GeoDataFrame
+                qs = NsemPsaData.objects.annotate(geom=Cast('geo', CharField()))
+                qs = qs.filter(id__in=data_ids)
+                qs = qs.values('geom', 'value')
+                gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+                gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
+
+        elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+            pass
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)

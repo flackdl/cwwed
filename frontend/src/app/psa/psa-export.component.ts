@@ -16,6 +16,7 @@ export class PsaExportComponent implements OnInit {
   public FORMAT_TYPES = ["netcdf", "shapefile"];
   public storm: any;
   public format: string;
+  public date: string;
   public extentCoords: [number, number, number, number];
   public form: FormGroup;
   public psaUserExport: any;
@@ -35,6 +36,7 @@ export class PsaExportComponent implements OnInit {
     if (!this.cwwedService.user) {
       window.location.href = '/accounts/login?next=' +
         encodeURIComponent(`#${this.router.routerState.snapshot.url}`);
+      return;
     }
 
     // storm
@@ -47,6 +49,9 @@ export class PsaExportComponent implements OnInit {
     if (extentCoords && extentCoords.length === 4) {
       this.extentCoords = extentCoords;
     }
+
+    // date
+    this.date = this.route.snapshot.queryParams['date'] || '';
 
     // export format type
     if (_.includes(this.FORMAT_TYPES, this.route.snapshot.queryParams['format'])) {
@@ -71,10 +76,10 @@ export class PsaExportComponent implements OnInit {
     const wkt = new WKT();
     const bbox_polygon = fromExtent(this.extentCoords);
     const bbox_wkt = wkt.writeGeometry(bbox_polygon);
-    this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format).subscribe(
+    this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format, this.date).subscribe(
       (data: any) => {
         this.isLoading = true;
-        this._checkExport(0, data.id);
+        this._checkExportComplete(0, data.id);
       },
       (error) => {
         console.error(error);
@@ -82,7 +87,7 @@ export class PsaExportComponent implements OnInit {
     );
   }
 
-  protected _checkExport(delay: number, id: number) {
+  protected _checkExportComplete(delay: number, id: number) {
     timer(delay).subscribe(
       (data) => {
         this.cwwedService.fetchPSAUserExport(id).subscribe(
@@ -92,12 +97,14 @@ export class PsaExportComponent implements OnInit {
               this.isComplete = true;
               this.isLoading = false;
             } else {
-              this._checkExport(1000, id);
+              this._checkExportComplete(3000, id);
             }
+          },
+          (error) => {
+            console.error(error);
           }
-        )
+        );
       }
     );
-
   }
 }

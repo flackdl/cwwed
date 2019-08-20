@@ -119,6 +119,10 @@ export class PsaComponent implements OnInit {
     return this.psaDates ? this.psaDates.length - 1 : 0;
   }
 
+  public getDateCurrent() {
+    return this.getDateInputFormatted(this.form.get('date').value || 0);
+  }
+
   public isOverlayVisible(): boolean {
     return this.popupOverlay ? this.popupOverlay.getPosition() !== undefined : false;
   }

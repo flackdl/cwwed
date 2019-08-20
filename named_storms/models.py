@@ -224,9 +224,11 @@ class NsemPsaData(models.Model):
 class NsemPsaUserExport(models.Model):
     FORMAT_NETCDF = 'netcdf'
     FORMAT_SHAPEFILE = 'shapefile'
+    FORMAT_CSV = 'csv'
     FORMAT_CHOICES = (
         (FORMAT_NETCDF, FORMAT_NETCDF),
         (FORMAT_SHAPEFILE, FORMAT_SHAPEFILE),
+        (FORMAT_CSV, FORMAT_CSV),
     )
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
@@ -234,6 +236,7 @@ class NsemPsaUserExport(models.Model):
     url = models.CharField(max_length=1500, null=True, blank=True)  # signed download url
     format = models.CharField(max_length=30, choices=FORMAT_CHOICES)
     bbox = models.GeometryField(geography=True)
+    date_filter = models.DateTimeField(null=True, blank=True)  # date to filter export against
     date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
     date_expires = models.DateTimeField(null=True, blank=True)
