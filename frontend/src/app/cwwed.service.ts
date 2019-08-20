@@ -119,11 +119,14 @@ export class CwwedService {
   }
 
   public createPsaUserExport(namedStormId: number, bbox: string, format: string, dateFilter?: string) {
-    return this.http.post(`${API_NAMED_STORMS}${namedStormId}/psa/export/`, {
+    const data = {
       bbox: bbox,
       format: format,
-      date_filter: dateFilter,
-    }).pipe(
+    };
+    if (dateFilter) {
+      data['date_filter'] = dateFilter;
+    }
+    return this.http.post(`${API_NAMED_STORMS}${namedStormId}/psa/export/`, data).pipe(
       map((data) => {
         return data;
       }),

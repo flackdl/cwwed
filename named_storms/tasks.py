@@ -325,6 +325,8 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
 
 @app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
+    # TODO - this is a proof of concept and is only working with the water dataset
+    #        it assumes gridded with specific variables
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
@@ -342,59 +344,62 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # create temporary directory
     create_directory(tmp_user_export_path)
 
-    for ds_file in os.listdir(psa_path):
+    # netcdf/csv - extract low level data from netcdf files
+    if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
-        # only processing netcdf files
-        if not ds_file.endswith('.nc'):
-            continue
+        for ds_file in os.listdir(psa_path):
 
-        ds_file_path = os.path.join(psa_path, ds_file)
+            # only processing netcdf files
+            if not ds_file.endswith('.nc'):
+                continue
 
-        # open dataset
-        ds = xr.open_dataset(ds_file_path)
+            ds_file_path = os.path.join(psa_path, ds_file)
 
-        # subset using user-defined bounding box
-        ds = ds.where(
-            (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &
-            (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &
-            (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
-            (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
+            # open dataset
+            ds = xr.open_dataset(ds_file_path)
 
-        if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
-            # use xarray to create the netcdf export
-            ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+            # subset using user-defined bounding box
+            ds = ds.where(
+                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &
+                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &
+                (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
+                (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
 
-        elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
-            # generate shapefiles for all polygon variables
-            for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
+            if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
+                # use xarray to create the netcdf export
+                ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+            elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+                pass
 
-                #
-                # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
-                #
+    # shapefile - extract pre-processed contour data from db
+    elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
+        # generate shapefiles for all polygon variables
+        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
 
-                # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
-                # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
-                # technique is a workaround
+            #
+            # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
+            #
 
-                # fetch the ids of the data we want
-                kwargs = {
-                    'nsem_psa_variable__id': psa_geom_variable.id,
-                }
-                # only include date if it's a time series variable
-                if psa_geom_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
-                    kwargs['date'] = nsem_psa_user_export.date_filter
-                qs = NsemPsaData.objects.filter(**kwargs)
-                data_ids = [r['id'] for r in qs.values('id')]
+            # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
+            # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
+            # technique is a workaround
 
-                # generate raw sql query to send to geopanda's GeoDataFrame
-                qs = NsemPsaData.objects.annotate(geom=Cast('geo', CharField()))
-                qs = qs.filter(id__in=data_ids)
-                qs = qs.values('geom', 'value')
-                gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
-                gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
+            # fetch the ids of the data we want
+            kwargs = {
+                'nsem_psa_variable__id': psa_geom_variable.id,
+            }
+            # only include date if it's a time series variable
+            if psa_geom_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                kwargs['date'] = nsem_psa_user_export.date_filter
+            qs = NsemPsaData.objects.filter(**kwargs)
+            data_ids = [r['id'] for r in qs.values('id')]
 
-        elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
-            pass
+            # generate raw sql query to send to geopanda's GeoDataFrame
+            qs = NsemPsaData.objects.annotate(geom=Cast('geo', CharField()))
+            qs = qs.filter(id__in=data_ids)
+            qs = qs.values('geom', 'value')
+            gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+            gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
