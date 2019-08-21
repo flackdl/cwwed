@@ -73,16 +73,17 @@ export class PsaExportComponent implements OnInit {
   }
 
   public submit() {
+    this.isLoading = true;
     const wkt = new WKT();
     const bbox_polygon = fromExtent(this.extentCoords);
     const bbox_wkt = wkt.writeGeometry(bbox_polygon);
     this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format, this.date).subscribe(
       (data: any) => {
-        this.isLoading = true;
         this._checkExportComplete(0, data.id);
       },
       (error) => {
         console.error(error);
+        this.isLoading = false;
       }
     );
   }
