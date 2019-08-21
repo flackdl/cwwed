@@ -376,10 +376,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # verify this dataset has the export date requested
                 if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
-                # TODO - arbitrarily including wspd10m & wspd10m (need explicit instruction)
+                # TODO - arbitrarily including wspd10m & wdir10m (need explicit instruction)
                 # subset by export bbox
                 ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
-                for variable in ['wspd10m', 'wspd10m']:
+                for variable in ['wspd10m', 'wdir10m']:
                     ds[variable].to_dataframe().to_csv(
                         os.path.join(tmp_user_export_path, '{}.csv'.format(variable)), index=False)
 
