@@ -23,8 +23,8 @@
         </form>
         <div *ngIf="isComplete" class="my-2 d-flex justify-content-center">
           <div  class="alert alert-success">
-            <h4>Your export is complete.</h4>
-            <div class="my-2">
+            <h4>Export complete</h4>
+            <div class="my-2 text-center">
               <a [href]="psaUserExport.url" target="_blank" class="btn btn-primary">Download <span class="oi oi-data-transfer-download"></span></a>
             </div>
             <div class="text-black-50">*Link expires {{ psaUserExport.date_expires | amCalendar }}</div>
