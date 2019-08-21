@@ -6,6 +6,7 @@ import tarfile
 import requests
 import xarray as xr
 import boto3
+import numpy as np
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
@@ -326,6 +327,7 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
 @app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
     psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
@@ -346,7 +348,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
         # TODO - this is a proof of concept and is only working with the water dataset
-        #        it assumes gridded with specific variables
+        #        (it assumes gridded with specific variables)
 
         for ds_file in os.listdir(psa_path):
 
@@ -369,8 +371,17 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
                 ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
-                pass
+                # verify this dataset has the export date requested
+                if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
+                    continue
+                # TODO - arbitrarily including wspd10m & wspd10m (need explicit instruction)
+                # subset by export bbox
+                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
+                for variable in ['wspd10m', 'wspd10m']:
+                    ds[variable].to_dataframe().to_csv(
+                        os.path.join(tmp_user_export_path, '{}.csv'.format(variable)), index=False)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:

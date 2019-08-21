@@ -153,6 +153,16 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), default=CurrentUserDefault())
     nsem = serializers.PrimaryKeyRelatedField(queryset=NsemPsa.objects.all(), default=CurrentNsemPsaDefault())
 
+    def validate(self, data):
+        data = super().validate(data)
+
+        # require date_filter for specific formats
+        if data['format'] in [NsemPsaUserExport.FORMAT_CSV, NsemPsaUserExport.FORMAT_SHAPEFILE]:
+            if not data.get('date_filter'):
+                raise serializers.ValidationError({"date_filter": ["date_filter required this export format"]})
+
+        return data
+
     class Meta:
         model = NsemPsaUserExport
         fields = '__all__'

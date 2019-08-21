@@ -87,9 +87,7 @@
                     <i *ngIf="!extentCoords">(none selected)</i>
                     <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'netcdf'}">NetCDF</a>
                     <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
-                    <!--
-                    <a class="d-block" *ngIf="extentCoords">CSV</a>
-                    -->
+                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'csv', 'date': getDateCurrent()}">CSV</a>
                   </dd>
                 </dl>
               </ng-template>

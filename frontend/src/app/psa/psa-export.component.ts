@@ -13,7 +13,7 @@ import * as _ from 'lodash';
   styleUrls: ['./psa-export.component.css']
 })
 export class PsaExportComponent implements OnInit {
-  public FORMAT_TYPES = ["netcdf", "shapefile"];
+  public FORMAT_TYPES = ["netcdf", "shapefile", "csv"];
   public storm: any;
   public format: string;
   public date: string;
