@@ -1,5 +1,5 @@
-import collections
 from datetime import datetime
+from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Index
@@ -135,7 +135,7 @@ class NamedStormCoveredDataLog(models.Model):
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
 
 
-class NSEM(models.Model):
+class NsemPsa(models.Model):
     """
     Named Storm Event Model
     """
@@ -184,7 +184,7 @@ class NsemPsaVariable(models.Model):
         (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
     )
 
-    nsem = models.ForeignKey(NSEM, on_delete=models.CASCADE)
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50)  # i.e "water_level"
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
@@ -219,3 +219,24 @@ class NsemPsaData(models.Model):
             Index(fields=['nsem_psa_variable', 'date']),
             Index(fields=['nsem_psa_variable', 'geo_hash']),
         ]
+
+
+class NsemPsaUserExport(models.Model):
+    FORMAT_NETCDF = 'netcdf'
+    FORMAT_SHAPEFILE = 'shapefile'
+    FORMAT_CSV = 'csv'
+    FORMAT_CHOICES = (
+        (FORMAT_NETCDF, FORMAT_NETCDF),
+        (FORMAT_SHAPEFILE, FORMAT_SHAPEFILE),
+        (FORMAT_CSV, FORMAT_CSV),
+    )
+
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    url = models.CharField(max_length=1500, null=True, blank=True)  # signed download url
+    format = models.CharField(max_length=30, choices=FORMAT_CHOICES)
+    bbox = models.GeometryField(geography=True)
+    date_filter = models.DateTimeField(null=True, blank=True)  # date to filter export against
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)
+    date_expires = models.DateTimeField(null=True, blank=True)

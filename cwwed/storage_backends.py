@@ -22,8 +22,7 @@ class S3ObjectStorage(S3Boto3Storage):
 
         super().__init__(*args, **kwargs)
 
-    def _get_s3_client(self):
-        # create s3 client
+    def _get_s3_resource(self):
         return boto3.resource(
             's3',
             aws_access_key_id=self.access_key,
@@ -49,7 +48,7 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
 
     def download_directory(self, obj_directory_path, file_system_path):
         # create the s3 instance
-        s3 = self._get_s3_client()
+        s3 = self._get_s3_resource()
         s3_bucket = s3.Bucket(self.bucket_name)
 
         # create directory output directory on file system
@@ -63,7 +62,7 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
     def download_file(self, obj_path, file_system_path):
         # create directory then download to file system path
         create_directory(os.path.dirname(file_system_path))
-        s3 = self._get_s3_client()
+        s3 = self._get_s3_resource()
         s3.Bucket(self.bucket_name).download_file(obj_path, file_system_path)
 
     def copy_within_storage(self, source: str, destination: str):
@@ -83,7 +82,7 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
         source_absolute = self.path(source)
         destination_absolute = self.path(destination)
 
-        s3 = self._get_s3_client()
+        s3 = self._get_s3_resource()
         copy_source = {
             'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
             'Key': source_absolute,

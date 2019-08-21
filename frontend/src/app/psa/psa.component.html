@@ -1,9 +1,14 @@
-<div class="position-relative">
+<div class="position-relative" #psaContainer [style.overflow]="isFullscreen() ? 'scroll' : 'auto'">
 
   <ngx-loading [show]="isLoading"></ngx-loading>
   <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between">
       <h1>{{ namedStorm.name }}</h1>
+      <div class="d-flex justify-content-end">
+        <a class="btn btn-light" (click)="toggleFullscreen(psaContainer)" placement="left" ngbTooltip="Toggle fullscreen">
+          <span class="oi" [ngClass]="{'oi-fullscreen-enter': !isFullscreen(), 'oi-fullscreen-exit': isFullscreen()}"></span>
+        </a>
+      </div>
     </div>
     <div class="card-body">
       <div class="card-text">
@@ -23,7 +28,7 @@
                     <label class="form-check-label" [for]="psaVariable.id">
                       {{ getPsaVariableNameFormatted(psaVariable) }}
                     </label>
-                    <span *ngIf="psaVariable.data_type == 'max-values'" class="badge badge-secondary ml-2">Max</span>
+                    <span *ngIf="psaVariable.data_type == 'max-values'" class="badge badge-secondary ml-2"  placement="bottom" ngbTooltip="Display the maximum values across the duration of the storm">Max</span>
                   </div>
                 </div>
                 <div class="form-group">
@@ -74,24 +79,15 @@
                   <dt class="col-sm-6">OPeNDAP</dt>
                   <dd class="col-sm-6">
                     <a [href]="getDataUrl('html')" target="_blank">
-                      <span class="oi oi-cloud-download"></span>
+                      <span class="oi oi-external-link"></span>
                     </a>
                   </dd>
-                  <!-- TODO - openap timesout/crashes for large datasets
-                  <dt class="col-sm-6">All Data</dt>
-                  <dd class="col-sm-6">
-                    <a target="_blank" class="d-block" [href]="getDataUrl('ascii')">ASCII</a>
-                    <a target="_blank" class="d-block" [href]="getDataUrl('nc')">NetCDF</a>
-                    <a target="_blank" class="d-block" [href]="getDataUrl('csv')">CSV</a>
-                  </dd>
-                  -->
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
                     <i *ngIf="!extentCoords">(none selected)</i>
-                    <!-- TODO - need grid dataset to use geogrid() feature -->
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.ascii?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">ASCII</a>
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.nc?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">NetCDF</a>
-                    <a target="_blank" class="d-block" *ngIf="extentCoords" href="http://test.opendap.org/opendap/data/nc/sst.mnmean.nc.gz.csv?geogrid(sst,62,206,56,210,%2219722%3Ctime%3C19755%22)">CSV</a>
+                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'netcdf'}">NetCDF</a>
+                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
+                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'csv', 'date': getDateCurrent()}">CSV</a>
                   </dd>
                 </dl>
               </ng-template>
@@ -107,7 +103,7 @@
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- feature info -->
-            <div id="map-info" *ngIf="currentFeature && !extentCoords && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
+            <div id="map-info" *ngIf="currentFeature && !hasExtentSelection() && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div *ngFor="let feature of currentFeature | keyvalue">
                 <!-- manually display coordinate value at bottom -->
                 <span *ngIf="feature.key !== 'coordinate'">{{ feature.key }}: {{ feature.value }} ({{ currentConfidence }}% accuracy)</span>

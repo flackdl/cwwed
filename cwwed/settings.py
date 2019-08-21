@@ -143,6 +143,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# allauth
+# https://django-allauth.readthedocs.io/en/latest/configuration.html
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # username or email
+
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
 
@@ -295,9 +301,13 @@ CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w:gz'
 CWWED_NSEM_ARCHIVE_READ_MODE = 'r:gz'
 CWWED_NSEM_USER = 'nsem'
 CWWED_NSEM_PASSWORD = os.environ.get('CWWED_NSEM_PASSWORD')
+CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME = '.tmp_nsem_user_export'
+CWWED_NSEM_S3_USER_EXPORT_DIR_NAME = 'User Exports'
 
 CWWED_ARCHIVES_ACCESS_KEY_ID = os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID']
 CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY']
+
+CWWED_PSA_USER_DATA_EXPORT_DAYS = 1
 
 OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 

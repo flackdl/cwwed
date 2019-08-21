@@ -8,7 +8,7 @@ import xarray
 import matplotlib
 from django.contrib.gis import geos
 from django.contrib.gis.db.models.functions import GeoHash
-from named_storms.models import NSEM, NsemPsaData, NamedStorm, NsemPsaVariable
+from named_storms.models import NsemPsa, NsemPsaData, NamedStorm, NsemPsaVariable
 from matplotlib import cm, colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -91,7 +91,7 @@ class Command(BaseCommand):
     help = 'Create Post Storm Assessment'
 
     storm: NamedStorm = None
-    nsem: NSEM = None
+    nsem: NsemPsa = None
     triangulation: tri.Triangulation = None
     dataset_unstructured: xarray.Dataset = None
     dataset_structured: xarray.Dataset = None
@@ -107,7 +107,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
-        self.nsem = self.storm.nsem_set.order_by('-id')[0]
+        self.nsem = self.storm.nsempsa_set.order_by('-id')[0]
 
         # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_SPEED_MAX, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])

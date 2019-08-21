@@ -6,7 +6,6 @@ import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, mergeMap, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
-import {defaults as defaultControls, FullScreen} from 'ol/control.js';
 import { platformModifierKeyOnly } from 'ol/events/condition.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
@@ -120,6 +119,10 @@ export class PsaComponent implements OnInit {
     return this.psaDates ? this.psaDates.length - 1 : 0;
   }
 
+  public getDateCurrent() {
+    return this.getDateInputFormatted(this.form.get('date').value || 0);
+  }
+
   public isOverlayVisible(): boolean {
     return this.popupOverlay ? this.popupOverlay.getPosition() !== undefined : false;
   }
@@ -182,6 +185,17 @@ export class PsaComponent implements OnInit {
       return psaVariable.name.replace(/ maximum/i, '');
     }
     return psaVariable.name;
+  }
+
+  public toggleFullscreen(psaContainer: HTMLElement) {
+    if (this.isFullscreen()) {
+      document.exitFullscreen();
+    }
+    psaContainer.requestFullscreen();
+  }
+
+  public isFullscreen(): boolean {
+    return Boolean(document['fullscreenElement']);
   }
 
   protected _listenForInputChanges() {
@@ -471,9 +485,6 @@ export class PsaComponent implements OnInit {
     }
 
     this.map = new Map({
-      controls: defaultControls().extend([
-        new FullScreen(),
-      ]),
       layers: [
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
@@ -590,7 +601,7 @@ export class PsaComponent implements OnInit {
     this.map.on('pointermove', (event) => {
 
       // don't show feature details if there's any popup overlay already present
-      if (this.popupOverlay && this.popupOverlay.rendered.visible) {
+      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.hasExtentSelection()) {
         return;
       }
 

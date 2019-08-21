@@ -1,25 +1,33 @@
-from __future__ import absolute_import, unicode_literals
 import json
-from datetime import datetime
-from django.contrib.auth.models import User
 import os
+import shutil
+import pytz
 import tarfile
 import requests
+import xarray as xr
+import boto3
+import numpy as np
+from botocore.client import Config as BotoCoreConfig
+from datetime import datetime, timedelta
+from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import connection
+from django.db.models import CharField
+from django.db.models.functions import Cast
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-
+from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.serializers import NSEMSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NSEM
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, NsemPsaVariable
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    get_superuser_emails,
-)
+    get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
+    create_directory)
 
 
 TASK_ARGS = dict(
@@ -118,13 +126,13 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 def archive_nsem_covered_data_task(nsem_id):
     """
     - Copies all covered data archives to a versioned NSEM location in object storage so users can download them directly
-    :param nsem_id: id of NSEM record
+    :param nsem_id: id of NsemPsa record
     """
 
     # retrieve all the successful covered data by querying the logs
     # exclude any logs where the snapshot archive hasn't been created yet
     # sort by date descending and retrieve unique results
-    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
     if not logs.exists():
         return None
@@ -157,9 +165,9 @@ def archive_nsem_covered_data_task(nsem_id):
 def extract_nsem_covered_data_task(nsem_data: dict):
     """
     Downloads and extracts nsem covered data into file storage
-    :param nsem_data: dictionary of NSEM record
+    :param nsem_data: dictionary of NsemPsa record
     """
-    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
+    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
         settings.CWWED_COVERED_DATA_DIR_NAME,
@@ -192,7 +200,7 @@ class ExtractNSEMTaskBase(app.Task):
 
         # the first arg should be the nsem
         if args:
-            nsem = NSEM.objects.filter(pk=args[0])
+            nsem = NsemPsa.objects.filter(pk=args[0])
             if nsem.exists():
                 nsem = nsem.get()
                 nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
@@ -208,7 +216,7 @@ class ExtractNSEMTaskBase(app.Task):
                 )
 
 
-EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()
+EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()  # type: dict
 EXTRACT_NSEM_TASK_ARGS.update({
     'base': ExtractNSEMTaskBase,
 })
@@ -220,7 +228,7 @@ def extract_nsem_model_output_task(nsem_id):
     Downloads the model product output from object storage and puts it in file storage
     """
 
-    nsem = get_object_or_404(NSEM, pk=int(nsem_id))
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     uploaded_file_path = nsem.model_output_snapshot
     storage = S3ObjectStoragePrivate()
 
@@ -285,10 +293,10 @@ def extract_nsem_model_output_task(nsem_id):
 def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
     """
     Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
-    :param nsem_data serialized NSEM instance
+    :param nsem_data serialized NsemPsa instance
     :param base_url the scheme & domain that this request arrived
     """
-    nsem = get_object_or_404(NSEM, pk=nsem_data['id'])
+    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
 
     body = """
@@ -314,3 +322,189 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         recipient_list=recipients,
     )
     return nsem_data
+
+
+@app.task(**TASK_ARGS)
+def create_psa_user_export_task(nsem_psa_user_export_id: int):
+    nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+
+    date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
+
+    psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
+    tmp_user_export_path = os.path.join(
+        root_data_path(),
+        settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
+        str(nsem_psa_user_export.id),
+    )
+    tar_path = os.path.join(
+        tmp_user_export_path,
+        '{}.tgz'.format(nsem_psa_user_export.nsem.named_storm),
+    )
+
+    # create temporary directory
+    create_directory(tmp_user_export_path)
+
+    # netcdf/csv - extract low level data from netcdf files
+    if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
+
+        # TODO - this is a proof of concept and is only working with the water dataset
+        #        (it assumes gridded with specific variables)
+
+        for ds_file in os.listdir(psa_path):
+
+            # only processing netcdf files
+            if not ds_file.endswith('.nc'):
+                continue
+
+            ds_file_path = os.path.join(psa_path, ds_file)
+
+            # open dataset
+            ds = xr.open_dataset(ds_file_path)
+
+            # subset using user-defined bounding box
+            ds = ds.where(
+                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &
+                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &
+                (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
+                (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
+
+            if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
+                # use xarray to create the netcdf export
+                ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+
+            elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+                # verify this dataset has the export date requested
+                if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
+                    continue
+                # TODO - arbitrarily including wspd10m & wspd10m (need explicit instruction)
+                # subset by export bbox
+                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
+                for variable in ['wspd10m', 'wspd10m']:
+                    ds[variable].to_dataframe().to_csv(
+                        os.path.join(tmp_user_export_path, '{}.csv'.format(variable)), index=False)
+
+    # shapefile - extract pre-processed contour data from db
+    elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
+
+        # generate shapefiles for all polygon variables
+        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
+
+            #
+            # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
+            #
+
+            # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
+            # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
+            # technique is a workaround
+
+            # fetch the ids of the psa data for this psa variable and that intersects the export's requested bbox
+            kwargs = dict(
+                nsem_psa_variable__id=psa_geom_variable.id,
+                geo__intersects=nsem_psa_user_export.bbox,
+            )
+
+            # only include date if it's a time series variable
+            if psa_geom_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                kwargs['date'] = nsem_psa_user_export.date_filter
+
+            qs = NsemPsaData.objects.filter(**kwargs)
+            data_ids = [r['id'] for r in qs.values('id')]
+
+            # generate raw sql query to send to geopanda's GeoDataFrame.from_postgis()
+            qs = NsemPsaData.objects.annotate(geom=Cast('geo', CharField()))
+            qs = qs.filter(id__in=data_ids)
+            qs = qs.values('geom', 'value')
+            gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+
+            # save to temporary user path
+            gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
+
+    # create tar in local storage
+    tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
+    tar.add(tmp_user_export_path, arcname=str(nsem_psa_user_export.nsem.named_storm))
+    tar.close()
+
+    #
+    # create pre-signed url and upload to S3
+    # https://aws.amazon.com/premiumsupport/knowledge-center/presigned-url-s3-bucket-expiration/
+    #
+
+    # get the service client with sigv4 configured
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+        config=BotoCoreConfig(signature_version='s3v4'))
+
+    # user export key name (using the export_id enforces uniqueness)
+    key_name = '{dir}/{storm_name}-{export_id}.{extension}'.format(
+        dir=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
+        export_id=nsem_psa_user_export.id,
+        storm_name=nsem_psa_user_export.nsem.named_storm,
+        extension=settings.CWWED_ARCHIVE_EXTENSION,
+    )
+
+    # handle staging base paths (i.e "local", "dev", "test")
+    s3_base_location = S3ObjectStoragePrivate().location
+    if s3_base_location:
+        key_name = '{}/{}'.format(s3_base_location, key_name)
+
+    # generate the pre-signed URL
+    presigned_url = s3_client.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={
+            'Bucket': settings.AWS_ARCHIVE_BUCKET_NAME,
+            'Key': key_name,
+        },
+        ExpiresIn=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS * 24 * 60 * 60,
+    )
+
+    # upload tar to s3 object with expiration
+    s3_resource = boto3.resource(
+        's3',
+        aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
+    )
+    s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
+        Key=key_name,
+        Body=open(tar_path, 'rb'),
+        Expires=date_expires,
+    )
+
+    # remove temporary directory
+    shutil.rmtree(tmp_user_export_path)
+
+    nsem_psa_user_export.date_expires = date_expires
+    nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
+    nsem_psa_user_export.url = presigned_url
+    nsem_psa_user_export.save()
+
+    return nsem_psa_user_export.id
+
+
+@app.task(**TASK_ARGS)
+def email_psa_user_export_task(nsem_psa_user_export_id: int):
+    nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+
+    body = """
+        Storm: {storm}
+        Format: {format}
+        Expires: {expires}
+        Bounding Box: {bbox}
+        Download Link: {url}
+    """.format(
+        storm=nsem_psa_user_export.nsem.named_storm,
+        bbox=nsem_psa_user_export.bbox.wkt,
+        format=nsem_psa_user_export.format,
+        expires=nsem_psa_user_export.date_expires.isoformat(),
+        url=nsem_psa_user_export.url,
+    )
+
+    # email the user
+    send_mail(
+        subject='Post Storm Assessment export: {}'.format(
+            nsem_psa_user_export.nsem.named_storm),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[nsem_psa_user_export.user.email],
+    )
