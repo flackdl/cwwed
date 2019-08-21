@@ -472,7 +472,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
     # remove temporary directory
-    shutil.rmtree(tmp_user_export_path)
+    shutil.rmtree(tmp_user_export_path, ignore_errors=True)
 
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
