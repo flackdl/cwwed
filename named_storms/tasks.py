@@ -7,6 +7,7 @@ import requests
 import xarray as xr
 import boto3
 import numpy as np
+import pandas as pd
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
@@ -376,12 +377,29 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # verify this dataset has the export date requested
                 if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
-                # TODO - arbitrarily including wspd10m & wdir10m (need explicit instruction)
+
+                # create pandas DataFrame which makes a simple csv conversion
+                df_out = pd.DataFrame()
+
+                # TODO - only including wspd10m & wdir10m (waiting on explicit instruction)
+                variables = ['wspd10m', 'wdir10m']
+
                 # subset by export bbox
                 ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
-                for variable in ['wspd10m', 'wdir10m']:
-                    ds[variable].to_dataframe().to_csv(
-                        os.path.join(tmp_user_export_path, '{}.csv'.format(variable)), index=False)
+
+                # insert a new column for each variable to df_out
+                for i, variable in enumerate(variables):
+                    df = ds[variable].to_dataframe()
+                    # initialize df_out DataFrame on first iteration
+                    if i == 0:
+                        df_out = df
+                    # insert df Series as a new column
+                    else:
+                        df_out.insert(len(df_out.columns), variable, df[variable])
+
+                # write csv
+                df_out.to_csv(
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(ds_file)), index=False)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
