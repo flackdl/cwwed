@@ -364,10 +364,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # subset using user-defined bounding box
             ds = ds.where(
-                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &
-                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &
-                (ds.lat <= nsem_psa_user_export.bbox.extent[3]) &
-                (ds.lon <= nsem_psa_user_export.bbox.extent[2]), drop=True)
+                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &  # xmin
+                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &  # ymin
+                (ds.lon <= nsem_psa_user_export.bbox.extent[2]) &  # xmax
+                (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
+                drop=True)
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
@@ -396,6 +397,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     # insert df Series as a new column
                     else:
                         df_out.insert(len(df_out.columns), variable, df[variable])
+
+                # TODO - this shouldn't be necessary
+                df_out = df_out.dropna()
 
                 # write csv
                 df_out.to_csv(
