@@ -8,6 +8,7 @@ import xarray as xr
 import boto3
 import numpy as np
 import pandas as pd
+import logging
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
@@ -348,8 +349,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # netcdf/csv - extract low level data from netcdf files
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
-        # TODO - this is a proof of concept and is only working with the water dataset
-        #        (it assumes gridded with specific variables)
+        # TODO - this is a proof of concept while we wait on a finalized psa structure
 
         for ds_file in os.listdir(psa_path):
 
@@ -379,14 +379,24 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
 
+                # subset by export date filter
+                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
+
+                # TODO - we're only including the following variables while we're waiting on explicit instruction
+                wind_variables = ['wspd10m', 'wdir10m']
+                water_variables = ['water_level', 'wave_height']
+
+                # test if this is the water product
+                if set(water_variables).intersection(ds.variables.keys()):
+                    variables = water_variables
+                elif set(wind_variables).intersection(ds.variables.keys()):
+                    variables = wind_variables
+                else:  # none found, skip this dataset
+                    logging.warning('No expected data fround in {}'.format(ds_file))
+                    continue
+
                 # create pandas DataFrame which makes a simple csv conversion
                 df_out = pd.DataFrame()
-
-                # TODO - only including wspd10m & wdir10m (waiting on explicit instruction)
-                variables = ['wspd10m', 'wdir10m']
-
-                # subset by export bbox
-                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
 
                 # insert a new column for each variable to df_out
                 for i, variable in enumerate(variables):
