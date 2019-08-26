@@ -2,8 +2,10 @@ language: minimal
 
 jobs:
   include:
-    - stage: build docker image
+    - stage: run tests and build docker image
       script:
+      # run tests
+      - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
       # derive the docker image tag name from the git branch name
       - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
       # build image
