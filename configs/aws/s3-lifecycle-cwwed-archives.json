@@ -1,0 +1,14 @@
+{
+    "Rules": [
+        {
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "User Exports",
+            "Filter": {
+                "Prefix": "**/User Exports/"
+            },
+            "Status": "Enabled"
+        }
+    ]
+}

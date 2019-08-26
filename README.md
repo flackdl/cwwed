@@ -304,8 +304,15 @@ Create AWS user *nsem* and assign the following polices:
  - `configs/aws/s3-policy-nsem-upload.json` and they'll be able to read everything in `s3://cwwed-archives/NSEM/` and upload to `s3://cwwed-archives/NSEM/upload/`.
     
 Create AWS user *cwwed-archives* and assign the following polices:
+ 
  - `configs/aws/s3-policy-cwwed-archives.json` and they'll be able read/write `s3://cwwed-archives/`.
  
+## CWWED User Exports lifecycle
+ 
+Assign lifecycle for *User Exports* objects to expire after a certain amount of time. 
+
+    aws s3api put-bucket-lifecycle-configuration --bucket cwwed-archives --lifecycle-configuration file://configs/aws/s3-lifecycle-cwwed-archives.json
+     
  
  ## Post storm assessment
  

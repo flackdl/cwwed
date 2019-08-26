@@ -500,7 +500,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
         Key=key_name,
         Body=open(tar_path, 'rb'),
-        Expires=date_expires,
     )
 
     # remove temporary directory
