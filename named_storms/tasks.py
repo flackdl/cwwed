@@ -401,6 +401,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # insert a new column for each variable to df_out
                 for i, variable in enumerate(variables):
                     df = ds[variable].to_dataframe()
+
                     # initialize df_out DataFrame on first iteration
                     if i == 0:
                         df_out = df
@@ -408,7 +409,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     else:
                         df_out.insert(len(df_out.columns), variable, df[variable])
 
-                # TODO - this shouldn't be necessary
+                # this doesn't seem like it would be necessary but the above xarray "where" bbox/extent filter is
+                # including coords just outside the requested extent with no values, so this simply removes empty values
                 df_out = df_out.dropna()
 
                 # write csv
