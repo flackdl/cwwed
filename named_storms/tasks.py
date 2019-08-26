@@ -420,8 +420,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
 
-        # generate shapefiles for all polygon variables
-        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
+        # generate shapefiles for all time-series polygon variables
+        kwargs_polygon_time_series = dict(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON, data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES)
+        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(**kwargs_polygon_time_series):
 
             #
             # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
