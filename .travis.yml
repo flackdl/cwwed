@@ -10,6 +10,8 @@ jobs:
         - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
         # build image
         - docker build -t flackdl/cwwed:$tag .
+        # run postgis in the background
+        - docker run --rm -d -p 5432:5432 mdillon/postgis
         # run tests
         - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
         # authenticate with docker
