@@ -2,23 +2,17 @@ language: minimal
 
 jobs:
   include:
-    - stage: build docker image
+    - stage: run tests and build docker image
       script:
       # derive the docker image tag name from the git branch name
       - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
       # build image
       - docker build -t flackdl/cwwed:$tag .
-    - stage: run tests
-      script:
-        # derive the docker image tag name from the git branch name
-        - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
-        # run tests
-        - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
-    - stage: push docker image
-      script:
-        # derive the docker image tag name from the git branch name
-        - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
-        # authenticate with docker
-        - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        # push to docker hub
-        - docker push flackdl/cwwed:$tag
+      # run tests, verify, push image
+      - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
+      - if [[ $? -eq 0 ]]; then
+          # authenticate with docker
+          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+          # push to docker hub
+          docker push flackdl/cwwed:$tag
+        fi
