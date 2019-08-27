@@ -211,6 +211,12 @@ Or individually:
     # start proxy
     kubectl proxy
     
+### Celery Flower
+
+Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-forward locally like the following:
+
+    kubectl port-forward celery-flower-deployment-644fd6d758-882nv 5556:5555
+    
 ### Social auth (WIP)
 
 Configure Django "Sites" (in admin)
