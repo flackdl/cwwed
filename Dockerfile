@@ -27,6 +27,7 @@ RUN echo "Installing dependencies and building application" \
     && apt-get remove -y \
         libgdal-dev \
         nodejs \
+    && apt-get autoremove -y \
     && rm -rf frontend/node_modules \
     && rm -rf /var/lib/apt/lists/* \
     && true
