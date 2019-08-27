@@ -151,7 +151,7 @@ class Command(BaseCommand):
             if options['delete']:
                 self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=water_variables).delete()
 
-            self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+            self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc')
 
             # TODO - need an authoritative dataset to define the date range for a hurricane
             # save the datetime's on our nsem instance

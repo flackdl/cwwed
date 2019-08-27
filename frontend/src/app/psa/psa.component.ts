@@ -47,7 +47,6 @@ export class PsaComponent implements OnInit {
     {name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE},
     {name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER},
   ];
-  public demoDataURL = "/opendap/PSA_demo/sandy.nc";
   public isLoading = true;
   public isLoadingMap = true;
   public isLoadingOverlayPopup = false;
@@ -57,7 +56,6 @@ export class PsaComponent implements OnInit {
   public psaDates: string[] = [];
   public psaDatesFormatted: string[] = [];
   public form: FormGroup;
-  public nsemList: any;
   public currentFeature: any;
   public extentCoords: Number[];
   public currentConfidence: Number;
@@ -89,7 +87,6 @@ export class PsaComponent implements OnInit {
 
   ngOnInit() {
 
-    this.nsemList = this.cwwedService.nsemList;
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
       return storm.id === this.DEMO_NAMED_STORM_ID;
     });
@@ -132,8 +129,11 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(undefined);
   }
 
-  public getDataUrl(format: string): string {
-    return `${this.demoDataURL}.${format}`;
+  public getOpenDapUrl(): string {
+    const psa = _.find(this.cwwedService.nsemList, (nsemPsa) => {
+      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+    });
+    return psa ? psa.opendap_url_psa : '';
   }
 
   public timeSeriesVariables() {

@@ -370,11 +370,14 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
                 drop=True)
 
+            # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
                 ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
 
+            # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+
                 # verify this dataset has the export date requested
                 if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
@@ -409,8 +412,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     else:
                         df_out.insert(len(df_out.columns), variable, df[variable])
 
-                # this is important because the above xarray "where" bbox/extent filter is
-                # including coords just outside the requested extent with no values, so this simply removes empty values
+                # NOTE: I don't understand why, but this is necessary because the above xarray "where" bbox/extent
+                # filter is including coords just outside the requested extent with no values present,
+                # so this simply guarantees those rows are removed
                 df_out = df_out.dropna()
 
                 # write csv
