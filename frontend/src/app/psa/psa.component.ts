@@ -57,7 +57,6 @@ export class PsaComponent implements OnInit {
   public psaDatesFormatted: string[] = [];
   public form: FormGroup;
   public currentFeature: any;
-  public extentCoords: Number[];
   public currentConfidence: Number;
   public mapLayerInput = new FormControl(this.MAP_LAYER_MAPBOX_STREETS);
   public availableMapLayers: {
@@ -70,6 +69,7 @@ export class PsaComponent implements OnInit {
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
+
   @ViewChild('popup') popupEl: ElementRef;
   @ViewChild('tooltip') tooltipEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
@@ -160,20 +160,35 @@ export class PsaComponent implements OnInit {
     return displayedVariables.length > 0;
   }
 
+  public isExtentActive(): boolean {
+    return Boolean(this._extentInteraction && this._extentInteraction.getActive());
+  }
+
   public hasExtentSelection(): boolean {
     return Boolean(this._extentInteraction && this._extentInteraction.getExtent());
   }
 
-  public resetExtentInteraction() {
+  public getExtentCoords() {
+    const extentCoords = this._extentInteraction.getExtent();
+    if (extentCoords) {
+      return toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
+        toLonLat(<any>[extentCoords[2], extentCoords[3]]));
+    }
+  }
+
+  public disableExtentInteraction() {
 
     // reset extent selection and captured coordinates
     if (this._extentInteraction) {
       this.map.removeInteraction(this._extentInteraction);
     }
-    this.extentCoords = null;
 
     // reconfigure extent
     this._configureMapExtentInteraction();
+  }
+
+  public enableBoxSelection() {
+    this._extentInteraction.setActive(true);
   }
 
   public getColorBarVariables() {
@@ -570,8 +585,10 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('singleclick', (event) => {
-      // configure graph overlay
-      this._configureGraphOverlay(event);
+      if (!this.isExtentActive()) {
+        // configure graph overlay
+        this._configureGraphOverlay(event);
+      }
     });
 
     this._configureMapExtentInteraction();
@@ -614,7 +631,7 @@ export class PsaComponent implements OnInit {
     this.map.on('pointermove', (event) => {
 
       // don't show feature details if there's any popup overlay already present
-      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.hasExtentSelection()) {
+      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.isExtentActive()) {
         return;
       }
 
@@ -729,6 +746,7 @@ export class PsaComponent implements OnInit {
         xAxes: [{}],
         yAxes: [
           {
+            // TODO - rename to "Water Level / Wave Height (m)"
             id: 'water',
             scaleLabel: {
               display: true,
@@ -767,31 +785,10 @@ export class PsaComponent implements OnInit {
   protected _configureMapExtentInteraction() {
 
     // configure box extent selection
-    this._extentInteraction = new ExtentInteraction({
-      condition: platformModifierKeyOnly,
-    });
-    this.map.addInteraction(this._extentInteraction);
+    this._extentInteraction = new ExtentInteraction();
     this._extentInteraction.setActive(false);
 
-    // enable geo box interaction by holding shift
-    window.addEventListener('keydown', (event: any) => {
-      if (event.keyCode == 16) {
-        this._extentInteraction.setActive(true);
-      }
-    });
-
-    // disable geo box interaction and capture extent box
-    window.addEventListener('keyup', (event: any) => {
-      if (event.keyCode == 16) {
-        const extentCoords = this._extentInteraction.getExtent();
-        if (extentCoords && extentCoords.length === 4) {
-          this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
-            toLonLat(<any>[extentCoords[2], extentCoords[3]]));
-        } else {
-          this.extentCoords = null;
-        }
-        this._extentInteraction.setActive(false);
-      }
-    });
+    // add to map
+    this.map.addInteraction(this._extentInteraction);
   }
 }

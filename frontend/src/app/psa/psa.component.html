@@ -84,10 +84,10 @@
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
-                    <i *ngIf="!extentCoords">(none selected)</i>
-                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'netcdf'}">NetCDF</a>
-                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
-                    <a class="d-block" *ngIf="extentCoords" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': extentCoords, 'format': 'csv', 'date': getDateCurrent()}">CSV</a>
+                    <i *ngIf="!getExtentCoords()">(none selected)</i>
+                    <a class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'netcdf'}">NetCDF</a>
+                    <a class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
+                    <a class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'csv', 'date': getDateCurrent()}">CSV</a>
                   </dd>
                 </dl>
               </ng-template>
@@ -103,7 +103,7 @@
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- feature info -->
-            <div class="hover-tooltip" #tooltip [hidden]="!currentFeature || hasExtentSelection() || isOverlayVisible()" [class.confident]="currentConfidence >= 90">
+            <div class="hover-tooltip" #tooltip [hidden]="!currentFeature || isExtentActive() || isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div *ngFor="let feature of currentFeature | keyvalue">
                 <!-- manually display coordinate value at bottom -->
                 <span *ngIf="feature.key !== 'coordinate'">{{ feature.key }}: {{ feature.value }} ({{ currentConfidence }}% accuracy)</span>
@@ -147,14 +147,15 @@
 
           </div>
 
+          <div>
+            <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-primary">Enable Box Selection</button>
+            <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning">Disable Box Selection</button>
+          </div>
+
           <!-- instructions -->
           <div class="d-none d-md-block">
-            <small class="d-block"><sup>1</sup>Click on a map feature to see a time series graph for a specific location</small>
-            <div>
-              <small><sup>2</sup>Hold <i>Shift</i> and drag to select a box to filter the data to download</small>
-              <button class="btn btn-link btn-sm" *ngIf="hasExtentSelection()" (click)="resetExtentInteraction()"><span class="oi oi-x"></span> Reset selection</button>
-            </div>
-            <small class="d-block"><sup>3</sup>Hover to see feature information</small>
+            <small class="d-block"><sup>1</sup>Hover to see feature information</small>
+            <small class="d-block"><sup>2</sup>Click on a map feature to see a time series graph for a specific location</small>
           </div>
 
         </div>
