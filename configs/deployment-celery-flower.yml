@@ -22,7 +22,9 @@ spec:
         - containerPort: 5555
         resources:
           requests:
-            memory: "500M"
+            memory: "200M"
+          limits:
+            memory: "250M"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
