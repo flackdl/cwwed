@@ -65,11 +65,13 @@ export class PsaComponent implements OnInit {
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
+  public tooltipOverlay: Overlay;
   public lineChartData: any[] = [];
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
   @ViewChild('popup') popupEl: ElementRef;
+  @ViewChild('tooltip') tooltipEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
@@ -159,7 +161,7 @@ export class PsaComponent implements OnInit {
   }
 
   public hasExtentSelection(): boolean {
-    return this._extentInteraction && this._extentInteraction.getExtent();
+    return Boolean(this._extentInteraction && this._extentInteraction.getExtent());
   }
 
   public resetExtentInteraction() {
@@ -538,6 +540,13 @@ export class PsaComponent implements OnInit {
       })
     });
 
+    this.tooltipOverlay = new Overlay({
+      element: this.tooltipEl.nativeElement,
+      offset: [10, 0],
+      positioning: 'bottom-left'
+    });
+    this.map.addOverlay(this.tooltipOverlay);
+
     // instantiate geocoder
     const geocoder = new Geocoder('nominatim', {
       provider: 'osm',
@@ -648,6 +657,8 @@ export class PsaComponent implements OnInit {
 
       // include the current coordinates
       currentFeature['coordinate'] = toLonLat(event.coordinate).reverse();
+
+      this.tooltipOverlay.setPosition(event.coordinate);
 
       this.currentFeature = currentFeature;
     });

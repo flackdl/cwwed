@@ -103,13 +103,13 @@
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- feature info -->
-            <div id="map-info" *ngIf="currentFeature && !hasExtentSelection() && !isOverlayVisible()" [class.confident]="currentConfidence >= 90">
+            <div class="hover-tooltip" #tooltip [hidden]="!currentFeature || hasExtentSelection() || isOverlayVisible()" [class.confident]="currentConfidence >= 90">
               <div *ngFor="let feature of currentFeature | keyvalue">
                 <!-- manually display coordinate value at bottom -->
                 <span *ngIf="feature.key !== 'coordinate'">{{ feature.key }}: {{ feature.value }} ({{ currentConfidence }}% accuracy)</span>
               </div>
               <div><hr></div>
-              <div><small><em>{{ currentFeature.coordinate }}</em></small></div>
+              <div><small><em>{{ currentFeature?.coordinate }}</em></small></div>
             </div>
 
             <!-- overlay graph -->
