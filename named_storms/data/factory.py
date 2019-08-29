@@ -404,7 +404,7 @@ class JPLMetOpASCATL2ProcessorFactory(JPLProcessorBaseFactory):
 class JPLSMAPL2BProcessorFactory(JPLProcessorBaseFactory):
     """
     JPL SMAP Level 2B CAP Sea Surface Salinity
-    https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V4?ids=Measurement:ProcessingLevel&values=Ocean%20Winds:*2*
+    https://podaac.jpl.nasa.gov/dataset/SMAP_JPL_L2B_SSS_CAP_V42?ids=Platform&values=SMAP
     """
 
     def _is_using_dataset(self, dataset: str) -> bool:
