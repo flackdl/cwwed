@@ -7,7 +7,8 @@
     "geo": "SRID=4326;POLYGON ((-74.619140625 34.5849609375, -72.5537109375 38.8916015625, -74.8828125 41.923828125, -80.6396484375 40.78125, -74.619140625 34.5849609375))",
     "date_start": "2012-10-22T00:00:00Z",
     "date_end": "2012-11-02T23:59:59Z",
-    "active": true
+    "active": true,
+    "description": "The following Post Storm Assessment (PSA) products; Mean Sea Level, Wave Height and Winds were created for the Atlantic and Gulf of Mexico coastal waters of the United States during the period of time that Hurricane Sandy formed in the central Caribbean on October 22, 2012. Sandy intensified into a hurricane as it tracked north across the Caribbean moved northeast of the United States until turning west toward the mid-Atlantic coast on October 28th"
   }
 },
 {
@@ -170,7 +171,7 @@
     "processor_factory": "JPL_SMAP_L2B",
     "processor_source": "HDF",
     "name": "JPL PODAAC",
-    "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/smap/L2/JPL/V4/catalog.xml",
+    "url": "https://podaac-opendap.jpl.nasa.gov/opendap/allData/smap/L2/JPL/V4.2/catalog.xml",
     "active": true,
     "epoch_datetime": "2015-01-01T00:00:00Z"
   }
@@ -265,7 +266,7 @@
     "dates_required": true,
     "geo": "SRID=4326;POLYGON ((-75.322265625 36.650390625, -73.0810546875 40.078125, -75.3662109375 42.275390625, -77.87109375 39.0673828125, -75.322265625 36.650390625))",
     "external_storm_id": "",
-    "date_collected": null
+    "date_collected": "2019-08-29"
   }
 },
 {
