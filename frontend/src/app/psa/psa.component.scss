@@ -15,9 +15,8 @@
     border-radius: 15px;
     padding: 15px;
   }
-  .hover-tooltip.confident {
-    background: rgb(6, 136, 5);
-    color: white;
+  .high-confidence .confidence {
+    border-bottom: 3px dotted green;
   }
 }
 
