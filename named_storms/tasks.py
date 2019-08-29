@@ -307,7 +307,7 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         {}
         """.format(
         # link to api endpoint for this nsem instance
-        '{}{}'.format(base_url, reverse('nsem-detail', args=[nsem.id])),
+        '{}{}'.format(base_url, reverse('nsempsa-detail', args=[nsem.id])),
         # raw json dump
         json.dumps(nsem_data, indent=2),
     )
