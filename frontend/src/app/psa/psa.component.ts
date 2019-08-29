@@ -746,11 +746,10 @@ export class PsaComponent implements OnInit {
         xAxes: [{}],
         yAxes: [
           {
-            // TODO - rename to "Water Level / Wave Height (m)"
             id: 'water',
             scaleLabel: {
               display: true,
-              labelString: 'Water (m)',
+              labelString: 'Water Level / Wave Height (m)',
             },
             position: 'left',
           },
