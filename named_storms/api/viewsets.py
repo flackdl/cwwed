@@ -7,7 +7,7 @@ from django.http import JsonResponse, HttpResponse
 from django.utils.decorators import method_decorator
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
-from django.views.decorators.cache import cache_control
+from django.views.decorators.cache import cache_control, cache_page
 from django.contrib.gis.db.models import Collect, GeometryField
 from rest_framework import viewsets
 from rest_framework import exceptions
@@ -222,7 +222,8 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
     pagination_class = None
 
     @method_decorator(gzip_page)
-    @method_decorator(cache_control(max_age=3600))
+    @method_decorator(cache_control(max_age=3600))  # expire client-side
+    @method_decorator(cache_page(timeout=60*60*24*7))  # expire server-side
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 

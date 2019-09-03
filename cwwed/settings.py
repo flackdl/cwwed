@@ -123,6 +123,13 @@ DATABASES = {
     'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres', conn_max_age=300),
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cwwed_cache',
+        'VERSION':  os.environ.get('CACHE_VERSION', 1),  # new versions invalidate existing caches
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
