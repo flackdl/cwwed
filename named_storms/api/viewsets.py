@@ -222,8 +222,8 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
     pagination_class = None
 
     @method_decorator(gzip_page)
-    @method_decorator(cache_control(max_age=3600))  # expire client-side
-    @method_decorator(cache_page(timeout=60*60*24*7))  # expire server-side
+    @method_decorator(cache_control(max_age=3600))  # client-side cache
+    @method_decorator(cache_page(timeout=60*60*24*7, cache='psa_geojson'))  # server-side cache
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
