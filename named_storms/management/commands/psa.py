@@ -16,6 +16,8 @@ import numpy as np
 from typing import Callable
 from shapely.geometry import Polygon, Point
 from django.core.management import BaseCommand
+from named_storms.tasks import cache_psa_geojson_task
+
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -188,6 +190,9 @@ class Command(BaseCommand):
                 self.process_water_level()
             if ARG_VARIABLE_WAVE_HEIGHT in water_arg_variables:
                 self.process_wave_height()
+
+        # pre-cache all geojson api endpoints
+        cache_psa_geojson_task.delay(self.nsem.named_storm.id)
 
     @staticmethod
     def water_level_mask_results(results: list):

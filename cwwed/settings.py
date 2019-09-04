@@ -302,6 +302,10 @@ DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 # CWWED
 #
 
+CWWED_HOST = os.environ.get('CWWED_HOST', 'localhost')
+CWWED_SCHEME = 'http' if DEPLOY_STAGE_LOCAL else 'https'
+CWWED_PORT = 8080 if DEPLOY_STAGE_LOCAL else 443
+
 CWWED_ARCHIVE_EXTENSION = 'tgz'
 CWWED_DATA_DIR = MEDIA_ROOT
 CWWED_OPENDAP_DIR = 'OPENDAP'

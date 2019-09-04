@@ -110,7 +110,9 @@ Create EFS and make sure it's in the same VPC as the cluster, along with the nod
     # create secrets
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
     # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
+    # NOTE: swap correct host secret/file
     kubectl create secret generic cwwed-secrets \
+        --from-literal=CWWED_HOST=$(cat ~/Documents/cwwed/secrets/host_dev.txt) \
         --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
         --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
         --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \

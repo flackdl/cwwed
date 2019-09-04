@@ -13,7 +13,7 @@ router.register(r'nsem-psa-user-export', viewsets.NsemPsaUserExportViewset)
 urlpatterns = [
 
     # nested storm -> psa routes
-    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'})),
+    re_path(r'^named-storms/(?P<storm_id>\d+)/psa/geojson/', viewsets.NsemPsaGeoViewset.as_view({'get': 'list'}), name='psa-geojson'),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/variable/$', viewsets.NsemPsaVariableViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/dates/$', viewsets.NsemPsaDatesViewset.as_view({'get': 'list'})),
     re_path(r'^named-storms/(?P<storm_id>\d+)/psa/data/time-series/(?P<lat>[-+]?(\d*\.?\d+))/(?P<lon>[-+]?(\d*\.?\d+))/$', viewsets.NsemPsaTimeSeriesViewset.as_view({'get': 'list'})),

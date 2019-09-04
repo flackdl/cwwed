@@ -546,3 +546,46 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[nsem_psa_user_export.user.email],
     )
+
+
+@app.task(**TASK_ARGS)
+def cache_psa_geojson_task(storm_id: int):
+    """
+    Automatically creates cached responses for a storm's PSA geojson results by crawling every api endpoint
+    """
+
+    qs = NsemPsa.objects.filter(named_storm__id=storm_id)
+    if not qs.exists():
+        logging.exception('There is not PSA for storm {}'.format(storm_id))
+        raise
+
+    nsem = qs.first()  # type: NsemPsa
+
+    logging.info('Caching psa geojson for nsem psa {}'.format(nsem))
+
+    # loop through every variable
+    for psa_variable in nsem.nsempsavariable_set.all():  # type: NsemPsaVariable
+        url = '{scheme}://{host}:{port}{path}'.format(
+            scheme=settings.CWWED_SCHEME,
+            host=settings.CWWED_HOST,
+            port=settings.CWWED_PORT,
+            path=reverse('psa-geojson', args=[storm_id]),
+        )
+        # request every date of the PSA for time-series variables
+        if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+            data = {
+                'nsem_psa_variable': psa_variable.id
+            }
+            for nsem_date in nsem.dates:  # type: datetime
+                logging.info('Caching time-series for {} at {}'.format(psa_variable, nsem_date.isoformat()))
+                data['date'] = nsem_date.isoformat()
+                r = requests.get(url, data)
+                logging.info('Cached with status: {}'.format(r.status_code))
+        # request once for max-values variable
+        elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+            data = {
+                'nsem_psa_variable': psa_variable.id
+            }
+            logging.info('Caching max-values for {}'.format(psa_variable))
+            r = requests.get(url, data)
+            logging.info(r.status_code)
