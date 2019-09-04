@@ -556,7 +556,7 @@ def cache_psa_geojson_task(storm_id: int):
 
     qs = NsemPsa.objects.filter(named_storm__id=storm_id)
     if not qs.exists():
-        logging.exception('There is not PSA for storm {}'.format(storm_id))
+        logging.exception('There is not a PSA for storm id {}'.format(storm_id))
         raise
 
     nsem = qs.first()  # type: NsemPsa
@@ -577,15 +577,16 @@ def cache_psa_geojson_task(storm_id: int):
                 'nsem_psa_variable': psa_variable.id
             }
             for nsem_date in nsem.dates:  # type: datetime
-                logging.info('Caching time-series for {} at {}'.format(psa_variable, nsem_date.isoformat()))
-                data['date'] = nsem_date.isoformat()
-                r = requests.get(url, data)
-                logging.info('Cached with status: {}'.format(r.status_code))
+                data['date'] = nsem_date.strftime('%Y-%m-%dT%H:%M:%SZ')  # uses "Z" for zulu/UTC
+                # send the raw query string so the date format doesn't get url encoded
+                query = '&'.join(['{}={}'.format(key, value) for key, value in data.items()])
+                r = requests.get('{}?{}'.format(url, query))
+                logging.info('Cached {} with status {}'.format(r.url, r.status_code))
         # request once for max-values variable
         elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
             data = {
                 'nsem_psa_variable': psa_variable.id
             }
-            logging.info('Caching max-values for {}'.format(psa_variable))
             r = requests.get(url, data)
+            logging.info('Cached {} with status {}'.format(r.url, r.status_code))
             logging.info(r.status_code)

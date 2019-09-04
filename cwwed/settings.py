@@ -302,7 +302,7 @@ DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 # CWWED
 #
 
-CWWED_HOST = os.environ.get('CWWED_HOST', 'localhost')
+CWWED_HOST = os.environ.get('CWWED_HOST', '127.0.0.1')
 CWWED_SCHEME = 'http' if DEPLOY_STAGE_LOCAL else 'https'
 CWWED_PORT = 8080 if DEPLOY_STAGE_LOCAL else 443
 
