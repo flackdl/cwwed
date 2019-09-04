@@ -216,7 +216,7 @@ class NsemPsaData(models.Model):
 
     class Meta:
         indexes = [
-            Index(fields=['nsem_psa_variable', 'date']),
+            Index(fields=['nsem_psa_variable', 'date', 'value']),
             Index(fields=['nsem_psa_variable', 'geo_hash']),
         ]
 

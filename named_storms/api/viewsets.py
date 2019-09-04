@@ -239,10 +239,6 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     def list(self, request, *args, **kwargs):
 
-        # invalid - no nsem exists
-        if not self.nsem:
-            raise exceptions.ValidationError('No post storm assessments exist for this storm')
-
         # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
