@@ -127,15 +127,15 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'cache',
+        'LOCATION': 'cache_default',
     },
     'psa_geojson': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'cache',
+        'LOCATION': 'cache_psa_geojson',
         'VERSION':  os.environ.get('CACHE_VERSION', 1),  # new versions invalidate existing caches
         'TIMEOUT': None,  # never expire
         'OPTIONS': {
-            'MAX_ENTRIES': 300,
+            'MAX_ENTRIES': 1000,
         }
     }
 }
