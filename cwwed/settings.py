@@ -132,8 +132,7 @@ CACHES = {
     'psa_geojson': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
         'LOCATION': 'cache_psa_geojson',
-        'VERSION':  os.environ.get('CACHE_VERSION', 1),  # new versions invalidate existing caches
-        'TIMEOUT': None,  # never expire
+        'TIMEOUT': None,  # never expire, but this only applies to low level cache operations whereas cache_page() requires a timeout
         'OPTIONS': {
             'MAX_ENTRIES': 1000,
         }
@@ -328,6 +327,8 @@ CWWED_ARCHIVES_ACCESS_KEY_ID = os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID']
 CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY']
 
 CWWED_PSA_USER_DATA_EXPORT_DAYS = 1
+
+CWWED_CACHE_PSA_GEOJSON_DAYS = 365
 
 OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 
