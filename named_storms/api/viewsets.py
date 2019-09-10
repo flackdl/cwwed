@@ -244,13 +244,13 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
 
-        ## return cached data if it exists
-        #cache = caches['psa_geojson']  # type: BaseCache
-        #cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
-        #cached_response = cache.get(cache_key)
-        #if cached_response:
-        #    logging.info('returning cached response for {}'.format(cache_key))
-        #    return Response(cached_response)
+        # return cached data if it exists
+        cache = caches['psa_geojson']  # type: BaseCache
+        cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            logging.info('returning cached response for {}'.format(cache_key))
+            return HttpResponse(cached_response, content_type='application/json')
 
         self._validate()
 
@@ -281,10 +281,10 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
             features=','.join(features))
         response = HttpResponse(response_data, content_type='application/json')
 
-        ## cache result
-        #cache_key = learn_cache_key(
-        #    request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
-        #cache.set(cache_key, response_data, self.CACHE_TIMEOUT)
+        # cache result
+        cache_key = learn_cache_key(
+            request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
+        cache.set(cache_key, response_data, self.CACHE_TIMEOUT)
 
         return response
 
