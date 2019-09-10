@@ -240,6 +240,10 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     def list(self, request, *args, **kwargs):
 
+        # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
+        if 'nsem_psa_variable' not in request.query_params:
+            return Response([])
+
         ## return cached data if it exists
         #cache = caches['psa_geojson']  # type: BaseCache
         #cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
@@ -248,18 +252,16 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         #    logging.info('returning cached response for {}'.format(cache_key))
         #    return Response(cached_response)
 
-        # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
-        if 'nsem_psa_variable' not in request.query_params:
-            return Response([])
-
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
 
         features = []
 
+        # NOTE: we're not serializing the geojson from the database because it's expensive. Instead,
+        #       just swap in the raw json string value into the feature string
         for data in queryset:
-            features.append({
+            feature = json.dumps({
                 "type": "Feature",
                 "properties": {
                     "name": data['nsem_psa_variable__name'],
@@ -270,11 +272,14 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
                     "fill": data['color'],
                     "stroke": data['color'],
                 },
-                "geometry": json.loads(data['geom'].json),
+                "geometry": "@@geometry@@",  # placeholder to swap since we're not serializing the geo json data
             })
+            # swap geo json in and append to feature list
+            features.append(feature.replace('"@@geometry@@"', data['geom'].json))
 
-        response_data = {"type": "FeatureCollection", "features": features}
-        response = Response(response_data)
+        response_data = '{{"type": "FeatureCollection", "features": [{features}]}}'.format(
+            features=','.join(features))
+        response = HttpResponse(response_data, content_type='application/json')
 
         ## cache result
         #cache_key = learn_cache_key(
