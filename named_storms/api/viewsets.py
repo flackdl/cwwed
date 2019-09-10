@@ -240,13 +240,13 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     def list(self, request, *args, **kwargs):
 
-        # return cached data if it exists
-        cache = caches['psa_geojson']  # type: BaseCache
-        cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            logging.info('returning cached response for {}'.format(cache_key))
-            return Response(cached_response)
+        ## return cached data if it exists
+        #cache = caches['psa_geojson']  # type: BaseCache
+        #cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
+        #cached_response = cache.get(cache_key)
+        #if cached_response:
+        #    logging.info('returning cached response for {}'.format(cache_key))
+        #    return Response(cached_response)
 
         # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
@@ -276,10 +276,10 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         response_data = {"type": "FeatureCollection", "features": features}
         response = Response(response_data)
 
-        # cache result
-        cache_key = learn_cache_key(
-            request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
-        cache.set(cache_key, response_data, self.CACHE_TIMEOUT)
+        ## cache result
+        #cache_key = learn_cache_key(
+        #    request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
+        #cache.set(cache_key, response_data, self.CACHE_TIMEOUT)
 
         return response
 
