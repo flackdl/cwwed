@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
-    archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
+    archive_nsem_covered_data_task, extract_nsem_psa_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
     email_psa_user_export_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
@@ -91,7 +91,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         # save the instance first so we can create a task to extract the model output snapshot
         obj = serializer.save()
-        extract_nsem_model_output_task.delay(obj.id)
+        extract_nsem_psa_task.delay(obj.id)
 
 
 class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):

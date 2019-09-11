@@ -225,7 +225,7 @@ EXTRACT_NSEM_TASK_ARGS.update({
 
 
 @app.task(**EXTRACT_NSEM_TASK_ARGS)
-def extract_nsem_model_output_task(nsem_id):
+def extract_nsem_psa_task(nsem_id):
     """
     Downloads the model product output from object storage and puts it in file storage
     """
