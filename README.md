@@ -213,6 +213,8 @@ Or individually:
     # start proxy
     kubectl proxy
     
+Dashboard URL: http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=default
+    
 ### Celery Flower
 
 Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-forward locally like the following:
