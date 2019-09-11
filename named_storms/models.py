@@ -142,10 +142,11 @@ class NsemPsa(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_requested = models.DateTimeField(auto_now_add=True)
     date_returned = models.DateTimeField(null=True, blank=True)  # manually set once the model output is returned
-    covered_data_snapshot = models.TextField(blank=True)  # path to the covered data snapshot
+    date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the model output is processed
+    covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
     covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
-    model_output_snapshot = models.TextField(blank=True)  # path to the model output snapshot
-    model_output_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
+    psa_snapshot_path = models.TextField(blank=True)  # path to the model output snapshot
+    psa_snapshot_extracted = models.BooleanField(default=False)  # whether the output has been extracted to file storage
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list
 
     def __str__(self):

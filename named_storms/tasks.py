@@ -157,7 +157,7 @@ def archive_nsem_covered_data_task(nsem_id):
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
     nsem.covered_data_logs.set(logs_to_archive)  # many to many field
-    nsem.covered_data_snapshot = storage_path
+    nsem.covered_data_snapshot_path = storage_path
     nsem.save()
 
     return NSEMSerializer(instance=nsem).data
@@ -177,7 +177,7 @@ def extract_nsem_covered_data_task(nsem_data: dict):
     # download all the archives
     storage = S3ObjectStoragePrivate()
     storage.download_directory(
-        storage.path(nsem.covered_data_snapshot), file_system_path)
+        storage.path(nsem.covered_data_snapshot_path), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -231,11 +231,11 @@ def extract_nsem_model_output_task(nsem_id):
     """
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    uploaded_file_path = nsem.model_output_snapshot
+    uploaded_file_path = nsem.psa_snapshot_path
     storage = S3ObjectStoragePrivate()
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
-    if nsem.model_output_snapshot_extracted:
+    if nsem.psa_snapshot_extracted:
         return None
     elif not uploaded_file_path:
         raise Http404("Missing model output snapshot")
@@ -280,8 +280,8 @@ def extract_nsem_model_output_task(nsem_id):
     os.remove(file_system_path)
 
     # update output path to the copied path, flag success and set the date returned
-    nsem.model_output_snapshot = storage_path
-    nsem.model_output_snapshot_extracted = True
+    nsem.psa_snapshot_path = storage_path
+    nsem.psa_snapshot_extracted = True
     nsem.date_returned = datetime.utcnow()
     nsem.save()
 

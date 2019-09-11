@@ -64,7 +64,7 @@ class NamedStormCoveredDataAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsa)
 class NSEMAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'named_storm', 'date_requested', 'date_returned', 'covered_data_snapshot', 'model_output_snapshot',)
+    list_display = ('id', 'named_storm', 'date_requested', 'date_returned', 'covered_data_snapshot_path', 'psa_snapshot_path',)
     list_filter = ('named_storm__name', 'date_requested', 'date_returned',)
     readonly_fields = ('date_requested',)
     inlines = (NsemPsaVariableInline,)

@@ -58,13 +58,13 @@ class NSEMViewset(viewsets.ModelViewSet):
     queryset = NsemPsa.objects.all()
     serializer_class = NSEMSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filterset_fields = ('named_storm__id', 'model_output_snapshot_extracted')
+    filterset_fields = ('named_storm__id', 'psa_snapshot_extracted')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
         return Response(NSEMSerializer(
-            self.queryset.filter(model_output_snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
+            self.queryset.filter(psa_snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
             many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
@@ -107,7 +107,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, model_output_snapshot_extracted=True).order_by('-date_returned')
+        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, psa_snapshot_extracted=True).order_by('-date_returned')
 
         # validate
         if not storm.exists() or not nsem.exists():
