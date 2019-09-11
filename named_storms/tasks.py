@@ -231,11 +231,11 @@ def extract_nsem_psa_task(nsem_id):
     """
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    uploaded_file_path = nsem.psa_snapshot_path
+    uploaded_file_path = nsem.snapshot_path
     storage = S3ObjectStoragePrivate()
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
-    if nsem.psa_snapshot_extracted:
+    if nsem.snapshot_extracted:
         return None
     elif not uploaded_file_path:
         raise Http404("Missing model output snapshot")
@@ -280,8 +280,8 @@ def extract_nsem_psa_task(nsem_id):
     os.remove(file_system_path)
 
     # update output path to the copied path, flag success and set the date returned
-    nsem.psa_snapshot_path = storage_path
-    nsem.psa_snapshot_extracted = True
+    nsem.snapshot_path = storage_path
+    nsem.snapshot_extracted = True
     nsem.date_returned = datetime.utcnow()
     nsem.save()
 

@@ -80,7 +80,7 @@ class NSEMSerializer(serializers.ModelSerializer):
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.psa_snapshot_extracted:
+        if not obj.snapshot_extracted:
             return None
         return get_opendap_url_nsem(self.context['request'], obj)
 
@@ -100,14 +100,14 @@ class NSEMSerializer(serializers.ModelSerializer):
         if obj:
 
             # already extracted
-            if obj.psa_snapshot_extracted:
+            if obj.snapshot_extracted:
                 raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
 
             s3_path = self._get_model_output_upload_path(obj)
 
             # verify the path is in the expected format
             if s3_path != value:
-                raise serializers.ValidationError("'psa_snapshot_path' should equal '{}'".format(s3_path))
+                raise serializers.ValidationError("'snapshot_path' should equal '{}'".format(s3_path))
 
             # remove any prefixed "location" from the object storage instance
             location_prefix = '{}/'.format(storage.location)

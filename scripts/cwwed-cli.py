@@ -74,7 +74,7 @@ def upload_psa(args):
         sys.exit('File to upload must be ".tgz" (tar+gzipped)')
 
     # verify this record needs processing
-    if nsem_data['psa_snapshot_extracted']:
+    if nsem_data['snapshot_extracted']:
         sys.exit('Error.  This PSA cannot be updated since it has already been processed and extracted')
 
     # parse the s3 bucket from 'covered_data_storage_url'
@@ -98,7 +98,7 @@ def upload_psa(args):
         psa_id,
     )
     data = {
-        'psa_snapshot_path': upload_path,
+        'snapshot_path': upload_path,
     }
     response = requests.patch(url, data=data, headers=get_auth_headers(args['api-token']))
     if not response.ok:
