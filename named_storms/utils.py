@@ -1,7 +1,9 @@
+import json
 import os
 import errno
 import shutil
 from urllib import parse
+from django.db.models import QuerySet
 from django.http.request import HttpRequest
 from django.contrib.auth.models import User
 from django.conf import settings
@@ -205,3 +207,31 @@ def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NsemPsa, cover
         parse.quote(covered_data.name),
         'catalog.html',
     )
+
+
+def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
+    # NOTE: this expects a very specific psa/data queryset
+    # returns a string vs serialized data for performance reasons
+
+    features = []
+
+    # NOTE: we're not serializing the geojson from the database because it's expensive. Instead,
+    #       just swap in the raw json string value into the feature string
+    for data in queryset:
+        feature = json.dumps({
+            "type": "Feature",
+            "properties": {
+                "name": data['nsem_psa_variable__name'],
+                "units": data['nsem_psa_variable__units'],
+                "value": data['value'],
+                "meta": data['meta'],
+                "date": data['date'].isoformat() if data['date'] else None,
+                "fill": data['color'],
+                "stroke": data['color'],
+            },
+            "geometry": "@@geometry@@",  # placeholder to swap since we're not serializing the geo json data
+        })
+        # swap geo json in and append to feature list
+        features.append(feature.replace('"@@geometry@@"', data['geom'].json))
+
+    return '{{"type": "FeatureCollection", "features": [{features}]}}'.format(features=','.join(features))

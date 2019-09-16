@@ -29,6 +29,7 @@ from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariabl
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
 )
+from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -255,36 +256,13 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
-
-        features = []
-
-        # NOTE: we're not serializing the geojson from the database because it's expensive. Instead,
-        #       just swap in the raw json string value into the feature string
-        for data in queryset:
-            feature = json.dumps({
-                "type": "Feature",
-                "properties": {
-                    "name": data['nsem_psa_variable__name'],
-                    "units": data['nsem_psa_variable__units'],
-                    "value": data['value'],
-                    "meta": data['meta'],
-                    "date": data['date'].isoformat() if data['date'] else None,
-                    "fill": data['color'],
-                    "stroke": data['color'],
-                },
-                "geometry": "@@geometry@@",  # placeholder to swap since we're not serializing the geo json data
-            })
-            # swap geo json in and append to feature list
-            features.append(feature.replace('"@@geometry@@"', data['geom'].json))
-
-        response_data = '{{"type": "FeatureCollection", "features": [{features}]}}'.format(
-            features=','.join(features))
-        response = HttpResponse(response_data, content_type='application/json')
+        geojson = get_geojson_feature_collection_from_psa_qs(queryset)
+        response = HttpResponse(geojson, content_type='application/json')
 
         # cache result
         cache_key = learn_cache_key(
             request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
-        cache.set(cache_key, response_data, self.CACHE_TIMEOUT)
+        cache.set(cache_key, geojson, self.CACHE_TIMEOUT)
 
         return response
 

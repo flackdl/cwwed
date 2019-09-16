@@ -13,6 +13,7 @@ from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.contrib.gis.db.models import Collect, GeometryField
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
@@ -29,7 +30,7 @@ from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, Na
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory)
+    create_directory, get_geojson_feature_collection_from_psa_qs)
 
 
 TASK_ARGS = dict(
@@ -413,7 +414,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                         df_out.insert(len(df_out.columns), variable, df[variable])
 
                 # NOTE: I don't understand why, but this is necessary because the above xarray "where" bbox/extent
-                # filter is including coords just outside the requested extent with no values present,
+                # filter is including coords _just_ outside the requested extent with no values present,
                 # so this simply guarantees those rows are removed
                 df_out = df_out.dropna()
 
@@ -433,8 +434,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             #
 
             # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
-            # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
-            # technique is a workaround
+            # GeoPandas, but django doesn't produce valid sql when using QuerySet.query due to it not quoting params (specifically dates),
+            # so this technique is a workaround
 
             # fetch the ids of the psa data for this psa variable and that intersects the export's requested bbox
             kwargs = dict(
@@ -457,6 +458,23 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # save to temporary user path
             gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
+
+    # geojson - extract pre-processed geo data from db
+    elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
+
+        for psa_variable in nsem_psa_user_export.nsem.nsempsavariable_set.all():
+            data_kwargs = dict(
+                geo__intersects=nsem_psa_user_export.bbox,
+            )
+            # only include date if it's a time series variable
+            if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                data_kwargs['date'] = nsem_psa_user_export.date_filter
+            qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
+            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+            # collect (group) all geometries together by variable & value to reduce total features
+            qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
+            with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
+                fh.write(get_geojson_feature_collection_from_psa_qs(qs))
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)

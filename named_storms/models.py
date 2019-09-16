@@ -225,10 +225,12 @@ class NsemPsaData(models.Model):
 class NsemPsaUserExport(models.Model):
     FORMAT_NETCDF = 'netcdf'
     FORMAT_SHAPEFILE = 'shapefile'
+    FORMAT_GEOJSON = 'geojson'
     FORMAT_CSV = 'csv'
     FORMAT_CHOICES = (
         (FORMAT_NETCDF, FORMAT_NETCDF),
         (FORMAT_SHAPEFILE, FORMAT_SHAPEFILE),
+        (FORMAT_GEOJSON, FORMAT_GEOJSON),
         (FORMAT_CSV, FORMAT_CSV),
     )
 
