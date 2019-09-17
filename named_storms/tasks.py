@@ -458,6 +458,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 geom=Cast(Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox), CharField()))
             qs = qs.filter(id__in=data_ids)
             qs = qs.values('geom', 'value')
+
+            # create GeoDataFrame from query
             gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
 
             # save to temporary user path
@@ -473,11 +475,14 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # only include date if it's a time series variable
             if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
                 data_kwargs['date'] = nsem_psa_user_export.date_filter
-            qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
-            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+
             # group all intersecting geometries together by variable & value and
             # only return the export's bbox intersection
+            qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
+            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
             qs = qs.annotate(geom=Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox))
+
+            # write geojson to file
             with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
                 fh.write(get_geojson_feature_collection_from_psa_qs(qs))
 
