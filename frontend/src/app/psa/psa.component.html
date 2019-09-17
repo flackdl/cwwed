@@ -5,7 +5,7 @@
     <div class="card-header d-flex justify-content-between">
       <h1>{{ namedStorm.name }}</h1>
       <div class="d-flex justify-content-end">
-        <a class="btn btn-light" (click)="toggleFullscreen(psaContainer)" placement="left" ngbTooltip="Toggle fullscreen">
+        <a class="btn btn-light fullscreen" (click)="toggleFullscreen(psaContainer)" placement="left" ngbTooltip="Toggle fullscreen">
           <span class="oi" [ngClass]="{'oi-fullscreen-enter': !isFullscreen(), 'oi-fullscreen-exit': isFullscreen()}"></span>
         </a>
       </div>
