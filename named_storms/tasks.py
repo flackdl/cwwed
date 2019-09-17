@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
+from django.contrib.gis.db.models.functions import Intersection
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
@@ -471,8 +472,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 data_kwargs['date'] = nsem_psa_user_export.date_filter
             qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
             qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
-            # collect (group) all geometries together by variable & value to reduce total features
-            qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
+            # group all intersecting geometries together by variable & value and
+            # only return the export's bbox intersection
+            qs = qs.annotate(geom=Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox))
             with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
                 fh.write(get_geojson_feature_collection_from_psa_qs(qs))
 

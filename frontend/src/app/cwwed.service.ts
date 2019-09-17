@@ -108,7 +108,7 @@ export class CwwedService {
   }
 
   public fetchPSAUserExport(id: number) {
-    return this.http.get(`${API_NSEM_PSA_USER_EXPORT}${id}`).pipe(
+    return this.http.get(`${API_NSEM_PSA_USER_EXPORT}${id}/`).pipe(
       map((data) => {
         return data;
       }),
