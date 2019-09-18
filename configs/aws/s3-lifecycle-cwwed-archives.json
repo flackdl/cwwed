@@ -6,7 +6,17 @@
             },
             "ID": "User Exports",
             "Filter": {
-                "Prefix": "**/User Exports/"
+                "Prefix": "User Exports/"
+            },
+            "Status": "Enabled"
+        },
+        {
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "User Exports (local)",
+            "Filter": {
+                "Prefix": "local/User Exports/"
             },
             "Status": "Enabled"
         }
