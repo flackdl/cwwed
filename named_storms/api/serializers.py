@@ -73,21 +73,21 @@ class NSEMSerializer(serializers.ModelSerializer):
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.covered_data_snapshot:
+        if not obj.covered_data_snapshot_path:
             return None
         return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_logs.all())
 
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.model_output_snapshot_extracted:
+        if not obj.snapshot_extracted:
             return None
         return get_opendap_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
         storage = S3ObjectStoragePrivate()
-        if obj.covered_data_snapshot:
-            return storage.storage_url(obj.covered_data_snapshot)
+        if obj.covered_data_snapshot_path:
+            return storage.storage_url(obj.covered_data_snapshot_path)
         return None
 
     def validate_model_output_snapshot(self, value):
@@ -100,14 +100,14 @@ class NSEMSerializer(serializers.ModelSerializer):
         if obj:
 
             # already extracted
-            if obj.model_output_snapshot_extracted:
+            if obj.snapshot_extracted:
                 raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
 
             s3_path = self._get_model_output_upload_path(obj)
 
             # verify the path is in the expected format
             if s3_path != value:
-                raise serializers.ValidationError("'model_output_snapshot' should equal '{}'".format(s3_path))
+                raise serializers.ValidationError("'snapshot_path' should equal '{}'".format(s3_path))
 
             # remove any prefixed "location" from the object storage instance
             location_prefix = '{}/'.format(storage.location)
@@ -157,7 +157,7 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
         data = super().validate(data)
 
         # require date_filter for specific formats
-        if data['format'] in [NsemPsaUserExport.FORMAT_CSV, NsemPsaUserExport.FORMAT_SHAPEFILE]:
+        if data['format'] in [NsemPsaUserExport.FORMAT_CSV, NsemPsaUserExport.FORMAT_SHAPEFILE, NsemPsaUserExport.FORMAT_GEOJSON]:
             if not data.get('date_filter'):
                 raise serializers.ValidationError({"date_filter": ["date_filter required this export format"]})
 

@@ -7,7 +7,6 @@ import { debounceTime, mergeMap, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
-import { platformModifierKeyOnly } from 'ol/events/condition.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
