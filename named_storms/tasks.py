@@ -427,8 +427,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
 
         # generate shapefiles for all time-series polygon variables
-        kwargs_polygon_time_series = dict(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON, data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES)
-        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(**kwargs_polygon_time_series):
+        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
 
             #
             # generate sql query to send to geopanda's GeoDataFrame.from_postgis() to create a shapefile
@@ -451,13 +450,12 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             qs = NsemPsaData.objects.filter(**kwargs)
             data_ids = [r['id'] for r in qs.values('id')]
 
-            # group all intersecting geometries together by variable & value and
-            # only return the export's bbox intersection
+            # group all intersecting geometries together by value and clip the result using the export's bbox intersection
             # also, it's necessary to finally cast to CharField for GeoPandas
-            qs = NsemPsaData.objects.annotate(
+            qs = NsemPsaData.objects.filter(id__in=data_ids)
+            qs = qs.values('value')
+            qs = qs.annotate(
                 geom=Cast(Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox), CharField()))
-            qs = qs.filter(id__in=data_ids)
-            qs = qs.values('geom', 'value')
 
             # create GeoDataFrame from query
             gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
