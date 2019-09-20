@@ -2,19 +2,32 @@
 <kml xmlns="http://www.opengis.net/kml/2.2">
     <Document>
         <name>Post Storm Assessment</name>
+
+        {# colors #}
+        {% for result in results %}
+            <Style id="{{ result.color|slice:"1:" }}">
+                <PolyStyle>
+                    {# "7f" is 50% alpha - https://developers.google.com/kml/documentation/kmlreference#color #}
+                    <color>7f{{ result.color|slice:"1:" }}</color>
+                </PolyStyle>
+            </Style>
+        {% endfor %}
+
+        {# placemarks #}
+        {% for result in results %}
+            <Placemark>
+                <name>{{ result.nsem_psa_variable__name }}</name>
+                <styleUrl>{{ result.color }}</styleUrl>
+                <ExtendedData>
+                    <Data name="value">
+                        <value>{{ result.value }}</value>
+                    </Data>
+                    <Data name="units">
+                        <value>{{ result.nsem_psa_variable__units }}</value>
+                    </Data>
+                </ExtendedData>
+                {{ result.kml|safe }}
+            </Placemark>
+        {% endfor %}
     </Document>
-    {% for result in results %}
-        <Placemark>
-            <name>{{ result.nsem_psa_variable__name }}</name>
-            <ExtendedData>
-                <Data name="value">
-                    <value>{{ result.value }}</value>
-                </Data>
-                <Data name="units">
-                    <value>{{ result.nsem_psa_variable__units }}</value>
-                </Data>
-            </ExtendedData>
-            {{ result.kml|safe }}
-        </Placemark>
-    {% endfor %}
 </kml>
