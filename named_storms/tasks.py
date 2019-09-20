@@ -21,6 +21,7 @@ from django.db.models import CharField
 from django.db.models.functions import Cast
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
@@ -552,13 +553,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 def email_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
-    body = """
-        Storm: {storm}
-        Format: {format}
-        Expires: {expires}
-        Bounding Box: {bbox}
-        Download Link: {url}
-    """.format(
+    context = dict(
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
         format=nsem_psa_user_export.format,
@@ -566,11 +561,25 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
         url=nsem_psa_user_export.url,
     )
 
+    text_body = """
+        Your Post Storm Assessment export is complete.
+        
+        Storm: {storm}
+        Format: {format}
+        Expires: {expires}
+        Bounding Box: {bbox}
+        
+        Download Link: {url}
+    """.format(**context)
+
+    html_body = render_to_string('email_psa_user_export.html', context=context)
+
     # email the user
     send_mail(
         subject='Post Storm Assessment export: {}'.format(
             nsem_psa_user_export.nsem.named_storm),
-        message=body,
+        message=text_body,
+        html_message=html_body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[nsem_psa_user_export.user.email],
     )
