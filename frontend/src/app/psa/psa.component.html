@@ -85,10 +85,11 @@
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
                     <i *ngIf="!getExtentCoords()">(none selected)</i>
-                    <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'netcdf'}">NetCDF</a>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'geojson', 'date': getDateCurrent()}">GeoJSON</a>
+                    <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'kml', 'date': getDateCurrent()}">KML</a>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'csv', 'date': getDateCurrent()}">CSV</a>
+                    <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', DEMO_NAMED_STORM_ID, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'netcdf'}">NetCDF</a>
                   </dd>
                 </dl>
               </ng-template>

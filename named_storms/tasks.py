@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
-from django.contrib.gis.db.models.functions import Intersection, MakeValid
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
@@ -465,8 +465,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # save to temporary user path
             gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
 
-    # geojson - extract pre-processed geo data from db
-    elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
+    # extract pre-processed geo data from db
+    elif nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_GEOJSON, NsemPsaUserExport.FORMAT_KML]:
 
         for psa_variable in nsem_psa_user_export.nsem.nsempsavariable_set.all():
             data_kwargs = dict(
@@ -483,9 +483,16 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
-            # write geojson to file
-            with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
-                fh.write(get_geojson_feature_collection_from_psa_qs(qs))
+            if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
+                # annotate with AsKML
+                qs = qs.annotate(kml=AsKML('geom'))
+                # write kml to file
+                with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
+                    fh.write(render_to_string('psa-export.kml', context={"results": qs}))
+            elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
+                # write geojson to file
+                with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
+                    fh.write(get_geojson_feature_collection_from_psa_qs(qs))
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)

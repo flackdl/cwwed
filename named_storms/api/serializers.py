@@ -157,9 +157,12 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
         data = super().validate(data)
 
         # require date_filter for specific formats
-        if data['format'] in [NsemPsaUserExport.FORMAT_CSV, NsemPsaUserExport.FORMAT_SHAPEFILE, NsemPsaUserExport.FORMAT_GEOJSON]:
-            if not data.get('date_filter'):
-                raise serializers.ValidationError({"date_filter": ["date_filter required this export format"]})
+        date_specific_formats = [
+            NsemPsaUserExport.FORMAT_CSV, NsemPsaUserExport.FORMAT_SHAPEFILE,
+            NsemPsaUserExport.FORMAT_GEOJSON, NsemPsaUserExport.FORMAT_KML,
+        ]
+        if data['format'] in date_specific_formats and not data.get('date_filter'):
+            raise serializers.ValidationError({"date_filter": ["date_filter required this export format"]})
 
         return data
 

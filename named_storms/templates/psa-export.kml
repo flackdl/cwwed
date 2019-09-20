@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+    <Document>
+        <name>Post Storm Assessment</name>
+    </Document>
+    {% for result in results %}
+        <Placemark>
+            <name>{{ result.nsem_psa_variable__name }}</name>
+            <ExtendedData>
+                <Data name="value">
+                    <value>{{ result.value }}</value>
+                </Data>
+                <Data name="units">
+                    <value>{{ result.nsem_psa_variable__units }}</value>
+                </Data>
+            </ExtendedData>
+            {{ result.kml|safe }}
+        </Placemark>
+    {% endfor %}
+</kml>
