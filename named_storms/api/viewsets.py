@@ -1,5 +1,4 @@
 import csv
-import json
 import pytz
 import logging
 from celery import chain
