@@ -462,6 +462,7 @@ class Command(BaseCommand):
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
                 units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
             ),
+            element_type=NsemPsaVariable.ELEMENT_WIND,
         )
 
         nsem_psa_variable_barbs.save()
