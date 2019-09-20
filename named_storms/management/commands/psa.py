@@ -147,7 +147,8 @@ class Command(BaseCommand):
                         self.process_wind_speed()
                     if ARG_VARIABLE_WIND_BARBS in wind_arg_variables:
                         self.process_wind()
-        elif water_arg_variables:
+
+        if water_arg_variables:
             water_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_variables]
 
             # delete any previous psa results for this nsem
