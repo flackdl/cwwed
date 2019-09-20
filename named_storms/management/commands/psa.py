@@ -456,7 +456,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind',
+            name='Wind Barbs',
             defaults=dict(
                 geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,

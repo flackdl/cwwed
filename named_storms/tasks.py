@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
-from django.contrib.gis.db.models.functions import Intersection
+from django.contrib.gis.db.models.functions import Intersection, MakeValid
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
@@ -452,10 +452,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # group all intersecting geometries together by value and clip the result using the export's bbox intersection
             # also, it's necessary to finally cast to CharField for GeoPandas
+            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
             qs = NsemPsaData.objects.filter(id__in=data_ids)
             qs = qs.values('value')
             qs = qs.annotate(
-                geom=Cast(Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox), CharField()))
+                geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
 
             # create GeoDataFrame from query
             gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
@@ -476,9 +477,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # group all intersecting geometries together by variable & value and
             # only return the export's bbox intersection
+            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
             qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
-            qs = qs.annotate(geom=Intersection(Collect(Cast('geo', GeometryField())), nsem_psa_user_export.bbox))
+            qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
             # write geojson to file
             with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
