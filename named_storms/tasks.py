@@ -563,8 +563,8 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     context = dict(
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
+        date_filter=nsem_psa_user_export.date_filter,
         format=nsem_psa_user_export.format,
-        expires=nsem_psa_user_export.date_expires.isoformat(),
         url=nsem_psa_user_export.url,
     )
 
@@ -572,10 +572,9 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
         Your Post Storm Assessment export is complete.
         
         Storm: {storm}
+        Date: {date_filter}
         Format: {format}
-        Expires: {expires}
         Bounding Box: {bbox}
-        
         Download Link: {url}
     """.format(**context)
 
