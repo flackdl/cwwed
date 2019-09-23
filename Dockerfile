@@ -17,6 +17,7 @@ RUN echo "Installing dependencies and building application" \
     && wget -qO- https://deb.nodesource.com/setup_8.x | bash - \
     && apt-get update && apt-get install -y \
         libgdal-dev \
+        gdal-bin \
         nodejs \
         ffmpeg \
         python3-tk \
