@@ -488,7 +488,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 qs = qs.annotate(kml=AsKML('geom'))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
-                    fh.write(render_to_string('psa-export.kml', context={"results": qs}))
+                    fh.write(render_to_string('psa-export.kml', context={"results": qs, "psa_variable": psa_variable}))
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
                 # write geojson to file
                 with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:

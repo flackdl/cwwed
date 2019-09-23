@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
     <Document>
-        <name>Post Storm Assessment</name>
+        <name>{{ psa_variable }}</name>
 
         {# colors #}
         {% for result in results %}
@@ -16,14 +16,14 @@
         {# placemarks #}
         {% for result in results %}
             <Placemark>
-                <name>{{ result.nsem_psa_variable__name }}</name>
+                <name>{{ result.value }} ({{ psa_variable.units }})</name>
                 <styleUrl>{{ result.color }}</styleUrl>
                 <ExtendedData>
                     <Data name="value">
                         <value>{{ result.value }}</value>
                     </Data>
                     <Data name="units">
-                        <value>{{ result.nsem_psa_variable__units }}</value>
+                        <value>{{ psa_variable.units }}</value>
                     </Data>
                 </ExtendedData>
                 {{ result.kml|safe }}
