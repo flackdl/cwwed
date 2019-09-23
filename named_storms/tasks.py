@@ -13,12 +13,15 @@ from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
+from django.contrib.gis.db.models import Collect, GeometryField
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
 from django.db.models.functions import Cast
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.template.loader import render_to_string
 from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
@@ -29,7 +32,7 @@ from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, Na
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory)
+    create_directory, get_geojson_feature_collection_from_psa_qs)
 
 
 TASK_ARGS = dict(
@@ -157,7 +160,7 @@ def archive_nsem_covered_data_task(nsem_id):
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
     nsem.covered_data_logs.set(logs_to_archive)  # many to many field
-    nsem.covered_data_snapshot = storage_path
+    nsem.covered_data_snapshot_path = storage_path
     nsem.save()
 
     return NSEMSerializer(instance=nsem).data
@@ -177,7 +180,7 @@ def extract_nsem_covered_data_task(nsem_data: dict):
     # download all the archives
     storage = S3ObjectStoragePrivate()
     storage.download_directory(
-        storage.path(nsem.covered_data_snapshot), file_system_path)
+        storage.path(nsem.covered_data_snapshot_path), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -225,17 +228,17 @@ EXTRACT_NSEM_TASK_ARGS.update({
 
 
 @app.task(**EXTRACT_NSEM_TASK_ARGS)
-def extract_nsem_model_output_task(nsem_id):
+def extract_nsem_psa_task(nsem_id):
     """
     Downloads the model product output from object storage and puts it in file storage
     """
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    uploaded_file_path = nsem.model_output_snapshot
+    uploaded_file_path = nsem.snapshot_path
     storage = S3ObjectStoragePrivate()
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
-    if nsem.model_output_snapshot_extracted:
+    if nsem.snapshot_extracted:
         return None
     elif not uploaded_file_path:
         raise Http404("Missing model output snapshot")
@@ -280,8 +283,8 @@ def extract_nsem_model_output_task(nsem_id):
     os.remove(file_system_path)
 
     # update output path to the copied path, flag success and set the date returned
-    nsem.model_output_snapshot = storage_path
-    nsem.model_output_snapshot_extracted = True
+    nsem.snapshot_path = storage_path
+    nsem.snapshot_extracted = True
     nsem.date_returned = datetime.utcnow()
     nsem.save()
 
@@ -307,7 +310,7 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         {}
         """.format(
         # link to api endpoint for this nsem instance
-        '{}{}'.format(base_url, reverse('nsem-detail', args=[nsem.id])),
+        '{}{}'.format(base_url, reverse('nsempsa-detail', args=[nsem.id])),
         # raw json dump
         json.dumps(nsem_data, indent=2),
     )
@@ -370,11 +373,14 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
                 drop=True)
 
+            # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
                 ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
 
+            # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+
                 # verify this dataset has the export date requested
                 if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
@@ -409,8 +415,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     else:
                         df_out.insert(len(df_out.columns), variable, df[variable])
 
-                # this is important because the above xarray "where" bbox/extent filter is
-                # including coords just outside the requested extent with no values, so this simply removes empty values
+                # NOTE: I don't understand why, but this is necessary because the above xarray "where" bbox/extent
+                # filter is including coords _just_ outside the requested extent with no values present,
+                # so this simply guarantees those rows are removed
                 df_out = df_out.dropna()
 
                 # write csv
@@ -421,16 +428,15 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
 
         # generate shapefiles for all time-series polygon variables
-        kwargs_polygon_time_series = dict(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON, data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES)
-        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(**kwargs_polygon_time_series):
+        for psa_geom_variable in nsem_psa_user_export.nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):
 
             #
-            # generate sql query to send to geopanda's GeoDataFrame to create a shapefile
+            # generate sql query to send to geopanda's GeoDataFrame.from_postgis() to create a shapefile
             #
 
             # NOTE: we have to fetch all the ids of the actual data up front because we need to send the raw query to
-            # GeoPandas, but django doesn't produce valid sql due to it not quoting params (specifically dates), so this
-            # technique is a workaround
+            # GeoPandas, but django doesn't produce valid sql when using QuerySet.query due to it not quoting params (specifically dates),
+            # so this technique is a workaround
 
             # fetch the ids of the psa data for this psa variable and that intersects the export's requested bbox
             kwargs = dict(
@@ -445,14 +451,48 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             qs = NsemPsaData.objects.filter(**kwargs)
             data_ids = [r['id'] for r in qs.values('id')]
 
-            # generate raw sql query to send to geopanda's GeoDataFrame.from_postgis()
-            qs = NsemPsaData.objects.annotate(geom=Cast('geo', CharField()))
-            qs = qs.filter(id__in=data_ids)
-            qs = qs.values('geom', 'value')
+            # group all intersecting geometries together by value and clip the result using the export's bbox intersection
+            # also, it's necessary to finally cast to CharField for GeoPandas
+            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            qs = NsemPsaData.objects.filter(id__in=data_ids)
+            qs = qs.values('value')
+            qs = qs.annotate(
+                geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
+
+            # create GeoDataFrame from query
             gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
 
             # save to temporary user path
             gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
+
+    # extract pre-processed geo data from db
+    elif nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_GEOJSON, NsemPsaUserExport.FORMAT_KML]:
+
+        for psa_variable in nsem_psa_user_export.nsem.nsempsavariable_set.all():
+            data_kwargs = dict(
+                geo__intersects=nsem_psa_user_export.bbox,
+            )
+            # only include date if it's a time series variable
+            if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                data_kwargs['date'] = nsem_psa_user_export.date_filter
+
+            # group all intersecting geometries together by variable & value and
+            # only return the export's bbox intersection
+            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
+            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+            qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
+
+            if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
+                # annotate with AsKML
+                qs = qs.annotate(kml=AsKML('geom'))
+                # write kml to file
+                with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
+                    fh.write(render_to_string('psa-export.kml', context={"results": qs, "psa_variable": psa_variable}))
+            elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
+                # write geojson to file
+                with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
+                    fh.write(get_geojson_feature_collection_from_psa_qs(qs))
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
@@ -520,25 +560,76 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 def email_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
-    body = """
-        Storm: {storm}
-        Format: {format}
-        Expires: {expires}
-        Bounding Box: {bbox}
-        Download Link: {url}
-    """.format(
+    context = dict(
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
+        date_filter=nsem_psa_user_export.date_filter,
         format=nsem_psa_user_export.format,
-        expires=nsem_psa_user_export.date_expires.isoformat(),
         url=nsem_psa_user_export.url,
     )
+
+    text_body = """
+        Your Post Storm Assessment export is complete.
+        
+        Storm: {storm}
+        Date: {date_filter}
+        Format: {format}
+        Bounding Box: {bbox}
+        Download Link: {url}
+    """.format(**context)
+
+    html_body = render_to_string('email_psa_user_export.html', context=context)
 
     # email the user
     send_mail(
         subject='Post Storm Assessment export: {}'.format(
             nsem_psa_user_export.nsem.named_storm),
-        message=body,
+        message=text_body,
+        html_message=html_body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[nsem_psa_user_export.user.email],
     )
+
+
+@app.task(**TASK_ARGS)
+def cache_psa_geojson_task(storm_id: int):
+    """
+    Automatically creates cached responses for a storm's PSA geojson results by crawling every api endpoint
+    """
+
+    qs = NsemPsa.objects.filter(named_storm__id=storm_id)
+    if not qs.exists():
+        logging.exception('There is not a PSA for storm id {}'.format(storm_id))
+        raise
+
+    nsem = qs.first()  # type: NsemPsa
+
+    logging.info('Caching psa geojson for nsem psa {}'.format(nsem))
+
+    # loop through every variable
+    for psa_variable in nsem.nsempsavariable_set.all():  # type: NsemPsaVariable
+        url = '{scheme}://{host}:{port}{path}'.format(
+            scheme=settings.CWWED_SCHEME,
+            host=settings.CWWED_HOST,
+            port=settings.CWWED_PORT,
+            path=reverse('psa-geojson', args=[storm_id]),
+        )
+        # request every date of the PSA for time-series variables
+        if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+            data = {
+                'nsem_psa_variable': psa_variable.id
+            }
+            for nsem_date in nsem.dates:  # type: datetime
+                data['date'] = nsem_date.strftime('%Y-%m-%dT%H:%M:%SZ')  # uses "Z" for zulu/UTC
+                # send the raw query string so the date format doesn't get url encoded
+                query = '&'.join(['{}={}'.format(key, value) for key, value in data.items()])
+                r = requests.get('{}?{}'.format(url, query))
+                logging.info('Cached {} with status {}'.format(r.url, r.status_code))
+        # request once for max-values variable
+        elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+            data = {
+                'nsem_psa_variable': psa_variable.id
+            }
+            r = requests.get(url, data)
+            logging.info('Cached {} with status {}'.format(r.url, r.status_code))
+            logging.info(r.status_code)

@@ -1,10 +1,13 @@
 import csv
-import json
 import pytz
+import logging
 from celery import chain
+from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
+from django.utils.cache import get_cache_key, learn_cache_key
 from django.utils.decorators import method_decorator
+from django.conf import settings
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.cache import cache_control
@@ -18,13 +21,14 @@ from rest_framework.response import Response
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
-    archive_nsem_covered_data_task, extract_nsem_model_output_task, email_nsem_covered_data_complete_task,
+    archive_nsem_covered_data_task, extract_nsem_psa_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
     email_psa_user_export_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NSEMSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
 )
+from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -54,13 +58,13 @@ class NSEMViewset(viewsets.ModelViewSet):
     queryset = NsemPsa.objects.all()
     serializer_class = NSEMSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filterset_fields = ('named_storm__id', 'model_output_snapshot_extracted')
+    filterset_fields = ('named_storm__id', 'snapshot_extracted')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
         return Response(NSEMSerializer(
-            self.queryset.filter(model_output_snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
+            self.queryset.filter(snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
             many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
@@ -87,7 +91,7 @@ class NSEMViewset(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         # save the instance first so we can create a task to extract the model output snapshot
         obj = serializer.save()
-        extract_nsem_model_output_task.delay(obj.id)
+        extract_nsem_psa_task.delay(obj.id)
 
 
 class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
@@ -103,7 +107,7 @@ class NsemPsaBaseViewset(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, model_output_snapshot_extracted=True).order_by('-date_returned')
+        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, snapshot_extracted=True).order_by('-date_returned')
 
         # validate
         if not storm.exists() or not nsem.exists():
@@ -213,6 +217,8 @@ class NsemPsaTimeSeriesViewset(NsemPsaBaseViewset):
         return Response(results)
 
 
+@method_decorator(gzip_page, name='dispatch')
+@method_decorator(cache_control(max_age=3600), name='dispatch')
 class NsemPsaGeoViewset(NsemPsaBaseViewset):
     # Named Storm Event Model PSA Geo Viewset
     #   - expects to be nested under a NamedStormViewset detail
@@ -220,11 +226,7 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     filterset_class = NsemPsaDataFilter
     pagination_class = None
-
-    @method_decorator(gzip_page)
-    @method_decorator(cache_control(max_age=3600))
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
+    CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_queryset(self):
         """
@@ -238,36 +240,30 @@ class NsemPsaGeoViewset(NsemPsaBaseViewset):
 
     def list(self, request, *args, **kwargs):
 
-        # invalid - no nsem exists
-        if not self.nsem:
-            raise exceptions.ValidationError('No post storm assessments exist for this storm')
-
         # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
 
+        # return cached data if it exists
+        cache = caches['psa_geojson']  # type: BaseCache
+        cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
+        cached_response = cache.get(cache_key)
+        if cached_response:
+            logging.info('returning cached response for {}'.format(cache_key))
+            return HttpResponse(cached_response, content_type='application/json')
+
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
+        geojson = get_geojson_feature_collection_from_psa_qs(queryset)
+        response = HttpResponse(geojson, content_type='application/json')
 
-        features = []
+        # cache result
+        cache_key = learn_cache_key(
+            request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
+        cache.set(cache_key, geojson, self.CACHE_TIMEOUT)
 
-        for data in queryset:
-            features.append({
-                "type": "Feature",
-                "properties": {
-                    "name": data['nsem_psa_variable__name'],
-                    "units": data['nsem_psa_variable__units'],
-                    "value": data['value'],
-                    "meta": data['meta'],
-                    "date": data['date'].isoformat() if data['date'] else None,
-                    "fill": data['color'],
-                    "stroke": data['color'],
-                },
-                "geometry": json.loads(data['geom'].json),
-            })
-
-        return Response({"type": "FeatureCollection", "features": features})
+        return response
 
     def _validate(self):
 

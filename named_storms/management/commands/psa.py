@@ -16,6 +16,8 @@ import numpy as np
 from typing import Callable
 from shapely.geometry import Polygon, Point
 from django.core.management import BaseCommand
+from named_storms.tasks import cache_psa_geojson_task
+
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -107,7 +109,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
-        self.nsem = self.storm.nsempsa_set.order_by('-id')[0]
+        # default to the most recent extracted version
+        self.nsem = self.storm.nsempsa_set.filter(snapshot_extracted=True).order_by('-id').first()
 
         # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_SPEED_MAX, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
@@ -144,14 +147,15 @@ class Command(BaseCommand):
                         self.process_wind_speed()
                     if ARG_VARIABLE_WIND_BARBS in wind_arg_variables:
                         self.process_wind()
-        elif water_arg_variables:
+
+        if water_arg_variables:
             water_variables = [variable for arg, variable in ARG_TO_VARIABLE.items() if arg in water_arg_variables]
 
             # delete any previous psa results for this nsem
             if options['delete']:
                 self.nsem.nsempsavariable_set.filter(nsem=self.nsem, name__in=water_variables).delete()
 
-            self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy.nc')
+            self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc')
 
             # TODO - need an authoritative dataset to define the date range for a hurricane
             # save the datetime's on our nsem instance
@@ -188,6 +192,9 @@ class Command(BaseCommand):
                 self.process_water_level()
             if ARG_VARIABLE_WAVE_HEIGHT in water_arg_variables:
                 self.process_wave_height()
+
+        # pre-cache all geojson api endpoints
+        cache_psa_geojson_task.delay(self.nsem.named_storm.id)
 
     @staticmethod
     def water_level_mask_results(results: list):
@@ -449,10 +456,11 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind',
+            name='Wind Barbs',
             defaults=dict(
                 geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                element_type=NsemPsaVariable.ELEMENT_WIND,
                 units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
             ),
         )

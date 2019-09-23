@@ -110,7 +110,9 @@ Create EFS and make sure it's in the same VPC as the cluster, along with the nod
     # create secrets
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
     # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
+    # NOTE: swap correct host secret/file
     kubectl create secret generic cwwed-secrets \
+        --from-literal=CWWED_HOST=$(cat ~/Documents/cwwed/secrets/host_dev.txt) \
         --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
         --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
         --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \
@@ -211,6 +213,14 @@ Or individually:
     # start proxy
     kubectl proxy
     
+Dashboard URL: http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=default
+    
+### Celery Flower
+
+Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-forward locally like the following:
+
+    kubectl port-forward celery-flower-deployment-644fd6d758-882nv 5556:5555
+    
 ### Social auth (WIP)
 
 Configure Django "Sites" (in admin)
@@ -241,9 +251,9 @@ Submit a new NSEM request using the user's generated token:
         "covered_data_storage_url": null,
         "date_requested": "2018-05-09T17:25:42.695051Z",
         "date_returned": null, 
-        "covered_data_snapshot": "",
-        "model_output_snapshot": "",
-        "model_output_snapshot_extracted": false,
+        "covered_data_snapshot_path": "",
+        "snapshot_path": "",
+        "snapshot_extracted": false,
         "named_storm": 1,
     }
     
@@ -258,9 +268,9 @@ Wait a few minutes and re-query the "nsem" record to see if `covered_data_storag
         "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
         "date_requested": "2018-05-09T17:48:22.583653Z",
         "date_returned": "2018-05-09T18:02:28.497192Z",
-        "covered_data_snapshot": "NSEM/Harvey/v76/Covered Data",
-        "model_output_snapshot": "NSEM/Harvey/v76/Post Storm Assessment/v76.tgz",
-        "model_output_snapshot_extracted": true,
+        "covered_data_snapshot_path": "NSEM/Harvey/v76/Covered Data",
+        "snapshot_path": "NSEM/Harvey/v76/Post Storm Assessment/v76.tgz",
+        "snapshot_extracted": true,
         "named_storm": 1
     }
 
@@ -281,20 +291,20 @@ Upload model output for a specific NSEM record:
 Update the "nsem" record to indicate the post-storm assessment has been uploaded.
 
     # update the nsem version with the aws s3 path (expects to be named by the version, i.e "v76.tgz")
-    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"model_output_snapshot": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
+    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"snapshot_path": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
     
     {
       "id": 76,
       "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
       "date_requested": "2018-05-09T18:48:47.685854Z",
       "date_returned": null,
-      "covered_data_snapshot": "NSEM/Harvey/v58/Covered Data",
-      "model_output_snapshot": "NSEM/upload/v58.tgz",
-      "model_output_snapshot_extracted": false,
+      "covered_data_snapshot_path": "NSEM/Harvey/v58/Covered Data",
+      "snapshot_path": "NSEM/upload/v58.tgz",
+      "snapshot_extracted": false,
       "named_storm": 1
     }
     
-The `model_output_snapshot_extracted` field will initially be `false` until a background job has processed the upload.
+The `snapshot_extracted` field will initially be `false` until a background job has processed the upload.
 
 ## NSEM AWS policies
 

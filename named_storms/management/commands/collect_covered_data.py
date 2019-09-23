@@ -38,19 +38,19 @@ class Command(BaseCommand):
             create_directory(complete_path)
             create_directory(incomplete_path, remove_if_exists=True)
 
-            for data in storm.covered_data.filter(**covered_data_filter_args):
+            for covered_data in storm.covered_data.filter(**covered_data_filter_args):
 
-                storm_covered_data = NamedStormCoveredData.objects.filter(named_storm=storm, covered_data=data).get()  # this has to exist
+                storm_covered_data = NamedStormCoveredData.objects.filter(named_storm=storm, covered_data=covered_data).get()  # this has to exist
                 if storm_covered_data.date_collected:
                     self.stdout.write(
-                        self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (data, storm_covered_data.date_collected)))
+                        self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (covered_data, storm_covered_data.date_collected)))
                     continue
 
-                self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % data))
+                self.stdout.write(self.style.SUCCESS('\tCovered Data: %s' % covered_data))
 
                 covered_data_success = False
 
-                providers = data.covereddataprovider_set.filter(active=True)
+                providers = covered_data.covereddataprovider_set.filter(active=True)
 
                 if not providers.exists():
                     # no need to continue if there aren't any active providers for this covered data
@@ -61,7 +61,7 @@ class Command(BaseCommand):
 
                     log = NamedStormCoveredDataLog(
                         named_storm=storm,
-                        covered_data=data,
+                        covered_data=covered_data,
                         provider=provider,
                     )
 
@@ -84,7 +84,10 @@ class Command(BaseCommand):
                         continue
 
                     if not processors_data:
-                        self.stdout.write(self.style.WARNING('\t\tNo data provided.  Skipping provider'))
+                        log.success = False
+                        log.exception = 'No data found for storm'
+                        log.save()
+                        self.stdout.write(self.style.WARNING('\t\tNo data found for storm.  Skipping provider'))
                         continue
 
                     # fetch data in parallel but wait for all tasks to complete and capture results
@@ -111,8 +114,8 @@ class Command(BaseCommand):
 
                     if covered_data_success:
 
-                        data_path = os.path.join(complete_path, data.name)
-                        data_path_incomplete = os.path.join(incomplete_path, data.name)
+                        data_path = os.path.join(complete_path, covered_data.name)
+                        data_path_incomplete = os.path.join(incomplete_path, covered_data.name)
 
                         try:
                             # remove any previous version in the complete path
@@ -135,7 +138,7 @@ class Command(BaseCommand):
                         # create a task to archive the data
                         archive_named_storm_covered_data_task.delay(
                             named_storm_id=storm.id,
-                            covered_data_id=data.id,
+                            covered_data_id=covered_data.id,
                             log_id=log.id,
                         )
 
@@ -149,12 +152,12 @@ class Command(BaseCommand):
                         # skip additional providers since this was successful
                         break
                     else:
-                        logging.error('Error collecting {} from {}'.format(data, provider))
+                        logging.error('Error collecting {} from {}'.format(covered_data, provider))
                         self.stdout.write(self.style.ERROR('\t\tFailed'))
                         self.stdout.write(self.style.WARNING('\t\tTrying next provider'))
 
                 if not covered_data_success:
-                    logging.error('Error collecting {} from ALL providers'.format(data))
+                    logging.error('Error collecting {} from ALL providers'.format(covered_data))
 
         if not settings.DEBUG:
             slack_channel('Finished collecting covered data', '#events')

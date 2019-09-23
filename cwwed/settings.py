@@ -123,6 +123,21 @@ DATABASES = {
     'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres', conn_max_age=300),
 }
 
+# https://docs.djangoproject.com/en/2.0/topics/cache/
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_default',
+    },
+    'psa_geojson': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'cache_psa_geojson',
+        'TIMEOUT': None,  # never expire, but this only applies to low level cache operations whereas cache_page() requires a timeout
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/2.0/ref/settings/#auth-password-validators
@@ -286,6 +301,10 @@ DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 # CWWED
 #
 
+CWWED_HOST = os.environ.get('CWWED_HOST', '127.0.0.1')
+CWWED_SCHEME = 'http' if DEPLOY_STAGE_LOCAL else 'https'
+CWWED_PORT = 8080 if DEPLOY_STAGE_LOCAL else 443
+
 CWWED_ARCHIVE_EXTENSION = 'tgz'
 CWWED_DATA_DIR = MEDIA_ROOT
 CWWED_OPENDAP_DIR = 'OPENDAP'
@@ -308,6 +327,8 @@ CWWED_ARCHIVES_ACCESS_KEY_ID = os.environ['CWWED_ARCHIVES_ACCESS_KEY_ID']
 CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY']
 
 CWWED_PSA_USER_DATA_EXPORT_DAYS = 1
+
+CWWED_CACHE_PSA_GEOJSON_DAYS = 365
 
 OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 

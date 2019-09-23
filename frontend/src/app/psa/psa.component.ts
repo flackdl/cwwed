@@ -7,7 +7,6 @@ import { debounceTime, mergeMap, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
-import { platformModifierKeyOnly } from 'ol/events/condition.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
@@ -47,7 +46,6 @@ export class PsaComponent implements OnInit {
     {name: 'MapBox Satellite', value: this.MAP_LAYER_MAPBOX_SATELLITE},
     {name: 'Stamen Toner', value: this.MAP_LAYER_STAMEN_TONER},
   ];
-  public demoDataURL = "/opendap/PSA_demo/sandy.nc";
   public isLoading = true;
   public isLoadingMap = true;
   public isLoadingOverlayPopup = false;
@@ -57,9 +55,7 @@ export class PsaComponent implements OnInit {
   public psaDates: string[] = [];
   public psaDatesFormatted: string[] = [];
   public form: FormGroup;
-  public nsemList: any;
   public currentFeature: any;
-  public extentCoords: Number[];
   public currentConfidence: Number;
   public mapLayerInput = new FormControl(this.MAP_LAYER_MAPBOX_STREETS);
   public availableMapLayers: {
@@ -67,11 +63,14 @@ export class PsaComponent implements OnInit {
     layer: VectorLayer,
   }[];
   public popupOverlay: Overlay;
+  public tooltipOverlay: Overlay;
   public lineChartData: any[] = [];
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
+
   @ViewChild('popup') popupEl: ElementRef;
+  @ViewChild('tooltip') tooltipEl: ElementRef;
   @ViewChild('map') mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
@@ -89,7 +88,6 @@ export class PsaComponent implements OnInit {
 
   ngOnInit() {
 
-    this.nsemList = this.cwwedService.nsemList;
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
       return storm.id === this.DEMO_NAMED_STORM_ID;
     });
@@ -132,8 +130,11 @@ export class PsaComponent implements OnInit {
     this.popupOverlay.setPosition(undefined);
   }
 
-  public getDataUrl(format: string): string {
-    return `${this.demoDataURL}.${format}`;
+  public getOpenDapUrl(): string {
+    const psa = _.find(this.cwwedService.nsemList, (nsemPsa) => {
+      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+    });
+    return psa ? psa.opendap_url_psa : '';
   }
 
   public timeSeriesVariables() {
@@ -158,20 +159,35 @@ export class PsaComponent implements OnInit {
     return displayedVariables.length > 0;
   }
 
-  public hasExtentSelection(): boolean {
-    return this._extentInteraction && this._extentInteraction.getExtent();
+  public isExtentActive(): boolean {
+    return Boolean(this._extentInteraction && this._extentInteraction.getActive());
   }
 
-  public resetExtentInteraction() {
+  public hasExtentSelection(): boolean {
+    return Boolean(this._extentInteraction && this._extentInteraction.getExtent());
+  }
+
+  public getExtentCoords() {
+    const extentCoords = this._extentInteraction.getExtent();
+    if (extentCoords) {
+      return toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
+        toLonLat(<any>[extentCoords[2], extentCoords[3]]));
+    }
+  }
+
+  public disableExtentInteraction() {
 
     // reset extent selection and captured coordinates
     if (this._extentInteraction) {
       this.map.removeInteraction(this._extentInteraction);
     }
-    this.extentCoords = null;
 
     // reconfigure extent
     this._configureMapExtentInteraction();
+  }
+
+  public enableBoxSelection() {
+    this._extentInteraction.setActive(true);
   }
 
   public getColorBarVariables() {
@@ -538,6 +554,13 @@ export class PsaComponent implements OnInit {
       })
     });
 
+    this.tooltipOverlay = new Overlay({
+      element: this.tooltipEl.nativeElement,
+      offset: [10, 0],
+      positioning: 'bottom-left'
+    });
+    this.map.addOverlay(this.tooltipOverlay);
+
     // instantiate geocoder
     const geocoder = new Geocoder('nominatim', {
       provider: 'osm',
@@ -561,8 +584,10 @@ export class PsaComponent implements OnInit {
     });
 
     this.map.on('singleclick', (event) => {
-      // configure graph overlay
-      this._configureGraphOverlay(event);
+      if (!this.isExtentActive()) {
+        // configure graph overlay
+        this._configureGraphOverlay(event);
+      }
     });
 
     this._configureMapExtentInteraction();
@@ -605,7 +630,7 @@ export class PsaComponent implements OnInit {
     this.map.on('pointermove', (event) => {
 
       // don't show feature details if there's any popup overlay already present
-      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.hasExtentSelection()) {
+      if ((this.popupOverlay && this.popupOverlay.rendered.visible) || this.isExtentActive()) {
         return;
       }
 
@@ -648,6 +673,8 @@ export class PsaComponent implements OnInit {
 
       // include the current coordinates
       currentFeature['coordinate'] = toLonLat(event.coordinate).reverse();
+
+      this.tooltipOverlay.setPosition(event.coordinate);
 
       this.currentFeature = currentFeature;
     });
@@ -721,7 +748,7 @@ export class PsaComponent implements OnInit {
             id: 'water',
             scaleLabel: {
               display: true,
-              labelString: 'Water (m)',
+              labelString: 'Water Level / Wave Height (m)',
             },
             position: 'left',
           },
@@ -756,31 +783,10 @@ export class PsaComponent implements OnInit {
   protected _configureMapExtentInteraction() {
 
     // configure box extent selection
-    this._extentInteraction = new ExtentInteraction({
-      condition: platformModifierKeyOnly,
-    });
-    this.map.addInteraction(this._extentInteraction);
+    this._extentInteraction = new ExtentInteraction();
     this._extentInteraction.setActive(false);
 
-    // enable geo box interaction by holding shift
-    window.addEventListener('keydown', (event: any) => {
-      if (event.keyCode == 16) {
-        this._extentInteraction.setActive(true);
-      }
-    });
-
-    // disable geo box interaction and capture extent box
-    window.addEventListener('keyup', (event: any) => {
-      if (event.keyCode == 16) {
-        const extentCoords = this._extentInteraction.getExtent();
-        if (extentCoords && extentCoords.length === 4) {
-          this.extentCoords = toLonLat(<any>[extentCoords[0], extentCoords[1]]).concat(
-            toLonLat(<any>[extentCoords[2], extentCoords[3]]));
-        } else {
-          this.extentCoords = null;
-        }
-        this._extentInteraction.setActive(false);
-      }
-    });
+    // add to map
+    this.map.addInteraction(this._extentInteraction);
   }
 }
