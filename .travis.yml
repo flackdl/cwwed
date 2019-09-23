@@ -6,12 +6,12 @@ jobs:
       script:
         # set bash flag to fail immediately for any command
         - set -e
+        # run postgis in the background
+        - docker run --rm -d -p 5432:5432 mdillon/postgis
         # derive the docker image tag name from the git branch name
         - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
         # build image
         - docker build -t flackdl/cwwed:$tag .
-        # run postgis in the background
-        - docker run --rm -d -p 5432:5432 mdillon/postgis && sleep 60
         # run tests
         - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
         # authenticate with docker
