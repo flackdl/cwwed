@@ -11,7 +11,7 @@ jobs:
         # build image
         - docker build -t flackdl/cwwed:$tag .
         # run postgis in the background
-        - docker run --rm -d -p 5432:5432 mdillon/postgis
+        - docker run --rm -d -p 5432:5432 mdillon/postgis && sleep 60
         # run tests
         - docker run --entrypoint python flackdl/cwwed:$tag manage.py test
         # authenticate with docker
