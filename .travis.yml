@@ -6,6 +6,8 @@ jobs:
       script:
         # set bash flag to fail immediately for any command
         - set -e
+        # create docker network to link containers
+        - docker network create tests
         # run postgis in the background
         - docker run --network tests --name postgis --rm -d mdillon/postgis
         # derive the docker image tag name from the git branch name
