@@ -17,6 +17,7 @@ RUN echo "Installing dependencies and building application" \
     && wget -qO- https://deb.nodesource.com/setup_8.x | bash - \
     && apt-get update && apt-get install -y \
         libgdal-dev \
+        gdal-bin \
         nodejs \
         ffmpeg \
         python3-tk \
@@ -27,6 +28,7 @@ RUN echo "Installing dependencies and building application" \
     && apt-get remove -y \
         libgdal-dev \
         nodejs \
+    && apt-get autoremove -y \
     && rm -rf frontend/node_modules \
     && rm -rf /var/lib/apt/lists/* \
     && true
