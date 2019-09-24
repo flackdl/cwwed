@@ -282,6 +282,7 @@ class NsemPsaUserExportViewset(UserReferenceViewSetMixin, viewsets.ModelViewSet)
     queryset = NsemPsaUserExport.objects.all()
 
     def get_queryset(self):
+        # only include objects the requesting user owns
         if self.request.user.is_authenticated:
             return NsemPsaUserExport.objects.filter(user=self.request.user)
         else:

@@ -27,6 +27,7 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='coastal_act/index.html'), name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
+    path('api-auth/', include('rest_framework.urls')),
     path('api/', include('cwwed.api.urls')),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^opendap/(?P<path>.*)$', OpenDapProxy.as_view(upstream=settings.OPENDAP_URL)),
