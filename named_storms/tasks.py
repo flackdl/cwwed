@@ -304,24 +304,32 @@ def validate_nsem_psa_task(nsem_id):
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
 
-    # TODO identify things to validate
-    #  - netcdf
-    #  - dimensions
+    # validate:
     #  - coordinates
-    #  - time's calendar
-    #  - time's timezone
-    #  - structured
-    #  - NaNs
+    #  - time dimension (xarray throws ValueError)
+    #  - duplicate dimension/scalar values (xarray throws ValueError)
+    #  - netcdf (skips everything else)
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     psa_path = named_storm_nsem_psa_version_path(nsem)
     for file_path in os.listdir(psa_path):
         if file_path.endswith('.nc'):
             file_exceptions = []
-            ds = xr.open_dataset(os.path.join(psa_path, file_path))
-            if not required_coords.issubset(list(ds.coords)):
-                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
-            exceptions[file_path] = file_exceptions
+            try:
+                ds = xr.open_dataset(os.path.join(psa_path, file_path))
+            except ValueError as e:
+                file_exceptions.append(str(e))
+            else:
+
+                # coordinates
+                if not required_coords.issubset(list(ds.coords)):
+                    file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+                exceptions[file_path] = file_exceptions
+
+                # TODO
+                # structured
+                # nans
+
             if not file_exceptions:
                 valid_files.append(file_path)
 
