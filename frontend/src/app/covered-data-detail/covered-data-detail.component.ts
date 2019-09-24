@@ -12,7 +12,7 @@ import * as _ from 'lodash';
 export class CoveredDataDetailComponent implements OnInit {
   public data: any;
   public namedStorms: any;
-  public nsemList: any;
+  public nsemPsaList: any;
 
   constructor(
     private cwwedService: CwwedService,
@@ -21,7 +21,7 @@ export class CoveredDataDetailComponent implements OnInit {
 
   ngOnInit() {
     this.namedStorms = this.cwwedService.namedStorms;
-    this.nsemList = this.cwwedService.nsemList;
+    this.nsemPsaList = this.cwwedService.nsemPsaList;
 
     this.route.params.subscribe((params) => {
       this.data = _.find(this.cwwedService.coveredDataList, (data) => {
@@ -31,7 +31,7 @@ export class CoveredDataDetailComponent implements OnInit {
   }
 
   public stormCoveredDataUrl(storm) {
-    let foundNsem = _.find(this.nsemList, (nsem) => {
+    let foundNsem = _.find(this.nsemPsaList, (nsem) => {
       return nsem.named_storm === storm.id;
     });
     if (foundNsem && (this.data.id in foundNsem.opendap_url_covered_data)) {

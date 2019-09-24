@@ -50,7 +50,7 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         depth = 1
 
 
-class NSEMSerializer(serializers.ModelSerializer):
+class NsemPsaSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
     """
@@ -59,6 +59,7 @@ class NSEMSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
 
+    dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()

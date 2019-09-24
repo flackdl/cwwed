@@ -26,7 +26,7 @@ from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.serializers import NSEMSerializer
+from named_storms.api.serializers import NsemPsaSerializer
 from named_storms.data.processors import ProcessorData
 from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, NsemPsaVariable
 from named_storms.utils import (
@@ -163,7 +163,7 @@ def archive_nsem_covered_data_task(nsem_id):
     nsem.covered_data_snapshot_path = storage_path
     nsem.save()
 
-    return NSEMSerializer(instance=nsem).data
+    return NsemPsaSerializer(instance=nsem).data
 
 
 @app.task(**TASK_ARGS)
@@ -191,7 +191,7 @@ def extract_nsem_covered_data_task(nsem_data: dict):
             tar.close()
             # remove the original archive now that it's extracted
             os.remove(file_path)
-    return NSEMSerializer(instance=nsem).data
+    return NsemPsaSerializer(instance=nsem).data
 
 
 class ExtractNSEMTaskBase(app.Task):

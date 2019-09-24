@@ -51,8 +51,8 @@ export class PsaComponent implements OnInit {
   public isLoadingOverlayPopup = false;
   public map: Map;
   public namedStorm: any;
+  public nsemPsa: any;
   public psaVariables: any[];
-  public psaDates: string[] = [];
   public psaDatesFormatted: string[] = [];
   public form: FormGroup;
   public currentFeature: any;
@@ -92,6 +92,10 @@ export class PsaComponent implements OnInit {
       return storm.id === this.DEMO_NAMED_STORM_ID;
     });
 
+    this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
+      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+    });
+
     // create initial form group
     this.form = this.fb.group({
       opacity: new FormControl(.5),
@@ -103,7 +107,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateInputFormatted(dateIndex: number) {
-    return this.psaDates ? this.psaDates[dateIndex] : '';
+    return this.nsemPsa.dates[dateIndex];
   }
 
   public getDateMin() {
@@ -115,7 +119,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getDateInputMax() {
-    return this.psaDates ? this.psaDates.length - 1 : 0;
+    return this.nsemPsa.dates.length - 1;
   }
 
   public getDateCurrent() {
@@ -131,7 +135,7 @@ export class PsaComponent implements OnInit {
   }
 
   public getOpenDapUrl(): string {
-    const psa = _.find(this.cwwedService.nsemList, (nsemPsa) => {
+    const psa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
       return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
     });
     return psa ? psa.opendap_url_psa : '';
@@ -412,14 +416,6 @@ export class PsaComponent implements OnInit {
           });
           this.form.setControl('variables', psaVariablesFormGroup);
         }),
-      mergeMap(() => {
-        // fetch psa variables data dates
-        return this.cwwedService.fetchPSAVariablesDataDates(this.DEMO_NAMED_STORM_ID).pipe(tap(
-          (data: any[]) => {
-            this.psaDates = data;
-          }
-        ));
-      }),
     ).subscribe(
       (data) => {
         // build the map
@@ -773,7 +769,7 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    this.psaDatesFormatted = this.psaDates.map((date) => {
+    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
       return moment(date).format('YYYY-MM-DD HH:mm');
     });
 

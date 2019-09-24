@@ -17,7 +17,7 @@ export class CwwedService {
   user: any;
   coveredDataList: any;
   namedStorms: any;
-  nsemList: any;
+  nsemPsaList: any;
   coastalActProjects: any;
 
   constructor(
@@ -55,8 +55,8 @@ export class CwwedService {
 
     return this.http.get(API_NSEM_PER_STORM, options).pipe(
       map((data) => {
-        this.nsemList = data;
-        return this.nsemList;
+        this.nsemPsaList = data;
+        return this.nsemPsaList;
       }),
     );
   }
@@ -95,14 +95,6 @@ export class CwwedService {
     return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/variable/`).pipe(
       map((data: any) => {
         return data.results;
-      }),
-    );
-  }
-
-  public fetchPSAVariablesDataDates(namedStormId: number) {
-    return this.http.get(`${API_NAMED_STORMS}${namedStormId}/psa/data/dates/`).pipe(
-      map((data) => {
-        return data;
       }),
     );
   }
