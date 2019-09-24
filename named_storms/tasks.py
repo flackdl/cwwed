@@ -324,13 +324,14 @@ def validate_nsem_psa_task(nsem_id):
                 # coordinates
                 if not required_coords.issubset(list(ds.coords)):
                     file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
-                exceptions[file_path] = file_exceptions
 
-                # TODO
+                # TODO - validate
                 # structured
                 # nans
 
-            if not file_exceptions:
+            if file_exceptions:
+                exceptions[file_path] = file_exceptions
+            else:
                 valid_files.append(file_path)
 
     if exceptions:
