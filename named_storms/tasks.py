@@ -130,7 +130,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 @app.task(**TASK_ARGS)
 def archive_nsem_covered_data_task(nsem_id):
     """
-    - Copies all covered data archives to a versioned NSEM location in object storage so users can download them directly
+    - Copies all covered data archives to a versioned NSEM PSA location in object storage so users can download them directly
     :param nsem_id: id of NsemPsa record
     """
 
@@ -292,6 +292,47 @@ def extract_nsem_psa_task(nsem_id):
     storage.delete(uploaded_file_path)
 
     return storage.url(storage_path)
+
+
+@app.task(**EXTRACT_NSEM_TASK_ARGS)
+def validate_nsem_psa_task(nsem_id):
+    """
+    Validates the model product output from file storage
+    """
+
+    exceptions = {}
+    valid_files = []
+    required_coords = {'time', 'lat', 'lon'}
+
+    # TODO identify things to validate
+    #  - netcdf
+    #  - dimensions
+    #  - coordinates
+    #  - time's calendar
+    #  - time's timezone
+    #  - structured
+    #  - NaNs
+
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
+    psa_path = named_storm_nsem_psa_version_path(nsem)
+    for file_path in os.listdir(psa_path):
+        if file_path.endswith('.nc'):
+            file_exceptions = []
+            ds = xr.open_dataset(os.path.join(psa_path, file_path))
+            if not required_coords.issubset(list(ds.coords)):
+                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+            exceptions[file_path] = file_exceptions
+            if not file_exceptions:
+                valid_files.append(file_path)
+
+    if exceptions:
+        nsem.validation_exceptions = exceptions
+    elif not valid_files:
+        nsem.validation_exceptions = {'non_file_error': ['there were no valid files found']}
+    else:
+        nsem.validated = True
+    nsem.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
+    nsem.save()
 
 
 @app.task(**TASK_ARGS)

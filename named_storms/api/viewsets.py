@@ -23,7 +23,7 @@ from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_psa_task, email_nsem_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
-    email_psa_user_export_task)
+    email_psa_user_export_task, validate_nsem_psa_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
@@ -77,7 +77,7 @@ class NsemPsaViewSet(viewsets.ModelViewSet):
             self.request.get_host(),
         )
 
-        # create an archive in object storage for the nsem users to download directly
+        # create a covered data snapshot in object storage for the nsem users to download directly
         archive_nsem_covered_data_task.apply_async(
             (obj.id,),
             link=[
@@ -89,9 +89,15 @@ class NsemPsaViewSet(viewsets.ModelViewSet):
         )
 
     def perform_update(self, serializer):
-        # save the instance first so we can create a task to extract the model output snapshot
-        obj = serializer.save()
-        extract_nsem_psa_task.delay(obj.id)
+        # save the instance first so we can create a task to extract and validate the model output snapshot
+        nsem_psa = serializer.save()
+        extract_nsem_psa_task.apply_async(
+            (nsem_psa.id,),
+            link=[
+                # validate once extracted
+                validate_nsem_psa_task.si(nsem_psa.id),
+            ],
+        )
 
 
 class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
