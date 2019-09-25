@@ -1,5 +1,4 @@
 import csv
-import pytz
 import logging
 from celery import chain
 from django.core.cache import caches, BaseCache
@@ -152,8 +151,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         for result in results:
             for i, value in enumerate(result['values']):
                 writer.writerow([
-                    # TODO - remove timezone localization once data is correctly consumed in UTC
-                    pytz.timezone('US/Eastern').localize(self.nsem.dates[i].replace(tzinfo=None)),
+                    self.nsem.dates[i],
                     lat,
                     lon,
                     result['variable']['name'],

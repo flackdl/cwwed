@@ -291,7 +291,6 @@ class Command(BaseCommand):
         for result in results:
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
-                # TODO - use UTC
                 date=dt,
                 geo=result['polygon'],
                 bbox=geos.Polygon.from_bbox(result['polygon'].extent),
@@ -314,7 +313,6 @@ class Command(BaseCommand):
                 point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
                 NsemPsaData(
                     nsem_psa_variable=nsem_psa_variable,
-                    # TODO - use UTC
                     date=dt,
                     geo=point,
                     geo_hash=GeoHash(point),
