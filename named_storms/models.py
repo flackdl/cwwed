@@ -154,6 +154,13 @@ class NsemPsa(models.Model):
     def __str__(self):
         return '{} ({})'.format(self.named_storm, self.id)
 
+    def get_covered_data_storage_url(self):
+        from cwwed.storage_backends import S3ObjectStoragePrivate  # import locally to prevent circular references
+        storage = S3ObjectStoragePrivate()
+        if self.covered_data_snapshot_path:
+            return storage.storage_url(self.covered_data_snapshot_path)
+        return None
+
 
 class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'

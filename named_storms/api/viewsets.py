@@ -21,7 +21,7 @@ from rest_framework.response import Response
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
-    archive_nsem_covered_data_task, extract_nsem_psa_task, email_nsem_covered_data_complete_task,
+    archive_nsem_covered_data_task, extract_nsem_psa_task, email_psa_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
     email_psa_user_export_task, validate_nsem_psa_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
@@ -82,7 +82,7 @@ class NsemPsaViewSet(viewsets.ModelViewSet):
             (obj.id,),
             link=[
                 # send an email to the "nsem" user when the archival is complete
-                email_nsem_covered_data_complete_task.s(base_url),
+                email_psa_covered_data_complete_task.s(base_url),
                 # download and extract archives into file storage so they're available for discovery (i.e opendap)
                 extract_nsem_covered_data_task.s()
             ],

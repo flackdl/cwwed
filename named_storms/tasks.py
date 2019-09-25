@@ -306,8 +306,8 @@ def validate_nsem_psa_task(nsem_id):
 
     # validate:
     #  - coordinates
-    #  - time dimension (xarray throws ValueError)
-    #  - duplicate dimension/scalar values (xarray throws ValueError)
+    #  - time dimension (xarray throws ValueError if it can't decode it automatically)
+    #  - duplicate dimension/scalar values (xarray throws ValueError if found)
     #  - netcdf (skips everything else)
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
@@ -326,6 +326,7 @@ def validate_nsem_psa_task(nsem_id):
                     file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
                 # TODO - validate
+                # time-series - all files should have the same temporal frequency
                 # structured
                 # nans
 
@@ -345,25 +346,33 @@ def validate_nsem_psa_task(nsem_id):
 
 
 @app.task(**TASK_ARGS)
-def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
+def email_psa_covered_data_complete_task(nsem_data: dict, base_url: str):
     """
     Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
     :param nsem_data serialized NsemPsa instance
     :param base_url the scheme & domain that this request arrived
     """
-    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
     body = """
-        {}
+        Covered Data is ready to download.
+        API: {}
         
-        {}
+        COVERED DATA URL: {}
         """.format(
-        # link to api endpoint for this nsem instance
-        '{}{}'.format(base_url, reverse('nsempsa-detail', args=[nsem.id])),
-        # raw json dump
-        json.dumps(nsem_data, indent=2),
+        nsem_psa_api_url,
+        nsem_psa.get_covered_data_storage_url(),
     )
+
+    html_body = render_to_string(
+        'email_psa_covered_data_complete.html',
+        context={
+            "nsem_psa": nsem_psa,
+            "nsem_psa_api_url": nsem_psa_api_url,
+        })
 
     # include the "nsem" user and all super users
     recipients = get_superuser_emails()
@@ -371,10 +380,11 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='Covered Data is ready for download (PSA v{})'.format(nsem.id),
+        subject='Covered Data is ready for download (PSA v{})'.format(nsem_psa.id),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,
+        html_message=html_body,
     )
     return nsem_data
 

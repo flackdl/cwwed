@@ -86,10 +86,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return get_opendap_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
-        storage = S3ObjectStoragePrivate()
-        if obj.covered_data_snapshot_path:
-            return storage.storage_url(obj.covered_data_snapshot_path)
-        return None
+        return obj.get_covered_data_storage_url()
 
     def validate_model_output_snapshot(self, value):
         """

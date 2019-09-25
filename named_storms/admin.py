@@ -97,5 +97,5 @@ class NsemPsaUserExportAdmin(admin.GeoModelAdmin):
 @admin.register(NamedStormCoveredDataLog)
 class DataLogAdmin(admin.ModelAdmin):
     list_display = ('named_storm', 'covered_data', 'date', 'success', 'snapshot',)
-    list_filter = ('named_storm', 'covered_data', 'date', 'success',)
+    list_filter = ('named_storm__name', 'covered_data', 'date', 'success',)
     readonly_fields = ('date',)  # hidden by default since it uses auto_now_add
