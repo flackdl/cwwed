@@ -161,6 +161,10 @@ class NsemPsa(models.Model):
             return storage.storage_url(self.covered_data_snapshot_path)
         return None
 
+    @classmethod
+    def get_last_valid_psa(cls, storm_id: int):
+        return cls.objects.filter(named_storm__id=storm_id, snapshot_extracted=True, validated=True).order_by('-date_returned')
+
 
 class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'

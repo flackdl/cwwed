@@ -237,6 +237,11 @@ def extract_nsem_psa_task(nsem_id):
     uploaded_file_path = nsem.snapshot_path
     storage = S3ObjectStoragePrivate()
 
+    # remove any prefixed "location" from the object storage instance (i.e , "local", "dev", "test")
+    location_prefix = '{}/'.format(storage.location)
+    if uploaded_file_path.startswith(location_prefix):
+        uploaded_file_path = uploaded_file_path.replace(location_prefix, '')
+
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.snapshot_extracted:
         return None
@@ -294,63 +299,11 @@ def extract_nsem_psa_task(nsem_id):
     return storage.url(storage_path)
 
 
-@app.task(**EXTRACT_NSEM_TASK_ARGS)
-def validate_nsem_psa_task(nsem_id):
-    """
-    Validates the model product output from file storage
-    """
-
-    exceptions = {}
-    valid_files = []
-    required_coords = {'time', 'lat', 'lon'}
-
-    # validate:
-    #  - coordinates
-    #  - time dimension (xarray throws ValueError if it can't decode it automatically)
-    #  - duplicate dimension/scalar values (xarray throws ValueError if found)
-    #  - netcdf (skips everything else)
-
-    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    psa_path = named_storm_nsem_psa_version_path(nsem)
-    for file_path in os.listdir(psa_path):
-        if file_path.endswith('.nc'):
-            file_exceptions = []
-            try:
-                ds = xr.open_dataset(os.path.join(psa_path, file_path))
-            except ValueError as e:
-                file_exceptions.append(str(e))
-            else:
-
-                # coordinates
-                if not required_coords.issubset(list(ds.coords)):
-                    file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
-
-                # TODO - validate
-                # time-series - all files should have the same temporal frequency
-                # structured
-                # nans
-
-            if file_exceptions:
-                exceptions[file_path] = file_exceptions
-            else:
-                valid_files.append(file_path)
-
-    if exceptions:
-        nsem.validation_exceptions = exceptions
-    elif not valid_files:
-        nsem.validation_exceptions = {'non_file_error': ['there were no valid files found']}
-    else:
-        nsem.validated = True
-    nsem.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
-    nsem.save()
-
-
 @app.task(**TASK_ARGS)
-def email_psa_covered_data_complete_task(nsem_data: dict, base_url: str):
+def email_psa_covered_data_complete_task(nsem_data: dict):
     """
     Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
     :param nsem_data serialized NsemPsa instance
-    :param base_url the scheme & domain that this request arrived
     """
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_data['id'])
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
@@ -390,7 +343,103 @@ def email_psa_covered_data_complete_task(nsem_data: dict, base_url: str):
 
 
 @app.task(**TASK_ARGS)
+def email_psa_validated_task(nsem_psa_id):
+    """
+    Email the "nsem" user indicating whether the PSA has been validated or not
+    """
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
+
+    body = """
+        {message}
+        
+        API: {api_url}
+        """.format(
+        message='PSA was validated' if nsem_psa.validated else 'PSA was rejected: {}'.format(nsem_psa.validation_exceptions),
+        api_url=nsem_psa_api_url,
+    )
+
+    html_body = render_to_string(
+        'email_psa_validated.html',
+        context={
+            "nsem_psa": nsem_psa,
+            "nsem_psa_api_url": nsem_psa_api_url,
+        })
+
+    # include the "nsem" user and all super users
+    recipients = get_superuser_emails()
+    if nsem_user.email:
+        recipients.append(nsem_user.email)
+
+    send_mail(
+        subject='PSA {validated} (v{psa_id})'.format(
+            validated='validated' if nsem_psa.validated else 'rejected', psa_id=nsem_psa.id),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        html_message=html_body,
+    )
+    return nsem_psa.id
+
+
+@app.task(**EXTRACT_NSEM_TASK_ARGS)
+def validate_nsem_psa_task(nsem_id):
+    """
+    Validates the model product output from file storage
+    """
+
+    exceptions = {}
+    valid_files = []
+    required_coords = {'time', 'lat', 'lon'}
+
+    # validates:
+    #  - coordinates
+    #  - time dimension (xarray throws ValueError if it can't decode it automatically)
+    #  - duplicate dimension/scalar values (xarray throws ValueError if encountered)
+    #  - netcdf only
+
+    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
+    psa_path = named_storm_nsem_psa_version_path(nsem)
+    for file_name in os.listdir(psa_path):
+        if file_name.endswith('.nc'):
+            file_exceptions = []
+            try:
+                ds = xr.open_dataset(os.path.join(psa_path, file_name))
+            except (ValueError, OSError) as e:
+                file_exceptions.append(str(e))
+            else:
+
+                # coordinates
+                if not required_coords.issubset(list(ds.coords)):
+                    file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+
+                # TODO - validate
+                # time-series - all files should have the same temporal frequency
+                # structured
+                # nans
+
+            if file_exceptions:
+                exceptions[file_name] = file_exceptions
+            else:
+                valid_files.append(file_name)
+
+    if exceptions:
+        nsem.validation_exceptions = exceptions
+    elif not valid_files:
+        nsem.validation_exceptions = {'NON_FILE_ERROR': ['no valid files found']}
+    else:
+        nsem.validated = True
+    nsem.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
+    nsem.save()
+
+
+@app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
+
+    # TODO - this is a proof of concept while we wait on a finalized psa structure
+
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
@@ -411,8 +460,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     # netcdf/csv - extract low level data from netcdf files
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
-
-        # TODO - this is a proof of concept while we wait on a finalized psa structure
 
         for ds_file in os.listdir(psa_path):
 
@@ -548,7 +595,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 qs = qs.annotate(kml=AsKML('geom'))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
-                    fh.write(render_to_string('psa-export.kml', context={"results": qs, "psa_variable": psa_variable}))
+                    fh.write(render_to_string('psa_export.kml', context={"results": qs, "psa_variable": psa_variable}))
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
                 # write geojson to file
                 with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
@@ -606,7 +653,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
     # remove temporary directory
-    shutil.rmtree(tmp_user_export_path, ignore_errors=True)
+    shutil.rmtree(tmp_user_export_path)
 
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())

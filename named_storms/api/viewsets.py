@@ -22,7 +22,7 @@ from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     archive_nsem_covered_data_task, extract_nsem_psa_task, email_psa_covered_data_complete_task,
     extract_nsem_covered_data_task, create_psa_user_export_task,
-    email_psa_user_export_task, validate_nsem_psa_task)
+    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
@@ -63,40 +63,34 @@ class NsemPsaViewSet(viewsets.ModelViewSet):
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
         return Response(NsemPsaSerializer(
-            self.queryset.filter(snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
+            self.queryset.filter(snapshot_extracted=True, validated=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
             many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
         # save the instance first so we can create a task to archive the covered data snapshot
         obj = serializer.save()
 
-        # base url for email
-        base_url = '{}://{}'.format(
-            self.request.scheme,
-            self.request.get_host(),
-        )
-
-        # create a covered data snapshot in object storage for the nsem users to download directly
-        archive_nsem_covered_data_task.apply_async(
-            (obj.id,),
-            link=[
-                # send an email to the "nsem" user when the archival is complete
-                email_psa_covered_data_complete_task.s(base_url),
-                # download and extract archives into file storage so they're available for discovery (i.e opendap)
-                extract_nsem_covered_data_task.s()
-            ],
-        )
+        chain(
+            # create a covered data snapshot in object storage for the nsem users to download directly
+            archive_nsem_covered_data_task.si(obj.id),
+            # send an email to the "nsem" user when the archival is complete
+            email_psa_covered_data_complete_task.s(),
+            # download and extract archives into file storage so they're available for discovery (i.e opendap)
+            extract_nsem_covered_data_task.s(),
+        )()
 
     def perform_update(self, serializer):
         # save the instance first so we can create a task to extract and validate the model output snapshot
         nsem_psa = serializer.save()
-        extract_nsem_psa_task.apply_async(
-            (nsem_psa.id,),
-            link=[
-                # validate once extracted
-                validate_nsem_psa_task.si(nsem_psa.id),
-            ],
-        )
+
+        chain(
+            # extract the psa
+            extract_nsem_psa_task.s(nsem_psa.id),
+            # validate once extracted
+            validate_nsem_psa_task.si(nsem_psa.id),
+            # email validation result
+            email_psa_validated_task.si(nsem_psa.id),
+        )()
 
 
 class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -112,7 +106,7 @@ class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, snapshot_extracted=True).order_by('-date_returned')
+        nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)
 
         # validate
         if not storm.exists() or not nsem.exists():
