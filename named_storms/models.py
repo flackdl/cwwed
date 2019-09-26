@@ -148,8 +148,10 @@ class NsemPsa(models.Model):
     snapshot_path = models.TextField(blank=True)  # path to the psa snapshot
     snapshot_extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validated = models.DateTimeField(null=True, blank=True)  # manually set once the psa is validated
-    validated = models.BooleanField(default=False)
-    validation_exceptions = fields.JSONField(default=dict, blank=True)
+    validated = models.BooleanField(default=False)  # whether the supplied psa was validated
+    validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
+    processed = models.BooleanField(default=False)  # whether the psa was fully ingested/processed or not
+    date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the psa is processed
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list
 
     def __str__(self):
@@ -164,7 +166,14 @@ class NsemPsa(models.Model):
 
     @classmethod
     def get_last_valid_psa(cls, storm_id: int):
-        return cls.objects.filter(named_storm__id=storm_id, snapshot_extracted=True, validated=True).order_by('-date_returned')
+        qs = cls.objects.filter(
+            named_storm__id=storm_id,
+            snapshot_extracted=True,
+            validated=True,
+            processed=True
+        )
+        qs = qs.order_by('-date_returned')
+        return qs
 
 
 class NsemPsaVariable(models.Model):

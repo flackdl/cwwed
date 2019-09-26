@@ -193,7 +193,10 @@ class Command(BaseCommand):
             if ARG_VARIABLE_WAVE_HEIGHT in water_arg_variables:
                 self.process_wave_height()
 
-        # pre-cache all geojson api endpoints
+        # flag that this psa has been processed
+        self.nsem.date_processed = pytz.utc.localize(datetime.utcnow())
+
+        # create a task to pre-cache all geojson api endpoints
         cache_psa_geojson_task.delay(self.nsem.named_storm.id)
 
     @staticmethod

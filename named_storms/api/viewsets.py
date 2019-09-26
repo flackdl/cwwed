@@ -62,9 +62,10 @@ class NsemPsaViewSet(viewsets.ModelViewSet):
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
-        return Response(NsemPsaSerializer(
-            self.queryset.filter(snapshot_extracted=True, validated=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
-            many=True, context=self.get_serializer_context()).data)
+        qs = self.queryset.filter(snapshot_extracted=True, validated=True, processed=True)
+        qs = qs.order_by('named_storm', '-date_returned')
+        qs = qs.distinct('named_storm')
+        return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
         # save the instance first so we can create a task to archive the covered data snapshot
