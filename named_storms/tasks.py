@@ -648,10 +648,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
         aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
     )
-    s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
-        Key=key_name,
-        Body=open(tar_path, 'rb'),
-    )
+    with open(tar_path, 'rb') as fh:
+        s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
+            Key=key_name,
+            Body=fh,
+        )
 
     # remove temporary directory
     shutil.rmtree(tmp_user_export_path)
