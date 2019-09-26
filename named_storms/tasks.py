@@ -160,6 +160,7 @@ def archive_nsem_covered_data_task(nsem_id):
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
     nsem.covered_data_logs.set(logs_to_archive)  # many to many field
+    nsem.covered_data_snapshot_created = True
     nsem.covered_data_snapshot_path = storage_path
     nsem.save()
 

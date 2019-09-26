@@ -10,8 +10,10 @@ import boto3
 import sys
 import requests
 
-API_ROOT = 'https://dev.cwwed-staging.com/api/'
-#API_ROOT = 'http://localhost:8000/api/'
+API_ROOT_PROD = 'https://dev.cwwed-staging.com/api/'
+API_ROOT_LOCAL = 'http://localhost:8000/api/'
+
+API_ROOT = API_ROOT_LOCAL if os.environ.get('DEPLOY_STAGE') == 'local' else API_ROOT_PROD
 
 ENDPOINT_NSEM = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'
