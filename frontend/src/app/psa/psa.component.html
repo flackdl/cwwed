@@ -137,13 +137,14 @@
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
                 <canvas baseChart
                         [datasets]="lineChartData"
-                        [labels]="psaDatesFormatted"
+                        [labels]="getPsaDatesFormatted()"
                         [options]="lineChartOptions"
                         [colors]="lineChartColors"
                         chartType="line"
                 >
                 </canvas>
-                <div class="d-flex justify-content-end">
+                <div class="d-flex justify-content-between">
+                  <em class="text-black-50"><small>*Dates are UTC</small></em>
                   <a class="btn btn-sm btn-info" [href]="lineChartExportURL" target="_blank">csv <span class="oi oi-data-transfer-download"></span></a>
                 </div>
               </div>

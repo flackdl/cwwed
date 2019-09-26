@@ -53,7 +53,6 @@ export class PsaComponent implements OnInit {
   public namedStorm: any;
   public nsemPsa: any;
   public psaVariables: any[];
-  public psaDatesFormatted: string[] = [];
   public form: FormGroup;
   public currentFeature: any;
   public currentConfidence: Number;
@@ -769,11 +768,14 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
-      return moment(date).format('YYYY-MM-DD HH:mm');
-    });
-
     this.lineChartData = lineChartData;
+  }
+
+  public getPsaDatesFormatted() {
+    // dates are in UTC
+    return this.nsemPsa.dates.map((date) => {
+      return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
+    });
   }
 
   protected _configureMapExtentInteraction() {
