@@ -77,7 +77,7 @@ def upload_psa(args):
 
     # verify this record needs processing
     if nsem_data['snapshot_extracted']:
-        sys.exit('Error.  This PSA cannot be updated since it has already been processed and extracted')
+        sys.exit('Error.  This PSA cannot be updated since it has already been extracted')
 
     # parse the s3 bucket from 'covered_data_storage_url'
     parsed = parse.urlparse(nsem_data['covered_data_storage_url'])

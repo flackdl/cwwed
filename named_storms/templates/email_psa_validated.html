@@ -3,5 +3,5 @@
 {% else %}
 	<h3>PSA <a href="{{ nsem_psa_api_url }}">v{{ nsem_psa.id }}</a> was rejected</h3>
 	<p>Exceptions:</p>
-	<code>{{ nsem_psa.validation_exceptions }}</code>
+	<code>{{ nsem_psa.validation_exceptions|safe }}</code>
 {% endif %}

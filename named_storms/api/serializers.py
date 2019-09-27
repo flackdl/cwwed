@@ -91,16 +91,16 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
     def validate_model_output_snapshot(self, value):
         """
-        Check that it hasn't already been processed
+        Check that it hasn't already been extracted and validated
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
         obj = self.instance  # type: NsemPsa
         if obj:
 
-            # already extracted
-            if obj.snapshot_extracted:
-                raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
+            # already validated
+            if obj.validated:
+                raise serializers.ValidationError('Cannot be updated since the model output has already been extracted and validated')
 
             s3_path = self._get_model_output_upload_path(obj)
 

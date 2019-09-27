@@ -2,6 +2,8 @@
 
 https://www.weather.gov/sti/coastalact_cwwed
 
+[![Build Status](https://travis-ci.com/CWWED/cwwed.svg?branch=master)](https://travis-ci.com/CWWED/cwwed)
+
 ## Development & Initial Setup
 
 ### Python Environment (>=3.6)

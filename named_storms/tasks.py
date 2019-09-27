@@ -394,15 +394,22 @@ def validate_nsem_psa_task(nsem_id):
     exceptions = {}
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
+    required_water_variables = {'water_level', 'wave_height'}
+    required_wind_variables = {'wspd10m', 'wdir10m'}
 
     # validates:
     #  - coordinates
     #  - time dimension (xarray throws ValueError if it can't decode it automatically)
     #  - duplicate dimension/scalar values (xarray throws ValueError if encountered)
     #  - netcdf only
+    #  - NaNs
 
-    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    psa_path = named_storm_nsem_psa_version_path(nsem)
+    nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
+
+    # clear any previous validation exceptions
+    nsem_psa.validation_exceptions = {}
+
+    psa_path = named_storm_nsem_psa_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
         if file_name.endswith('.nc'):
             file_exceptions = []
@@ -417,23 +424,39 @@ def validate_nsem_psa_task(nsem_id):
                     file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
                 # TODO - validate
+                # water & wind dataset exists
                 # time-series - all files should have the same temporal frequency
                 # structured
+
                 # nans
+                # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
+                if required_wind_variables.issubset(list(ds.variables)):
+                    for variable in required_wind_variables:
+                        if ds[variable].isnull().any():
+                            file_exceptions.append('Variable "{}" has null values'.format(variable))
+                        else:
+                            logging.info('NO NULL VALUES')
 
             if file_exceptions:
                 exceptions[file_name] = file_exceptions
             else:
                 valid_files.append(file_name)
 
-    if exceptions:
-        nsem.validation_exceptions = exceptions
-    elif not valid_files:
-        nsem.validation_exceptions = {'NON_FILE_ERROR': ['no valid files found']}
+    if exceptions or not valid_files:
+        if not valid_files:
+            nsem_psa.validation_exceptions = {'NON_FILE_ERRORS': ['no valid files found']}
+        else:
+            nsem_psa.validation_exceptions = exceptions
+        # delete and reset the psa's snapshot
+        storage = S3ObjectStoragePrivate()
+        storage.delete(nsem_psa.snapshot_path)
+        nsem_psa.snapshot_path = ''
+        nsem_psa.snapshot_extracted = False
     else:
-        nsem.validated = True
-    nsem.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
-    nsem.save()
+        nsem_psa.validated = True
+        nsem_psa.validated_files = valid_files
+    nsem_psa.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
+    nsem_psa.save()
 
 
 @app.task(**TASK_ARGS)
