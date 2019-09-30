@@ -32,7 +32,7 @@ from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, Na
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs)
+    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_nsem_psa_invalidation_path)
 
 
 TASK_ARGS = dict(
@@ -388,13 +388,12 @@ def email_psa_validated_task(nsem_psa_id):
 @app.task(**EXTRACT_NSEM_TASK_ARGS)
 def validate_nsem_psa_task(nsem_id):
     """
-    Validates the model product output from file storage
+    Validates the PSA model product output from file storage
     """
 
     exceptions = {}
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
-    required_water_variables = {'water_level', 'wave_height'}
     required_wind_variables = {'wspd10m', 'wdir10m'}
 
     # validates:
@@ -406,8 +405,12 @@ def validate_nsem_psa_task(nsem_id):
 
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
-    # clear any previous validation exceptions
+    # clear any previous validations
     nsem_psa.validation_exceptions = {}
+    nsem_psa.validated_files = []
+    nsem_psa.date_validated = None
+    # remove any previous invalidated data
+    shutil.rmtree(named_storm_nsem_psa_invalidation_path(nsem_psa))
 
     psa_path = named_storm_nsem_psa_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
@@ -442,16 +445,25 @@ def validate_nsem_psa_task(nsem_id):
             else:
                 valid_files.append(file_name)
 
+    # error
     if exceptions or not valid_files:
         if not valid_files:
             nsem_psa.validation_exceptions = {'NON_FILE_ERRORS': ['no valid files found']}
         else:
             nsem_psa.validation_exceptions = exceptions
-        # delete and reset the psa's snapshot
+
+        # delete the psa from object storage
         storage = S3ObjectStoragePrivate()
         storage.delete(nsem_psa.snapshot_path)
+
+        # move files elsewhere for later diagnoses
+        shutil.move(psa_path, named_storm_nsem_psa_invalidation_path(nsem_psa))
+
+        # reset the psa instance
         nsem_psa.snapshot_path = ''
         nsem_psa.snapshot_extracted = False
+
+    # success
     else:
         nsem_psa.validated = True
         nsem_psa.validated_files = valid_files
@@ -546,7 +558,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     else:
                         df_out.insert(len(df_out.columns), variable, df[variable])
 
-                # NOTE: I don't understand why, but this is necessary because the above xarray "where" bbox/extent
+                # NOTE: due to the "crooked" shape of the structured grid
+                # this is necessary because the above xarray "where" bbox/extent
                 # filter is including coords _just_ outside the requested extent with no values present,
                 # so this simply guarantees those rows are removed
                 df_out = df_out.dropna()
