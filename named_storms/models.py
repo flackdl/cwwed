@@ -147,7 +147,7 @@ class NsemPsa(models.Model):
     covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
     snapshot_path = models.TextField(blank=True)  # path to the psa snapshot
     snapshot_extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
-    date_validated = models.DateTimeField(null=True, blank=True)  # manually set once the psa is validated
+    date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
     validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
     validated_files = fields.ArrayField(base_field=models.CharField(max_length=200), default=list, blank=True)  # type: list

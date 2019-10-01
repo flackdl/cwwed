@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import pytz
@@ -9,6 +8,7 @@ import boto3
 import numpy as np
 import pandas as pd
 import logging
+from cfchecker import cfchecks
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
@@ -388,7 +388,13 @@ def email_psa_validated_task(nsem_psa_id):
 @app.task(**EXTRACT_NSEM_TASK_ARGS)
 def validate_nsem_psa_task(nsem_id):
     """
-    Validates the PSA model product output from file storage
+    Validates the PSA model product output from file storage with the following:
+    - CF Conventions - http://cfconventions.org/
+    - expected coordinates
+    - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
+    - duplicate dimension & scalar values (xarray throws ValueError if encountered)
+    - netcdf only
+    - NaNs
     """
 
     exceptions = {}
@@ -396,31 +402,42 @@ def validate_nsem_psa_task(nsem_id):
     required_coords = {'time', 'lat', 'lon'}
     required_wind_variables = {'wspd10m', 'wdir10m'}
 
-    # validates:
-    #  - coordinates
-    #  - time dimension (xarray throws ValueError if it can't decode it automatically)
-    #  - duplicate dimension/scalar values (xarray throws ValueError if encountered)
-    #  - netcdf only
-    #  - NaNs
-
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
     # clear any previous validations
     nsem_psa.validation_exceptions = {}
     nsem_psa.validated_files = []
-    nsem_psa.date_validated = None
+    nsem_psa.date_validation = None
+
     # remove any previous invalidated data
-    shutil.rmtree(named_storm_nsem_psa_invalidation_path(nsem_psa))
+    try:
+        shutil.rmtree(named_storm_nsem_psa_invalidation_path(nsem_psa))
+    except FileNotFoundError:
+        pass
 
     psa_path = named_storm_nsem_psa_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
         if file_name.endswith('.nc'):
+            file_path = os.path.join(psa_path, file_name)
             file_exceptions = []
             try:
-                ds = xr.open_dataset(os.path.join(psa_path, file_name))
+                ds = xr.open_dataset(file_path)
             except (ValueError, OSError) as e:
                 file_exceptions.append(str(e))
             else:
+
+                # cf conventions
+                cf_check = cfchecks.CFChecker()
+                cf_check.checker(file_path)
+                if cf_check.results['global']['FATAL']:
+                    file_exceptions += cf_check.results['global']['FATAL']
+                if cf_check.results['global']['ERROR']:
+                    file_exceptions += cf_check.results['global']['ERROR']
+                for variable, result in cf_check.results['variables'].items():
+                    if result['FATAL']:
+                        file_exceptions += ['{}: {}'.format(variable, error) for error in result['FATAL']]
+                    if result['ERROR']:
+                        file_exceptions += ['{}: {}'.format(variable, error) for error in result['ERROR']]
 
                 # coordinates
                 if not required_coords.issubset(list(ds.coords)):
@@ -436,9 +453,7 @@ def validate_nsem_psa_task(nsem_id):
                 if required_wind_variables.issubset(list(ds.variables)):
                     for variable in required_wind_variables:
                         if ds[variable].isnull().any():
-                            file_exceptions.append('Variable "{}" has null values'.format(variable))
-                        else:
-                            logging.info('NO NULL VALUES')
+                            file_exceptions.append('{} has null values'.format(variable))
 
             if file_exceptions:
                 exceptions[file_name] = file_exceptions
@@ -467,7 +482,7 @@ def validate_nsem_psa_task(nsem_id):
     else:
         nsem_psa.validated = True
         nsem_psa.validated_files = valid_files
-    nsem_psa.date_validated = datetime.utcnow().replace(tzinfo=pytz.utc)
+    nsem_psa.date_validation = datetime.utcnow().replace(tzinfo=pytz.utc)
     nsem_psa.save()
 
 
@@ -544,7 +559,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     logging.warning('No expected data fround in {}'.format(ds_file))
                     continue
 
-                # create pandas DataFrame which makes a simple csv conversion
+                # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
 
                 # insert a new column for each variable to df_out
