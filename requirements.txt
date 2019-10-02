@@ -37,4 +37,4 @@ geopandas==0.4.0
 pandas==0.22.0
 boto3==1.9.214
 # cf-checker - this a fork from the python3 branch with commit from me allowing spaces in file paths
-git+https://github.com/flackdl/cf-checker.git@af8a445668557820938a3c2fc1a89cc5d5bed48f
+git+https://github.com/flackdl/cf-checker.git@a5857106f4965a3324fe3fde322d33d0c52788ef
