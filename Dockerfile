@@ -19,7 +19,6 @@ RUN echo "Installing dependencies and building application" \
         libgdal-dev \
         gdal-bin \
         nodejs \
-        ffmpeg \
         python3-tk \
         libudunits2-dev \
     && pip install -r requirements.txt \
