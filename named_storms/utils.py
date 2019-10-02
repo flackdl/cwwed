@@ -120,7 +120,7 @@ def named_storm_nsem_version_path(nsem: NsemPsa) -> str:
     """
     return os.path.join(
         named_storm_nsem_path(nsem),
-        'v{}'.format(nsem.id))
+        str(nsem.id))
 
 
 def named_storm_nsem_psa_version_path(nsem: NsemPsa) -> str:
@@ -140,7 +140,7 @@ def named_storm_nsem_psa_invalidation_path(nsem: NsemPsa) -> str:
     return os.path.join(
         settings.CWWED_DATA_DIR,
         settings.CWWED_NSEM_PSA_INVALIDATED_DIR_NAME,
-        'v{}'.format(nsem.id),
+        str(nsem.id),
     )
 
 
@@ -186,7 +186,7 @@ def get_opendap_url_nsem_root(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_named_storm_root(request, nsem.named_storm),
         parse.quote(settings.CWWED_NSEM_DIR_NAME),
-        'v{}'.format(nsem.id),
+        str(nsem.id),
     )
 
 

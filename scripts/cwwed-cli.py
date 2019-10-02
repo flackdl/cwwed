@@ -75,10 +75,6 @@ def upload_psa(args):
     if extension != '.tgz':
         sys.exit('File to upload must be ".tgz" (tar+gzipped)')
 
-    # verify this record needs processing
-    if nsem_data['snapshot_extracted']:
-        sys.exit('Error.  This PSA cannot be updated since it has already been extracted')
-
     # parse the s3 bucket from 'covered_data_storage_url'
     parsed = parse.urlparse(nsem_data['covered_data_storage_url'])
     bucket = parsed.netloc
@@ -89,7 +85,7 @@ def upload_psa(args):
 
     # upload the file to the specified path
     upload_path = nsem_data['model_output_upload_path']
-    print('uploading {} to {}'.format(file, upload_path))
+    print('uploading {} to s3://{}/{}'.format(file, bucket, upload_path))
     s3_bucket.upload_file(file, upload_path)
     print('Successfully uploaded file')
 
@@ -134,7 +130,7 @@ def download_cd(args):
     if output_dir:
         create_directory(output_dir)
     else:
-        output_dir = './PSA-v{}-CD'.format(psa_id)
+        output_dir = './PSA-{}-CD'.format(psa_id)
 
     # query the psa and see if the covered data has been packaged and ready for download.
     # sleep in between attempts for a limited amount of tries

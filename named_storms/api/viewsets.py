@@ -11,11 +11,12 @@ from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.cache import cache_control
 from django.contrib.gis.db.models import Collect, GeometryField
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
@@ -50,7 +51,7 @@ class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CoveredDataSerializer
 
 
-class NsemPsaViewSet(viewsets.ModelViewSet):
+class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, GenericViewSet):
     """
     Named Storm Event Model ViewSet
     """

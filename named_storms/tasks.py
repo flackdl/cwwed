@@ -149,7 +149,7 @@ def archive_nsem_covered_data_task(nsem_id):
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
         nsem.named_storm.name,
-        'v{}'.format(nsem.id),
+        str(nsem.id),
         settings.CWWED_COVERED_DATA_DIR_NAME,
     )
 
@@ -215,7 +215,7 @@ class ExtractNSEMTaskBase(app.Task):
                 if nsem_user.email:
                     recipients.append(nsem_user.email)
                 send_mail(
-                    subject='Failed extracting PSA v{}'.format(nsem.id),
+                    subject='Failed extracting PSA {}'.format(nsem.id),
                     message=str(exc),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=recipients,
@@ -255,7 +255,7 @@ def extract_nsem_psa_task(nsem_id):
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
         nsem.named_storm.name,
-        'v{}'.format(nsem.id),
+        str(nsem.id),
         settings.CWWED_NSEM_PSA_DIR_NAME,
         os.path.basename(uploaded_file_path),
     )
@@ -334,7 +334,7 @@ def email_psa_covered_data_complete_task(nsem_data: dict):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='Covered Data is ready for download (PSA v{})'.format(nsem_psa.id),
+        subject='Covered Data is ready for download (PSA {})'.format(nsem_psa.id),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,
@@ -375,7 +375,7 @@ def email_psa_validated_task(nsem_psa_id):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='PSA {validated} (v{psa_id})'.format(
+        subject='PSA {validated} ({psa_id})'.format(
             validated='validated' if nsem_psa.validated else 'rejected', psa_id=nsem_psa.id),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
@@ -397,10 +397,13 @@ def validate_nsem_psa_task(nsem_id):
     - NaNs
     """
 
-    exceptions = {}
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
     required_wind_variables = {'wspd10m', 'wdir10m'}
+    exceptions = {
+        'global': [],
+        'files': {},
+    }
 
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
@@ -420,6 +423,7 @@ def validate_nsem_psa_task(nsem_id):
         if file_name.endswith('.nc'):
             file_path = os.path.join(psa_path, file_name)
             file_exceptions = []
+            variable_exceptions = {}
             try:
                 ds = xr.open_dataset(file_path)
             except (ValueError, OSError) as e:
@@ -429,15 +433,11 @@ def validate_nsem_psa_task(nsem_id):
                 # cf conventions
                 cf_check = cfchecks.CFChecker()
                 cf_check.checker(file_path)
-                if cf_check.results['global']['FATAL']:
-                    file_exceptions += cf_check.results['global']['FATAL']
-                if cf_check.results['global']['ERROR']:
-                    file_exceptions += cf_check.results['global']['ERROR']
+                file_exceptions += cf_check.results['global']['FATAL']
+                file_exceptions += cf_check.results['global']['ERROR']
                 for variable, result in cf_check.results['variables'].items():
-                    if result['FATAL']:
-                        file_exceptions += ['{}: {}'.format(variable, error) for error in result['FATAL']]
-                    if result['ERROR']:
-                        file_exceptions += ['{}: {}'.format(variable, error) for error in result['ERROR']]
+                    if result['FATAL'] or result['ERROR']:
+                        variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
                 # coordinates
                 if not required_coords.issubset(list(ds.coords)):
@@ -453,19 +453,26 @@ def validate_nsem_psa_task(nsem_id):
                 if required_wind_variables.issubset(list(ds.variables)):
                     for variable in required_wind_variables:
                         if ds[variable].isnull().any():
-                            file_exceptions.append('{} has null values'.format(variable))
+                            if variable not in variable_exceptions:
+                                variable_exceptions[variable] = []
+                            variable_exceptions[variable].append('has null values')
 
-            if file_exceptions:
-                exceptions[file_name] = file_exceptions
+            if file_exceptions or variable_exceptions:
+                exceptions['files'][file_name] = {
+                    'file': [],
+                    'variables': {},
+                }
+                exceptions['files'][file_name]['file'] = file_exceptions
+                exceptions['files'][file_name]['variables'] = variable_exceptions
             else:
                 valid_files.append(file_name)
 
+    if not valid_files:
+        exceptions['global'] = ['no valid files found']
+
     # error
-    if exceptions or not valid_files:
-        if not valid_files:
-            nsem_psa.validation_exceptions = {'NON_FILE_ERRORS': ['no valid files found']}
-        else:
-            nsem_psa.validation_exceptions = exceptions
+    if exceptions['global'] or exceptions['files']:
+        nsem_psa.validation_exceptions = exceptions
 
         # delete the psa from object storage
         storage = S3ObjectStoragePrivate()
