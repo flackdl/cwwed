@@ -442,9 +442,6 @@ def validate_nsem_psa_task(nsem_id):
                 # time-series: all files should have the same temporal frequency
                 # structured
 
-                # TODO - require a manifest of uploaded PSA defining which datasets contain which variables,
-                #  and what those variables are, i.e Name, Units, Element, Contour vs Barb, etc.
-
                 # nans
                 # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
                 if required_wind_variables.issubset(list(ds.variables)):
