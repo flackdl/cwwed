@@ -82,7 +82,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.snapshot_extracted:
+        if not obj.validated:
             return None
         return get_opendap_url_nsem(self.context['request'], obj)
 
@@ -91,22 +91,22 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
     def validate_snapshot_path(self, value):
         """
-        Check that it hasn't already been extracted and validated
+        Check that it hasn't already been extracted
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
         obj = self.instance  # type: NsemPsa
         if obj:
 
-            # already validated
-            if obj.validated:
-                raise serializers.ValidationError('Cannot be updated since the model output has already been extracted and validated')
+            # already extracted
+            if obj.extracted:
+                raise serializers.ValidationError('Cannot be updated since the model output has already been extracted')
 
             s3_path = self._get_model_output_upload_path(obj)
 
             # verify the path is in the expected format
             if s3_path != value:
-                raise serializers.ValidationError("'snapshot_path' should equal '{}'".format(s3_path))
+                raise serializers.ValidationError("'path' should equal '{}'".format(s3_path))
 
             # remove any prefixed "location" from the object storage instance
             location_prefix = '{}/'.format(storage.location)

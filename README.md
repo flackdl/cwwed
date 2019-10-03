@@ -254,8 +254,8 @@ Submit a new NSEM request using the user's generated token:
         "date_requested": "2018-05-09T17:25:42.695051Z",
         "date_returned": null, 
         "covered_data_snapshot_path": "",
-        "snapshot_path": "",
-        "snapshot_extracted": false,
+        "path": "",
+        "extracted": false,
         "named_storm": 1,
     }
     
@@ -271,8 +271,8 @@ Wait a few minutes and re-query the "nsem" record to see if `covered_data_storag
         "date_requested": "2018-05-09T17:48:22.583653Z",
         "date_returned": "2018-05-09T18:02:28.497192Z",
         "covered_data_snapshot_path": "NSEM/Harvey/v76/Covered Data",
-        "snapshot_path": "NSEM/Harvey/v76/Post Storm Assessment/v76.tgz",
-        "snapshot_extracted": true,
+        "path": "NSEM/Harvey/v76/Post Storm Assessment/v76.tgz",
+        "extracted": true,
         "named_storm": 1
     }
 
@@ -293,7 +293,7 @@ Upload model output for a specific NSEM record:
 Update the "nsem" record to indicate the post-storm assessment has been uploaded.
 
     # update the nsem version with the aws s3 path (expects to be named by the version, i.e "v76.tgz")
-    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"snapshot_path": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
+    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"path": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
     
     {
       "id": 76,
@@ -301,12 +301,12 @@ Update the "nsem" record to indicate the post-storm assessment has been uploaded
       "date_requested": "2018-05-09T18:48:47.685854Z",
       "date_returned": null,
       "covered_data_snapshot_path": "NSEM/Harvey/v58/Covered Data",
-      "snapshot_path": "NSEM/upload/v58.tgz",
-      "snapshot_extracted": false,
+      "path": "NSEM/upload/v58.tgz",
+      "extracted": false,
       "named_storm": 1
     }
     
-The `snapshot_extracted` field will initially be `false` until a background job has processed the upload.
+The `extracted` field will initially be `false` until a background job has processed the upload.
 
 ## NSEM AWS policies
 

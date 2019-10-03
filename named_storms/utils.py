@@ -133,17 +133,6 @@ def named_storm_nsem_psa_version_path(nsem: NsemPsa) -> str:
     )
 
 
-def named_storm_nsem_psa_invalidation_path(nsem: NsemPsa) -> str:
-    """
-    Returns a path to a storm's NsemPsa product that was invalidated.  Kept for later diagnoses
-    """
-    return os.path.join(
-        settings.CWWED_DATA_DIR,
-        settings.CWWED_NSEM_PSA_INVALIDATED_DIR_NAME,
-        str(nsem.id),
-    )
-
-
 def copy_path_to_default_storage(source_path: str, destination_path: str):
     """
     Copies source to destination using object storage and returns the path

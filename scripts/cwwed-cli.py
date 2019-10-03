@@ -96,7 +96,7 @@ def upload_psa(args):
         psa_id,
     )
     data = {
-        'snapshot_path': upload_path,
+        'path': upload_path,
     }
     response = requests.patch(url, data=data, headers=get_auth_headers(args['api-token']))
     if not response.ok:

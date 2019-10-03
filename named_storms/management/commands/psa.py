@@ -110,7 +110,7 @@ class Command(BaseCommand):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
         # default to the most recent extracted version
-        self.nsem = self.storm.nsempsa_set.filter(snapshot_extracted=True).order_by('-id').first()
+        self.nsem = self.storm.nsempsa_set.filter(extracted=True, validated=True).order_by('-id').first()
 
         # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_SPEED_MAX, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])

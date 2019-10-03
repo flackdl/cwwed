@@ -32,7 +32,7 @@ from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, Na
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_nsem_psa_invalidation_path)
+    create_directory, get_geojson_feature_collection_from_psa_qs)
 
 
 TASK_ARGS = dict(
@@ -235,7 +235,7 @@ def extract_nsem_psa_task(nsem_id):
     """
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    uploaded_file_path = nsem.snapshot_path
+    uploaded_file_path = nsem.path
     storage = S3ObjectStoragePrivate()
 
     # remove any prefixed "location" from the object storage instance (i.e , "local", "dev", "test")
@@ -244,10 +244,10 @@ def extract_nsem_psa_task(nsem_id):
         uploaded_file_path = uploaded_file_path.replace(location_prefix, '')
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
-    if nsem.snapshot_extracted:
+    if nsem.extracted:
         return None
     elif not uploaded_file_path:
-        raise Http404("Missing model output snapshot")
+        raise Http404("Missing model output")
     # verify the uploaded output exists in storage
     elif not storage.exists(uploaded_file_path):
         raise Http404("{} doesn't exist in storage".format(uploaded_file_path))
@@ -289,9 +289,9 @@ def extract_nsem_psa_task(nsem_id):
     os.remove(file_system_path)
 
     # update output path to the copied path, flag success and set the date returned
-    nsem.snapshot_path = storage_path
-    nsem.snapshot_extracted = True
-    nsem.date_returned = datetime.utcnow()
+    nsem.path = storage_path
+    nsem.extracted = True
+    nsem.date_returned = pytz.utc.localize(datetime.utcnow())
     nsem.save()
 
     # delete the original/uploaded copy
@@ -412,12 +412,6 @@ def validate_nsem_psa_task(nsem_id):
     nsem_psa.validated_files = []
     nsem_psa.date_validation = None
 
-    # remove any previous invalidated data
-    try:
-        shutil.rmtree(named_storm_nsem_psa_invalidation_path(nsem_psa))
-    except FileNotFoundError:
-        pass
-
     psa_path = named_storm_nsem_psa_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
         if file_name.endswith('.nc'):
@@ -443,10 +437,13 @@ def validate_nsem_psa_task(nsem_id):
                 if not required_coords.issubset(list(ds.coords)):
                     file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
-                # TODO - validate
+                # TODO - validate the following:
                 # water & wind dataset exists
-                # time-series - all files should have the same temporal frequency
+                # time-series: all files should have the same temporal frequency
                 # structured
+
+                # TODO - require a manifest of uploaded PSA defining which datasets contain which variables,
+                #  and what those variables are, i.e Name, Units, Element, Contour vs Barb, etc.
 
                 # nans
                 # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
@@ -458,12 +455,8 @@ def validate_nsem_psa_task(nsem_id):
                             variable_exceptions[variable].append('has null values')
 
             if file_exceptions or variable_exceptions:
-                exceptions['files'][file_name] = {
-                    'file': [],
-                    'variables': {},
-                }
-                exceptions['files'][file_name]['file'] = file_exceptions
-                exceptions['files'][file_name]['variables'] = variable_exceptions
+                e = {'file': file_exceptions, 'variables': variable_exceptions}
+                exceptions['files'][file_name] = e
             else:
                 valid_files.append(file_name)
 
@@ -476,14 +469,11 @@ def validate_nsem_psa_task(nsem_id):
 
         # delete the psa from object storage
         storage = S3ObjectStoragePrivate()
-        storage.delete(nsem_psa.snapshot_path)
-
-        # move files elsewhere for later diagnoses
-        shutil.move(psa_path, named_storm_nsem_psa_invalidation_path(nsem_psa))
+        storage.delete(nsem_psa.path)
 
         # reset the psa instance
-        nsem_psa.snapshot_path = ''
-        nsem_psa.snapshot_extracted = False
+        nsem_psa.path = ''
+        nsem_psa.extracted = False
 
     # success
     else:

@@ -145,8 +145,8 @@ class NsemPsa(models.Model):
     covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
     covered_data_snapshot_created = models.BooleanField(default=False)  # whether the covered data snapshot has been created and ready for download
     covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
-    snapshot_path = models.TextField(blank=True)  # path to the psa snapshot
-    snapshot_extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
+    path = models.TextField(blank=True)  # path to the psa
+    extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
     validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
@@ -169,7 +169,7 @@ class NsemPsa(models.Model):
     def get_last_valid_psa(cls, storm_id: int):
         qs = cls.objects.filter(
             named_storm__id=storm_id,
-            snapshot_extracted=True,
+            extracted=True,
             validated=True,
             processed=True
         )

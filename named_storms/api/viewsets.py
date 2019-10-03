@@ -58,12 +58,12 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     queryset = NsemPsa.objects.all()
     serializer_class = NsemPsaSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filterset_fields = ('named_storm__id', 'snapshot_extracted')
+    filterset_fields = ('named_storm__id', 'extracted')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
-        qs = self.queryset.filter(snapshot_extracted=True, validated=True, processed=True)
+        qs = self.queryset.filter(extracted=True, validated=True, processed=True)
         qs = qs.order_by('named_storm', '-date_returned')
         qs = qs.distinct('named_storm')
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
@@ -82,7 +82,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
         )()
 
     def perform_update(self, serializer):
-        # save the instance first so we can create a task to extract and validate the model output snapshot
+        # save the instance first so we can create a task to extract and validate the model output
         nsem_psa = serializer.save()
 
         chain(
