@@ -8,7 +8,10 @@
             "Filter": {
                 "Prefix": "User Exports/"
             },
-            "Status": "Enabled"
+            "Status": "Enabled",
+            "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+            }
         },
         {
             "Expiration": {
@@ -18,7 +21,10 @@
             "Filter": {
                 "Prefix": "local/User Exports/"
             },
-            "Status": "Enabled"
+            "Status": "Enabled",
+            "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+            }
         }
     ]
 }
