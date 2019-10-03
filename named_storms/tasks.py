@@ -528,6 +528,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
                 drop=True)
 
+            # skip dataset if there is missing data on any dimensions (ie. bounding box could have been too small)
+            if not all([len(ds[d]) for d in list(ds.dims)]):
+                continue
+
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
