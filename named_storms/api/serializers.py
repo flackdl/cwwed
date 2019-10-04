@@ -89,7 +89,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_covered_data_storage_url(self, obj: NsemPsa):
         return obj.get_covered_data_storage_url()
 
-    def validate_snapshot_path(self, value):
+    def validate_path(self, value):
         """
         Check that it hasn't already been extracted
         Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
