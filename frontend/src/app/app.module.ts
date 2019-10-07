@@ -8,6 +8,8 @@ import { RouterModule, Routes } from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
 import { MomentModule } from 'ngx-moment';
 import { ChartsModule } from "ng2-charts";
+import { ToastrModule } from 'ngx-toastr';
+
 import * as Sentry from "@sentry/browser";
 
 
@@ -106,6 +108,7 @@ const appRoutes: Routes = [
     MomentModule,
     ReactiveFormsModule,
     ChartsModule,
+    ToastrModule.forRoot(),
   ],
   entryComponents: [],
   providers: [{ provide: ErrorHandler, useClass: SentryErrorHandler }],

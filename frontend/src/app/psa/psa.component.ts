@@ -18,6 +18,7 @@ import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { DecimalPipe } from "@angular/common";
 import { ChartOptions } from 'chart.js';
+import { ToastrService } from 'ngx-toastr';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
@@ -82,6 +83,7 @@ export class PsaComponent implements OnInit {
     private fb: FormBuilder,
     private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
+    private toastr: ToastrService,
   ) {
   }
 
@@ -325,10 +327,33 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    return new VectorSource({
-      url: CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.id, date),
-      format: new GeoJSON()
+    const url = CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.id, date);
+    const format = new GeoJSON();
+
+    const vectorSource = new VectorSource({
+      url: url,
+      format: format,
+      // custom loader to handle errors
+      loader: (extent, resolution, projection) => {
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        let onError = () => {
+          this.toastr.error('An unknown error occurred loading map layer');
+          vectorSource.removeLoadedExtent(extent);
+        };
+        xhr.onerror = onError;
+        xhr.onload = () => {
+          if (xhr.status == 200) {
+            const features = format.readFeatures(xhr.responseText, {featureProjection: projection});
+            vectorSource.addFeatures(features);
+          } else {
+            onError();
+          }
+        };
+        xhr.send();
+      },
     });
+    return vectorSource;
   }
 
   protected _getWindBarbLayerStyle(feature): Style {
@@ -422,6 +447,7 @@ export class PsaComponent implements OnInit {
         this._listenForInputChanges();
       },
       (error) => {
+        this.toastr.error('An unknown error occurred fetching data variables');
         console.error(error);
         this.isLoading = false;
       });
@@ -476,7 +502,6 @@ export class PsaComponent implements OnInit {
           });
         }
       }
-
       return {
         variable: variable,
         layer: layer,
@@ -709,6 +734,7 @@ export class PsaComponent implements OnInit {
       },
       (error) => {
         console.error(error);
+        this.toastr.error('An unknown error occurred fetching graph data');
         this.isLoadingOverlayPopup = false;
       }
     );

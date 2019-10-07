@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup } from "@angular/forms";
 import WKT from 'ol/format/WKT.js';
 import { fromExtent } from 'ol/geom/Polygon.js';
 import { timer } from 'rxjs';
+import { ToastrService } from 'ngx-toastr';
 import * as _ from 'lodash';
 
 @Component({
@@ -28,6 +29,7 @@ export class PsaExportComponent implements OnInit {
     private router: Router,
     private cwwedService: CwwedService,
     private fb: FormBuilder,
+    private toastr: ToastrService,
   ) {}
 
   ngOnInit() {
@@ -82,6 +84,7 @@ export class PsaExportComponent implements OnInit {
         this._checkExportComplete(0, data.id);
       },
       (error) => {
+        this.toastr.error('An unknown error occurred creating export');
         console.error(error);
         this.isLoading = false;
       }
@@ -102,6 +105,7 @@ export class PsaExportComponent implements OnInit {
             }
           },
           (error) => {
+            this.toastr.error('An unknown error occurred fetching export result');
             console.error(error);
           }
         );
