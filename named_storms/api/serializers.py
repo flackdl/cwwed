@@ -50,6 +50,16 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         depth = 1
 
 
+class NsemPsaManifestDatasetSerializer(serializers.Serializer):
+    file = serializers.CharField()
+    variables = serializers.ListSerializer(child=serializers.CharField())
+    dates = serializers.ListSerializer(child=serializers.DateTimeField())
+
+
+class NsemPsaManifestSerializer(serializers.Serializer):
+    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer)
+
+
 class NsemPsaSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
@@ -59,7 +69,8 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
 
-    # TODO - should dates be required up front or extracted from netcdf files after creation?
+    # TODO - test this
+    manifest = NsemPsaManifestSerializer()
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -88,6 +99,62 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
         return obj.get_covered_data_storage_url()
+
+    # TODO
+    def validate_manifest(self, manifest: dict):
+        """
+        {
+          "datasets": [
+            {
+              "file": "water.nc",
+              "variables": [
+                "water_level",
+                "wave_height"
+              ],
+              "dates": [
+                "2000-01-01T00:00:00Z",
+                "2000-01-01T00:01:00Z",
+                "2000-01-01T00:02:00Z"
+              ]
+            },
+            {
+              "file": "wind-1.nc",
+              "variables": [
+                "wind_speed",
+                "wind_direction"
+              ],
+              "dates": [
+                "2000-01-01T00:00:00Z"
+              ]
+            },
+            {
+              "file": "wind-2.nc",
+              "variables": [
+                "wind_speed",
+                "wind_direction"
+              ],
+              "dates": [
+                "2000-01-01T00:01:00Z"
+              ]
+            },
+            {
+              "file": "wind-3.nc",
+              "variables": [
+                "wind_speed",
+                "wind_direction"
+              ],
+              "dates": [
+                "2000-01-01T00:02:00Z"
+              ]
+            }
+          ]
+        }
+        """
+        import logging
+        logging.info('====================')
+        logging.info(manifest)
+        logging.info('====================')
+        return manifest
 
     def validate_path(self, value):
         """

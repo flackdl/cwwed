@@ -247,61 +247,40 @@ User:admin
 
 Submit a new NSEM request using the user's generated token:
 
-    curl -sH "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem/
-    {
-        "id":76,
-        "covered_data_storage_url": null,
-        "date_requested": "2018-05-09T17:25:42.695051Z",
-        "date_returned": null, 
-        "covered_data_snapshot_path": "",
-        "path": "",
-        "extracted": false,
-        "named_storm": 1,
-    }
+    curl -sH "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem-psa/
     
 The `covered_data_storage_url` in the response will initially be empty, but a background process will have been initiated and eventually populate the AWS S3 bucket which you'll download the covered data from.
 
 Wait a few minutes and re-query the "nsem" record to see if `covered_data_storage_url` has been populated.
 
-    curl -sH "Content-Type: application/json" http://127.0.0.1:8000/api/nsem/76/
-    
-    {
-        "id": 76,
-        "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
-        "date_requested": "2018-05-09T17:48:22.583653Z",
-        "date_returned": "2018-05-09T18:02:28.497192Z",
-        "covered_data_snapshot_path": "NSEM/Harvey/v76/Covered Data",
-        "path": "NSEM/Harvey/v76/Post Storm Assessment/v76.tgz",
-        "extracted": true,
-        "named_storm": 1
-    }
+    curl -sH "Content-Type: application/json" http://127.0.0.1:8000/api/nsem-psa/76/
 
 Download the covered data snapshot for an NSEM record:
 
-    aws s3 cp --recursive "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data" /YOUR/OUTPUT/PATH --profile nsem
+    aws s3 cp --recursive "s3://cwwed-archives/NSEM/Harvey/76/Covered Data" /YOUR/OUTPUT/PATH --profile nsem
     
 Upload model output for a specific NSEM record:
 
-*NOTE: The input format must be tar+gzipped and named the correct version, i.e "v76.tgz".*
+*NOTE: The input format must be tar+gzipped and named the correct version, i.e "76.tgz".*
     
     # upload using checksum
     FILE="output.tgz"
-    UPLOAD_PATH="NSEM/upload/v76.tgz"
+    UPLOAD_PATH="NSEM/upload/76.tgz"
     CHECKSUM=$(openssl md5 -binary "${FILE}" | base64)
     aws s3api put-object --bucket cwwed-archives --key "${UPLOAD_PATH}" --body "${FILE}" --metadata md5chksum=${CHECKSUM} --content-md5 ${CHECKSUM} --profile nsem
     
 Update the "nsem" record to indicate the post-storm assessment has been uploaded.
 
-    # update the nsem version with the aws s3 path (expects to be named by the version, i.e "v76.tgz")
-    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"path": "NSEM/upload/v76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
+    # update the nsem version with the aws s3 path (expects to be named by the version, i.e "76.tgz")
+    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"path": "NSEM/upload/76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
     
     {
       "id": 76,
-      "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/v76/Covered Data",
+      "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/76/Covered Data",
       "date_requested": "2018-05-09T18:48:47.685854Z",
       "date_returned": null,
-      "covered_data_snapshot_path": "NSEM/Harvey/v58/Covered Data",
-      "path": "NSEM/upload/v58.tgz",
+      "covered_data_snapshot_path": "NSEM/Harvey/58/Covered Data",
+      "path": "NSEM/upload/58.tgz",
       "extracted": false,
       "named_storm": 1
     }
