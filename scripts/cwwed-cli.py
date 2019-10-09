@@ -140,7 +140,7 @@ def download_cd(args):
         nsem_data = fetch_psa(psa_id)
 
         # verify the "storage key" exists and points to an S3 object store
-        # i.e s3://cwwed-archives/NSEM/Harvey/v76/Covered Data
+        # i.e s3://cwwed-archives/NSEM/Harvey/76/Covered Data
         storage_key = 'covered_data_storage_url'
         if not nsem_data.get(storage_key) or not nsem_data[storage_key].startswith('s3://'):
             # Covered data isn't ready so print message and try again in a few seconds

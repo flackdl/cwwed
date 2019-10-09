@@ -51,13 +51,14 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
 
 
 class NsemPsaManifestDatasetSerializer(serializers.Serializer):
-    file = serializers.CharField()
+    path = serializers.CharField()
     variables = serializers.ListSerializer(child=serializers.CharField())
+    # TODO Object of type 'datetime' is not JSON serializable
     dates = serializers.ListSerializer(child=serializers.DateTimeField())
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
-    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer)
+    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer())
 
 
 class NsemPsaSerializer(serializers.ModelSerializer):
@@ -69,8 +70,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
 
-    # TODO - test this
-    manifest = NsemPsaManifestSerializer()
+    manifest = serializers.JSONField()
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -100,66 +100,31 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_covered_data_storage_url(self, obj: NsemPsa):
         return obj.get_covered_data_storage_url()
 
-    # TODO
     def validate_manifest(self, manifest: dict):
         """
-        {
-          "datasets": [
-            {
-              "file": "water.nc",
-              "variables": [
-                "water_level",
-                "wave_height"
-              ],
-              "dates": [
-                "2000-01-01T00:00:00Z",
-                "2000-01-01T00:01:00Z",
-                "2000-01-01T00:02:00Z"
-              ]
-            },
-            {
-              "file": "wind-1.nc",
-              "variables": [
-                "wind_speed",
-                "wind_direction"
-              ],
-              "dates": [
-                "2000-01-01T00:00:00Z"
-              ]
-            },
-            {
-              "file": "wind-2.nc",
-              "variables": [
-                "wind_speed",
-                "wind_direction"
-              ],
-              "dates": [
-                "2000-01-01T00:01:00Z"
-              ]
-            },
-            {
-              "file": "wind-3.nc",
-              "variables": [
-                "wind_speed",
-                "wind_direction"
-              ],
-              "dates": [
-                "2000-01-01T00:02:00Z"
-              ]
-            }
-          ]
-        }
         """
-        import logging
-        logging.info('====================')
-        logging.info(manifest)
-        logging.info('====================')
-        return manifest
+        serializer = NsemPsaManifestSerializer(data=manifest)
+
+        if not serializer.is_valid():
+            raise serializers.ValidationError(serializer.errors)
+        elif len(serializer.validated_data['datasets']) == 0:
+            raise serializers.ValidationError({'datasets': ['Missing datasets']})
+
+        dataset_errors = {}
+        for dataset in serializer.validated_data['datasets']:
+            dataset_errors[dataset['path']] = []
+            if len(dataset['variables']) == 0:
+                dataset_errors[dataset['path']].append("Missing variables")
+            if len(dataset['dates']) == 0:
+                dataset_errors[dataset['path']].append("Missing dates")
+        if any(e for e in dataset_errors.values() if e):
+            raise serializers.ValidationError({'datasets': dataset_errors})
+        return serializer.validated_data
 
     def validate_path(self, value):
         """
         Check that it hasn't already been extracted
-        Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
+        Check that the path is in the expected format (ie. "NSEM/upload/68.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
         obj = self.instance  # type: NsemPsa

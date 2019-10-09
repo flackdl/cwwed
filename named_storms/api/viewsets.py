@@ -239,10 +239,11 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         # return cached data if it exists
         cache = caches['psa_geojson']  # type: BaseCache
         cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            logging.info('returning cached response for {}'.format(cache_key))
-            return HttpResponse(cached_response, content_type='application/json')
+        if cache_key:
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                logging.info('returning cached response for {}'.format(cache_key))
+                return HttpResponse(cached_response, content_type='application/json')
 
         self._validate()
 
