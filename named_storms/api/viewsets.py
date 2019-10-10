@@ -30,6 +30,8 @@ from named_storms.api.serializers import (
 )
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
+logger = logging.getLogger('cwwed')
+
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -242,7 +244,7 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         if cache_key:
             cached_response = cache.get(cache_key)
             if cached_response:
-                logging.info('returning cached response for {}'.format(cache_key))
+                logger.info('returning cached response for {}'.format(cache_key))
                 return HttpResponse(cached_response, content_type='application/json')
 
         self._validate()

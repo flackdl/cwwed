@@ -7,7 +7,7 @@ import xarray as xr
 import boto3
 import numpy as np
 import pandas as pd
-import logging
+from celery.utils.log import get_task_logger
 from cfchecker import cfchecks
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
@@ -33,6 +33,8 @@ from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
     create_directory, get_geojson_feature_collection_from_psa_qs)
+
+logger = get_task_logger(__name__)
 
 
 TASK_ARGS = dict(
@@ -554,7 +556,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 elif set(wind_variables).intersection(ds.variables.keys()):
                     variables = wind_variables
                 else:  # none found, skip this dataset
-                    logging.warning('No expected data fround in {}'.format(ds_file))
+                    logger.warning('No expected data fround in {}'.format(ds_file))
                     continue
 
                 # create pandas DataFrame which makes a csv conversion very simple
@@ -757,12 +759,12 @@ def cache_psa_geojson_task(storm_id: int):
 
     qs = NsemPsa.objects.filter(named_storm__id=storm_id)
     if not qs.exists():
-        logging.exception('There is not a PSA for storm id {}'.format(storm_id))
+        logger.exception('There is not a PSA for storm id {}'.format(storm_id))
         raise
 
     nsem = qs.first()  # type: NsemPsa
 
-    logging.info('Caching psa geojson for nsem psa {}'.format(nsem))
+    logger.info('Caching psa geojson for nsem psa {}'.format(nsem))
 
     # loop through every variable
     for psa_variable in nsem.nsempsavariable_set.all():  # type: NsemPsaVariable
@@ -782,12 +784,12 @@ def cache_psa_geojson_task(storm_id: int):
                 # send the raw query string so the date format doesn't get url encoded
                 query = '&'.join(['{}={}'.format(key, value) for key, value in data.items()])
                 r = requests.get('{}?{}'.format(url, query))
-                logging.info('Cached {} with status {}'.format(r.url, r.status_code))
+                logger.info('Cached {} with status {}'.format(r.url, r.status_code))
         # request once for max-values variable
         elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
             data = {
                 'nsem_psa_variable': psa_variable.id
             }
             r = requests.get(url, data)
-            logging.info('Cached {} with status {}'.format(r.url, r.status_code))
-            logging.info(r.status_code)
+            logger.info('Cached {} with status {}'.format(r.url, r.status_code))
+            logger.info(r.status_code)

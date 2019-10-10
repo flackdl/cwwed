@@ -12,8 +12,16 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 import sys
-import raven
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+# sentry/logging configuration
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN', ''),
+    integrations=[DjangoIntegration()],
+    send_default_pii=True,
+)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -66,7 +74,6 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'crispy_forms',
-    'raven.contrib.django.raven_compat',
 ]
 
 MIDDLEWARE = [
@@ -183,13 +190,6 @@ LOGIN_REDIRECT_URL = 'home'
 # https://django-crispy-forms.readthedocs.io/en/latest/index.html
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
-# sentry/logging configuration
-RAVEN_CONFIG = {
-    'dsn': os.getenv('SENTRY_DSN', ''),
-    # automatically configure the release based on the git info
-    'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
-}
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
@@ -220,20 +220,11 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'sentry': {
-            'level': 'WARNING',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-            'tags': {'custom-tag': 'x'},
-        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-    },
-    'root': {
-        'handlers': ['sentry', 'console'],
-        'level': 'INFO',
     },
     'formatters': {
         'verbose': {
@@ -242,20 +233,15 @@ LOGGING = {
         },
     },
     'loggers': {
-        'django.db.backends': {
-            'level': 'ERROR',
+        'cwwed': {
+            'level': 'INFO',
             'handlers': ['console'],
-            'propagate': False,
+            'propagate': True,
         },
-        'raven': {
-            'level': 'DEBUG',
+        'django': {
+            'level': 'WARNING',
             'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
+            'propagate': True,
         },
     },
 }

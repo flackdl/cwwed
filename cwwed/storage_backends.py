@@ -5,6 +5,8 @@ from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage
 from named_storms.utils import create_directory
 
+logger = logging.getLogger('cwwed')
+
 
 class S3ObjectStorage(S3Boto3Storage):
     """
@@ -71,7 +73,7 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
         """
 
         if not self.exists(source):
-            logging.warning('skipping source that does not exist: {}'.format(source))
+            logger.warning('skipping source that does not exist: {}'.format(source))
             return
 
         # delete any existing version if it exists

@@ -13,6 +13,8 @@ import xarray.backends
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 from named_storms.utils import named_storm_covered_data_incomplete_path, create_directory
 
+logger = logging.getLogger('cwwed')
+
 
 DEFAULT_DIMENSION_TIME = 'time'
 DEFAULT_DIMENSION_LATITUDE = 'latitude'
@@ -267,7 +269,7 @@ class BinaryFileProcessor(GenericFileProcessor):
         super()._fetch()
         # skip and remove file if it's an empty dataset
         if len(self._ndarray) == 0:
-            logging.info('Skipping dataset with no values')
+            logger.info('Skipping dataset with no values')
             os.remove(self._output_path)
 
     def _post_process(self) -> None:
@@ -329,7 +331,7 @@ class OpenDapProcessor(BaseProcessor):
 
         # verify it has values after getting the subset
         if not self._dataset_has_dimension_values():
-            logging.info('Skipping dataset with no values for a dimension ({}): %s' % self._url)
+            logger.info('Skipping dataset with no values for a dimension ({}): %s' % self._url)
             return
 
         # store as netcdf and close dataset

@@ -18,6 +18,8 @@ from shapely.geometry import Polygon, Point
 from django.core.management import BaseCommand
 from named_storms.tasks import cache_psa_geojson_task
 
+logger = logging.getLogger('cwwed')
+
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -162,7 +164,7 @@ class Command(BaseCommand):
             #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
             #self.nsem.save()
 
-            logging.info('creating geo mask')
+            logger.info('creating geo mask')
 
             # create a mask to subset data from the landfall geo's convex hull
             # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
@@ -171,12 +173,12 @@ class Command(BaseCommand):
             x = self.dataset_unstructured.x[self.mask_unstructured]
             y = self.dataset_unstructured.y[self.mask_unstructured]
 
-            logging.info('building triangulation')
+            logger.info('building triangulation')
 
             # build delaunay triangles
             self.triangulation = tri.Triangulation(x, y)
 
-            logging.info('masking triangulation')
+            logger.info('masking triangulation')
 
             # mask triangles outside geo
             tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
@@ -238,7 +240,7 @@ class Command(BaseCommand):
         lon_masked = np.ma.masked_array(self.dataset_structured.lon, self.mask_structured)
         zi_masked = np.ma.masked_array(zi, self.mask_structured)
 
-        logging.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
 
         # create the contour
         contourf = plt.contourf(lon_masked, lat_masked, zi_masked, cmap=cmap)
@@ -248,7 +250,7 @@ class Command(BaseCommand):
     def build_contours_unstructured(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
                                     mask_contours: Callable = None):
 
-        logging.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
 
         # interpolate values from triangle data and build a mesh of data
         interpolator = tri.LinearTriInterpolator(self.triangulation, z)
@@ -307,7 +309,7 @@ class Command(BaseCommand):
         expects structured data
         """
 
-        logging.info('building barbs at {}'.format(dt))
+        logger.info('building barbs at {}'.format(dt))
 
         for i in range(len(wind_directions)):
             for j, direction in enumerate(wind_directions[i]):
