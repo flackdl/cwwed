@@ -3,11 +3,10 @@ import pytz
 import logging
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
-from rest_framework.fields import CurrentUserDefault
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.fields import CurrentNsemPsaDefault
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
@@ -58,8 +57,7 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
 class NsemPsaManifestDatasetSerializer(serializers.Serializer):
     path = serializers.CharField()
     variables = serializers.ListSerializer(child=serializers.CharField())
-    # the "manifest" is json and it can't serialize datetimes so use charfield and validate separately
-    dates = serializers.ListSerializer(child=serializers.CharField())
+    dates = serializers.ListSerializer(child=serializers.DateTimeField())
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
@@ -75,7 +73,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
 
-    manifest = serializers.JSONField()
+    manifest = serializers.JSONField(encoder=DjangoJSONEncoder())
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -199,11 +197,10 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
     Named Storm Event Model PSA User Export Serializer
     """
 
-    # overriding these fields to use the provided serializer context
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), default=CurrentUserDefault())
-    nsem = serializers.PrimaryKeyRelatedField(queryset=NsemPsa.objects.all(), default=CurrentNsemPsaDefault())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     def validate(self, data):
+
         data = super().validate(data)
 
         # require date_filter for specific formats

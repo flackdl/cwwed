@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from '@angular/core';
 import { map } from 'rxjs/operators';
+import * as _ from "lodash";
 
 let API_ROOT = '/api';
 let API_USER = `${API_ROOT}/user/`;
@@ -108,13 +109,19 @@ export class CwwedService {
   }
 
   public createPsaUserExport(namedStormId: number, bbox: string, format: string, dateFilter?: string) {
+    // fetch the psa for this storm to to the data
+    const psa = _.find(this.nsemPsaList, (nsemPsa) => {
+      return nsemPsa.named_storm === namedStormId;
+    });
     const data = {
       bbox: bbox,
       format: format,
+      nsem: psa.id,
     };
     if (dateFilter) {
       data['date_filter'] = dateFilter;
     }
+
     return this.http.post(`${API_NAMED_STORMS}${namedStormId}/psa/export/`, data).pipe(
       map((data) => {
         return data;

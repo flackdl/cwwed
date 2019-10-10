@@ -140,6 +140,11 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
 
+    def get_serializer_class(self):
+        # required placeholder because this class isn't using a serializer
+        from rest_framework.serializers import BaseSerializer
+        return BaseSerializer
+
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="{}-time-series.csv"'.format(self.nsem.named_storm)
@@ -222,6 +227,11 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
     pagination_class = None
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
+    def get_serializer_class(self):
+        # required placeholder because this class isn't using a serializer
+        from rest_framework.serializers import BaseSerializer
+        return BaseSerializer
+
     def get_queryset(self):
         """
         group all geometries together by same variable & value which reduces total features
@@ -282,6 +292,11 @@ class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet)
             return NsemPsaUserExport.objects.filter(user=self.request.user)
         else:
             return NsemPsaUserExport.objects.none()
+
+    def create(self, request, *args, **kwargs):
+        # manually add the requesting user to the data
+        request.data['user'] = request.user.id
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         super().perform_create(serializer)
