@@ -3,7 +3,6 @@ import pytz
 import logging
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
 from cwwed.storage_backends import S3ObjectStoragePrivate
@@ -57,7 +56,8 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
 class NsemPsaManifestDatasetSerializer(serializers.Serializer):
     path = serializers.CharField()
     variables = serializers.ListSerializer(child=serializers.CharField())
-    dates = serializers.ListSerializer(child=serializers.DateTimeField())
+    # "manifest" is stored in a postgres json field so dates needs to be serialized
+    dates = serializers.ListSerializer(child=serializers.CharField())
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
@@ -73,7 +73,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
 
-    manifest = serializers.JSONField(encoder=DjangoJSONEncoder())
+    manifest = serializers.JSONField()
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
