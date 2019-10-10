@@ -1,12 +1,17 @@
 import os
+import pytz
+import logging
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
 from rest_framework.fields import CurrentUserDefault
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.api.fields import CurrentNsemPsaDefault
 from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
+
+logger = logging.getLogger('cwwed')
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -53,8 +58,8 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
 class NsemPsaManifestDatasetSerializer(serializers.Serializer):
     path = serializers.CharField()
     variables = serializers.ListSerializer(child=serializers.CharField())
-    # TODO Object of type 'datetime' is not JSON serializable
-    dates = serializers.ListSerializer(child=serializers.DateTimeField())
+    # the "manifest" is json and it can't serialize datetimes so use charfield and validate separately
+    dates = serializers.ListSerializer(child=serializers.CharField())
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
@@ -100,9 +105,13 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_covered_data_storage_url(self, obj: NsemPsa):
         return obj.get_covered_data_storage_url()
 
+    def validate(self, data):
+        # manifest must exist on update
+        if self.instance and 'manifest' not in data:
+            raise serializers.ValidationError({'manifest': ['Manifest is required']})
+        return super().validate(data)
+
     def validate_manifest(self, manifest: dict):
-        """
-        """
         serializer = NsemPsaManifestSerializer(data=manifest)
 
         if not serializer.is_valid():
@@ -111,12 +120,22 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'datasets': ['Missing datasets']})
 
         dataset_errors = {}
+
+        # verify each dataset has the proper fields
         for dataset in serializer.validated_data['datasets']:
             dataset_errors[dataset['path']] = []
             if len(dataset['variables']) == 0:
                 dataset_errors[dataset['path']].append("Missing variables")
             if len(dataset['dates']) == 0:
                 dataset_errors[dataset['path']].append("Missing dates")
+            else:
+                # validate individual dates
+                for date in dataset['dates']:
+                    parsed = parse_datetime(date)
+                    if not parsed:
+                        dataset_errors[dataset['path']].append("Datetime must be in format 'iso-8601'")
+                    elif parsed.tzinfo is not pytz.UTC:
+                        dataset_errors[dataset['path']].append("Datetime must be timezone aware")
         if any(e for e in dataset_errors.values() if e):
             raise serializers.ValidationError({'datasets': dataset_errors})
         return serializer.validated_data
