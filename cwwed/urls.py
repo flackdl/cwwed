@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.conf.urls.static import static
+from rest_framework.schemas import get_schema_view
 
 from cwwed.views import AngularStaticAssetsRedirectView
 from audit.proxy import OpenDapProxy
@@ -27,10 +28,18 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='coastal_act/index.html'), name='home'),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
-    path('api-auth/', include('rest_framework.urls')),
-    path('api/', include('cwwed.api.urls')),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^opendap/(?P<path>.*)$', OpenDapProxy.as_view(upstream=settings.OPENDAP_URL)),
+
+    # api
+    path('api-auth/', include('rest_framework.urls')),
+    path('api/', include('cwwed.api.urls')),
+    path('openapi/', get_schema_view(
+        title="CWWED",
+        description="API for the Coastal Wind and Water Event Database",
+        version="1.0.0",
+    ), name='openapi-schema'),
+
 ]
 
 # serving media in dev only
