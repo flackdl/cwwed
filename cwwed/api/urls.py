@@ -18,7 +18,7 @@ urlpatterns = [
     path('docs/', TemplateView.as_view(
         template_name='api-docs.html',
         extra_context={'schema_url': 'openapi-schema'}
-    ), name='swagger-ui'),
+    ), name='api-docs'),
     path('openapi/', get_schema_view(
         title="CWWED",
         description="API for the Coastal Wind and Water Event Database",
