@@ -122,8 +122,10 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         # verify each dataset has the proper fields
         for dataset in serializer.validated_data['datasets']:
             dataset_errors[dataset['path']] = []
+
             if len(dataset['variables']) == 0:
                 dataset_errors[dataset['path']].append("Missing variables")
+
             if len(dataset['dates']) == 0:
                 dataset_errors[dataset['path']].append("Missing dates")
             else:
@@ -131,9 +133,11 @@ class NsemPsaSerializer(serializers.ModelSerializer):
                 for date in dataset['dates']:
                     parsed = parse_datetime(date)
                     if not parsed:
-                        dataset_errors[dataset['path']].append("Datetime must be in format 'iso-8601'")
+                        dataset_errors[dataset['path']].append("Dates must be in iso-8601 format")
+                        break  # no need to duplicate this error
                     elif parsed.tzinfo is not pytz.UTC:
-                        dataset_errors[dataset['path']].append("Datetime must be timezone aware")
+                        dataset_errors[dataset['path']].append("Dates must be timezone aware")
+                        break  # no need to duplicate this error
         if any(e for e in dataset_errors.values() if e):
             raise serializers.ValidationError({'datasets': dataset_errors})
         return serializer.validated_data
