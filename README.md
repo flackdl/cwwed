@@ -277,7 +277,7 @@ Update the "nsem" record to indicate the post-storm assessment has been uploaded
     {
       "id": 76,
       "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/76/Covered Data",
-      "date_requested": "2018-05-09T18:48:47.685854Z",
+      "date_created": "2018-05-09T18:48:47.685854Z",
       "date_returned": null,
       "covered_data_snapshot_path": "NSEM/Harvey/58/Covered Data",
       "path": "NSEM/upload/58.tgz",

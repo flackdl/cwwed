@@ -140,7 +140,7 @@ class NsemPsa(models.Model):
     Named Storm Event Model
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
-    date_requested = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True)
     date_returned = models.DateTimeField(null=True, blank=True)  # manually set once the psa is returned
     covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
     covered_data_snapshot_created = models.BooleanField(default=False)  # whether the covered data snapshot has been created and ready for download
