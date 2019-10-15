@@ -340,6 +340,7 @@ export class PsaComponent implements OnInit {
         let onError = () => {
           this.toastr.error('An unknown error occurred loading map layer');
           vectorSource.removeLoadedExtent(extent);
+          this.isLoadingMap = false;
         };
         xhr.onerror = onError;
         xhr.onload = () => {
