@@ -469,9 +469,10 @@ def validate_nsem_psa_task(nsem_id):
         storage = S3ObjectStoragePrivate()
         storage.delete(nsem_psa.path)
 
-        # reset the psa instance
+        # reset the psa instance so more attempts can be made
         nsem_psa.path = ''
         nsem_psa.extracted = False
+        nsem_psa.date_returned = None
 
     # success
     else:

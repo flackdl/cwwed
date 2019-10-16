@@ -192,11 +192,16 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return self._get_model_output_upload_path(obj)
 
     def update(self, instance: NsemPsa, validated_data):
+
+        # save the individual psa manifest datasets
         for dataset in validated_data['manifest']['datasets']:
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
             dataset_serializer.is_valid(raise_exception=True)
             dataset_serializer.save()
+
+        # manually set the date returned
         instance.date_returned = pytz.utc.localize(datetime.utcnow())
+
         return super().update(instance, validated_data)
 
     @staticmethod
