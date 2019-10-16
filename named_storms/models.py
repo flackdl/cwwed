@@ -145,7 +145,7 @@ class NsemPsa(models.Model):
     covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
     covered_data_snapshot_created = models.BooleanField(default=False)  # whether the covered data snapshot has been created and ready for download
     covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
-    manifest = fields.JSONField(default=dict, blank=True)  # defines the uploaded psa files and variables
+    manifest = fields.JSONField(default=dict, blank=True)  # defines the uploaded psa dataset files and variables
     path = models.TextField(blank=True)  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
@@ -175,7 +175,14 @@ class NsemPsa(models.Model):
             processed=True
         )
         qs = qs.order_by('-date_returned')
-        return qs
+        return qs.first()
+
+
+class NsemPsaManifestDataset(models.Model):
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
+    path = models.CharField(max_length=200)
+    variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
+    dates = fields.ArrayField(base_field=models.DateTimeField())  # type: list
 
 
 class NsemPsaVariable(models.Model):

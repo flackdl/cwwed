@@ -110,17 +110,16 @@ class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)
+        self.nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)
 
         # validate
-        if not storm.exists() or not nsem.exists():
+        if not storm.exists() or not self.nsem:
             # returning responses via dispatch isn't part of the drf workflow so manually returning JsonResponse instead
             return JsonResponse(
                 status=exceptions.NotFound.status_code,
                 data={'detail': exceptions.NotFound.default_detail},
             )
 
-        self.nsem = nsem.first()
         self.storm = storm.first()
 
         return super().dispatch(request, *args, **kwargs)

@@ -1,12 +1,12 @@
 import os
-import pytz
 import logging
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.utils.dateparse import parse_datetime
 from rest_framework import serializers
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
+from named_storms.models import (
+    NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
+    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset)
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
 logger = logging.getLogger('cwwed')
@@ -53,15 +53,15 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         depth = 1
 
 
-class NsemPsaManifestDatasetSerializer(serializers.Serializer):
-    path = serializers.CharField()
-    variables = serializers.ListSerializer(child=serializers.CharField())
-    # "manifest" is stored in a postgres json field so dates needs to be serialized
-    dates = serializers.ListSerializer(child=serializers.CharField())
+class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NsemPsaManifestDataset
+        fields = '__all__'
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
-    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer())
+    # validation of the individual datasets is handled in the main serializer
+    datasets = serializers.ListSerializer(child=serializers.JSONField())
 
 
 class NsemPsaSerializer(serializers.ModelSerializer):
@@ -104,12 +104,18 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return obj.get_covered_data_storage_url()
 
     def validate(self, data):
-        # manifest must exist on update
-        if self.instance and 'manifest' not in data:
-            raise serializers.ValidationError({'manifest': ['Manifest is required']})
+        nsem = self.instance  # type: NsemPsa
+        if nsem:
+            # manifest must exist
+            if 'manifest' not in data:
+                raise serializers.ValidationError({'manifest': ['Manifest is required']})
+            # no previous manifest datasets should exist
+            elif nsem.nsempsamanifestdataset_set.exists():
+                raise serializers.ValidationError({'manifest': ['Datasets already exist']})
         return super().validate(data)
 
     def validate_manifest(self, manifest: dict):
+
         serializer = NsemPsaManifestSerializer(data=manifest)
 
         if not serializer.is_valid():
@@ -119,28 +125,22 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
         dataset_errors = {}
 
-        # verify each dataset has the proper fields
-        for dataset in serializer.validated_data['datasets']:
-            dataset_errors[dataset['path']] = []
+        # verify each dataset
+        for i, dataset in enumerate(serializer.validated_data['datasets']):
 
-            if len(dataset['variables']) == 0:
-                dataset_errors[dataset['path']].append("Missing variables")
+            # attach this nsem id to the dataset
+            dataset['nsem'] = self.instance.id
 
-            if len(dataset['dates']) == 0:
-                dataset_errors[dataset['path']].append("Missing dates")
-            else:
-                # validate individual dates
-                for date in dataset['dates']:
-                    parsed = parse_datetime(date)
-                    if not parsed:
-                        dataset_errors[dataset['path']].append("Dates must be in iso-8601 format")
-                        break  # no need to duplicate this error
-                    elif parsed.tzinfo is not pytz.UTC:
-                        dataset_errors[dataset['path']].append("Dates must be timezone aware")
-                        break  # no need to duplicate this error
-        if any(e for e in dataset_errors.values() if e):
+            # create the individual dataset serializer and validate
+            dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
+
+            if not dataset_serializer.is_valid():
+                dataset_errors[i] = dataset_serializer.errors
+
+        if dataset_errors:
             raise serializers.ValidationError({'datasets': dataset_errors})
-        return serializer.validated_data
+
+        return manifest
 
     def validate_path(self, value):
         """
@@ -175,6 +175,13 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
     def get_model_output_upload_path(self, obj: NsemPsa) -> str:
         return self._get_model_output_upload_path(obj)
+
+    def update(self, instance, validated_data):
+        for dataset in validated_data['manifest']['datasets']:
+            dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
+            dataset_serializer.is_valid(raise_exception=True)
+            dataset_serializer.save()
+        return super().update(instance, validated_data)
 
     @staticmethod
     def _get_model_output_upload_path(obj: NsemPsa) -> str:

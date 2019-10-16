@@ -391,7 +391,7 @@ def email_psa_validated_task(nsem_psa_id):
 def validate_nsem_psa_task(nsem_id):
     """
     Validates the PSA model product output from file storage with the following:
-    - CF Conventions - http://cfconventions.org/
+    - cf conventions - http://cfconventions.org/
     - expected coordinates
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
