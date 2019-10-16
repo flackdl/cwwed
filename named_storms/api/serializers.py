@@ -1,5 +1,7 @@
 import os
 import logging
+from datetime import datetime
+import pytz
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import serializers
@@ -72,9 +74,15 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsa
         fields = '__all__'
+        read_only_fields = [
+            'date_created', 'date_returned', 'covered_data_snapshot_created',
+            'covered_data_snapshot_path', 'covered_data_logs', 'extracted',
+            'date_validation', 'validated', 'validation_exceptions',
+            'validated_files', 'processed', 'date_processed',
+        ]
 
     manifest = serializers.JSONField()
-    dates = serializers.ListField(child=serializers.DateTimeField())
+    dates = serializers.ListField(child=serializers.DateTimeField(), read_only=True)
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()
@@ -109,9 +117,21 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             # manifest must exist
             if 'manifest' not in data:
                 raise serializers.ValidationError({'manifest': ['Manifest is required']})
+            # path must exist
+            if 'path' not in data:
+                raise serializers.ValidationError({'path': ['Path is required']})
             # no previous manifest datasets should exist
-            elif nsem.nsempsamanifestdataset_set.exists():
-                raise serializers.ValidationError({'manifest': ['Datasets already exist']})
+            if nsem.nsempsamanifestdataset_set.exists():
+                raise serializers.ValidationError({'manifest': ['Cannot update because datasets have already been created for this PSA']})
+            # shouldn't have already been returned
+            if nsem.date_returned:
+                raise serializers.ValidationError({'date_returned': ['Cannot update because the psa was already returned']})
+            # shouldn't have an existing path
+            if nsem.path:
+                raise serializers.ValidationError({'path': ['Cannot update because the psa path has already been set']})
+            # shouldn't have already been extracted
+            if nsem.extracted:
+                raise serializers.ValidationError({'extracted': ['Cannot update because the psa has already been extracted']})
         return super().validate(data)
 
     def validate_manifest(self, manifest: dict):
@@ -144,16 +164,11 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
     def validate_path(self, value):
         """
-        Check that it hasn't already been extracted
         Check that the path is in the expected format (ie. "NSEM/upload/68.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
         obj = self.instance  # type: NsemPsa
         if obj:
-
-            # already extracted
-            if obj.extracted:
-                raise serializers.ValidationError('Cannot be updated since the model output has already been extracted')
 
             s3_path = self._get_model_output_upload_path(obj)
 
@@ -176,11 +191,12 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_model_output_upload_path(self, obj: NsemPsa) -> str:
         return self._get_model_output_upload_path(obj)
 
-    def update(self, instance, validated_data):
+    def update(self, instance: NsemPsa, validated_data):
         for dataset in validated_data['manifest']['datasets']:
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
             dataset_serializer.is_valid(raise_exception=True)
             dataset_serializer.save()
+        instance.date_returned = pytz.utc.localize(datetime.utcnow())
         return super().update(instance, validated_data)
 
     @staticmethod

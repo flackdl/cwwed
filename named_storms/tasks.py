@@ -290,10 +290,9 @@ def extract_nsem_psa_task(nsem_id):
     # remove the tgz now that we've extracted everything
     os.remove(file_system_path)
 
-    # update output path to the copied path, flag success and set the date returned
+    # update output path to the copied path and flag success
     nsem.path = storage_path
     nsem.extracted = True
-    nsem.date_returned = pytz.utc.localize(datetime.utcnow())
     nsem.save()
 
     # delete the original/uploaded copy
