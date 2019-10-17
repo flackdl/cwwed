@@ -26,13 +26,14 @@ from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.serializers import NsemPsaSerializer
+from named_storms.api.serializers import NsemPsaSerializer, NamedStormCoveredDataSnapshotSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, NsemPsaVariable
+from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, \
+    NsemPsaVariable, NamedStormCoveredDataSnapshot
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs)
+    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_path)
 
 logger = get_task_logger(__name__)
 
@@ -130,17 +131,16 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 
 
 @app.task(**TASK_ARGS)
-def archive_nsem_covered_data_task(nsem_id):
+def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
     """
-    - Copies all covered data archives to a versioned NSEM PSA location in object storage so users can download them directly
-    :param nsem_id: id of NsemPsa record
+    - Creates a snapshot of a storm's covered data and archives in object storage
     """
 
     # retrieve all the successful covered data by querying the logs
     # exclude any logs where the snapshot archive hasn't been created yet
     # sort by date descending and retrieve unique results
-    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
+    covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=int(named_storm_covered_data_snapshot_id))
+    logs = covered_data_snapshot.covered_data_logs.filter(success=True).exclude(snapshot='').order_by('-date')
     if not logs.exists():
         return None
     logs_to_archive = []
@@ -150,9 +150,9 @@ def archive_nsem_covered_data_task(nsem_id):
 
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
-        nsem.named_storm.name,
-        str(nsem.id),
-        settings.CWWED_COVERED_DATA_DIR_NAME,
+        covered_data_snapshot.named_storm.name,
+        settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME,
+        str(covered_data_snapshot.id),
     )
 
     for log in logs_to_archive:
@@ -161,29 +161,29 @@ def archive_nsem_covered_data_task(nsem_id):
         # copy snapshot to versioned nsem location in default storage
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
-    nsem.covered_data_logs.set(logs_to_archive)  # many to many field
-    nsem.covered_data_snapshot_created = True
-    nsem.covered_data_snapshot_path = storage_path
-    nsem.save()
+    covered_data_snapshot.path = storage_path
+    covered_data_snapshot.date_completed = pytz.utc.localize(datetime.utcnow())
 
-    return NsemPsaSerializer(instance=nsem).data
+    return covered_data_snapshot.id
 
 
 @app.task(**TASK_ARGS)
-def extract_nsem_covered_data_task(nsem_data: dict):
+def extract_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
     """
-    Downloads and extracts nsem covered data into file storage
-    :param nsem_data: dictionary of NsemPsa record
+    Downloads and extracts a named storm covered data snapshot into file storage
     """
-    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
+    named_storm_covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=named_storm_covered_data_snapshot_id)
+
     file_system_path = os.path.join(
-        named_storm_nsem_version_path(nsem),
-        settings.CWWED_COVERED_DATA_DIR_NAME,
+        named_storm_path(named_storm_covered_data_snapshot.named_storm),
+        settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME,
+        str(named_storm_covered_data_snapshot.id),
     )
+
     # download all the archives
     storage = S3ObjectStoragePrivate()
     storage.download_directory(
-        storage.path(nsem.covered_data_snapshot_path), file_system_path)
+        storage.path(named_storm_covered_data_snapshot.path), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -194,7 +194,8 @@ def extract_nsem_covered_data_task(nsem_data: dict):
             tar.close()
             # remove the original archive now that it's extracted
             os.remove(file_path)
-    return NsemPsaSerializer(instance=nsem).data
+
+    return named_storm_covered_data_snapshot.id
 
 
 class ExtractNSEMTaskBase(app.Task):
@@ -302,31 +303,26 @@ def extract_nsem_psa_task(nsem_id):
 
 
 @app.task(**TASK_ARGS)
-def email_psa_covered_data_complete_task(nsem_data: dict):
+def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot_id: int):
     """
-    Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
-    :param nsem_data serialized NsemPsa instance
+    Email the "nsem" user indicating the Covered Data for a particular storm is complete and ready for download.
     """
-    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_data['id'])
+    named_storm_covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=named_storm_covered_data_snapshot_id)
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
-    nsem_psa_api_url = "{}://{}:{}{}".format(
-        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
     body = """
-        Covered Data is ready to download.
-        API: {}
+        Covered Data is ready to download for {}.
         
         COVERED DATA URL: {}
         """.format(
-        nsem_psa_api_url,
-        nsem_psa.get_covered_data_storage_url(),
+        named_storm_covered_data_snapshot.named_storm,
+        named_storm_covered_data_snapshot.get_covered_data_storage_url(),
     )
 
     html_body = render_to_string(
-        'email_psa_covered_data_complete.html',
+        'email_nsem_user_covered_data_complete.html',
         context={
-            "nsem_psa": nsem_psa,
-            "nsem_psa_api_url": nsem_psa_api_url,
+            "named_storm_covered_data_snapshot": named_storm_covered_data_snapshot,
         })
 
     # include the "nsem" user and all super users
@@ -335,13 +331,14 @@ def email_psa_covered_data_complete_task(nsem_data: dict):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='Covered Data is ready for download (PSA {})'.format(nsem_psa.id),
+        subject='Covered Data is ready to download for {}'.format(named_storm_covered_data_snapshot.named_storm),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,
         html_message=html_body,
     )
-    return nsem_data
+
+    return named_storm_covered_data_snapshot.id
 
 
 @app.task(**TASK_ARGS)
@@ -461,6 +458,9 @@ def validate_nsem_psa_task(nsem_id):
     if not valid_files:
         exceptions['global'] = ['no valid files found']
 
+    # TODO - XXX must not reset anything since we don't have to re-snapshot the CD
+    #        XXX just have them create a new PSA
+
     # error
     if exceptions['global'] or exceptions['files']:
         nsem_psa.validation_exceptions = exceptions
@@ -472,7 +472,6 @@ def validate_nsem_psa_task(nsem_id):
         # reset the psa instance so more attempts can be made
         nsem_psa.path = ''
         nsem_psa.extracted = False
-        nsem_psa.date_returned = None
 
     # success
     else:

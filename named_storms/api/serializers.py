@@ -8,7 +8,7 @@ from rest_framework import serializers
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
-    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset)
+    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
 
 logger = logging.getLogger('cwwed')
@@ -55,6 +55,13 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         depth = 1
 
 
+class NamedStormCoveredDataSnapshotSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = NamedStormCoveredDataSnapshot
+        fields = '__all__'
+
+
 class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsaManifestDataset
@@ -75,13 +82,12 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         model = NsemPsa
         fields = '__all__'
         read_only_fields = [
-            'date_created', 'date_returned', 'covered_data_snapshot_created',
-            'covered_data_snapshot_path', 'covered_data_logs', 'extracted',
-            'date_validation', 'validated', 'validation_exceptions',
-            'validated_files', 'processed', 'date_processed',
+            'date_created', 'extracted', 'date_validation',
+            'validated', 'validation_exceptions', 'validated_files',
+            'processed', 'date_processed',
         ]
 
-    manifest = serializers.JSONField()
+    manifest = serializers.JSONField(default=dict)
     dates = serializers.ListField(child=serializers.DateTimeField(), read_only=True)
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -97,9 +103,9 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.covered_data_snapshot_path:
+        if not obj.covered_data_snapshot:
             return None
-        return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_logs.all())
+        return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_snapshot.covered_data_logs.all())
 
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
@@ -109,9 +115,11 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return get_opendap_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
-        return obj.get_covered_data_storage_url()
+        return obj.covered_data_snapshot.get_covered_data_storage_url() if obj.covered_data_snapshot else ''
 
     def validate(self, data):
+        # TODO - XXX
+        # only validate on update
         nsem = self.instance  # type: NsemPsa
         if nsem:
             # manifest must exist
@@ -123,9 +131,9 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             # no previous manifest datasets should exist
             if nsem.nsempsamanifestdataset_set.exists():
                 raise serializers.ValidationError({'manifest': ['Cannot update because datasets have already been created for this PSA']})
-            # shouldn't have already been returned
-            if nsem.date_returned:
-                raise serializers.ValidationError({'date_returned': ['Cannot update because the psa was already returned']})
+            # shouldn't have already been created
+            if nsem.date_created:
+                raise serializers.ValidationError({'date_created': ['Cannot update because the psa was already created']})
             # shouldn't have an existing path
             if nsem.path:
                 raise serializers.ValidationError({'path': ['Cannot update because the psa path has already been set']})
@@ -135,7 +143,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return super().validate(data)
 
     def validate_manifest(self, manifest: dict):
-
         serializer = NsemPsaManifestSerializer(data=manifest)
 
         if not serializer.is_valid():
@@ -198,9 +205,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
             dataset_serializer.is_valid(raise_exception=True)
             dataset_serializer.save()
-
-        # manually set the date returned
-        instance.date_returned = pytz.utc.localize(datetime.utcnow())
 
         return super().update(instance, validated_data)
 

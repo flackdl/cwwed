@@ -13,7 +13,11 @@ import requests
 API_ROOT_PROD = 'https://dev.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
 
-API_ROOT = API_ROOT_LOCAL if os.environ.get('DEPLOY_STAGE') == 'local' else API_ROOT_PROD
+if os.environ.get('DEPLOY_STAGE') == 'local':
+    API_ROOT = API_ROOT_LOCAL
+    print('>> In Development')
+else:
+    API_ROOT = API_ROOT_PROD
 
 ENDPOINT_NSEM = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'

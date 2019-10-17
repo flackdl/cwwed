@@ -135,18 +135,31 @@ class NamedStormCoveredDataLog(models.Model):
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
 
 
+class NamedStormCoveredDataSnapshot(models.Model):
+    named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
+    date_requested = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)  # manually set once snapshot is complete
+    path = models.CharField(max_length=500, blank=True)  # path (prefix) in object storage
+    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
+
+    def get_covered_data_storage_url(self):
+        from cwwed.storage_backends import S3ObjectStoragePrivate  # import locally to prevent circular references
+        storage = S3ObjectStoragePrivate()
+        if self.date_completed and self.path:
+            return storage.storage_url(self.path)
+        return None
+
+
 class NsemPsa(models.Model):
     """
     Named Storm Event Model
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
-    date_returned = models.DateTimeField(null=True, blank=True)  # manually set once the psa is returned
-    covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
-    covered_data_snapshot_created = models.BooleanField(default=False)  # whether the covered data snapshot has been created and ready for download
-    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
-    manifest = fields.JSONField(default=dict, blank=True)  # defines the uploaded psa dataset files and variables
-    path = models.TextField(blank=True)  # path to the psa
+    # TODO - shouldn't be NULL
+    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, null=True, on_delete=models.SET_NULL)
+    manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
+    path = models.TextField()  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
@@ -158,13 +171,6 @@ class NsemPsa(models.Model):
 
     def __str__(self):
         return '{} ({})'.format(self.named_storm, self.id)
-
-    def get_covered_data_storage_url(self):
-        from cwwed.storage_backends import S3ObjectStoragePrivate  # import locally to prevent circular references
-        storage = S3ObjectStoragePrivate()
-        if self.covered_data_snapshot_path:
-            return storage.storage_url(self.covered_data_snapshot_path)
-        return None
 
     @classmethod
     def get_last_valid_psa(cls, storm_id: int):

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import User, Permission
 from django.core.management import BaseCommand
-from named_storms.models import NsemPsa
+from named_storms.models import NsemPsa, NamedStormCoveredDataSnapshot
 
 
 class Command(BaseCommand):
@@ -23,8 +23,8 @@ class Command(BaseCommand):
         else:
             user = User.objects.create_user(settings.CWWED_NSEM_USER, password=settings.CWWED_NSEM_PASSWORD)
         perm_names = [
-            'change_{}'.format(NsemPsa._meta.model_name),  # change model
-            'add_{}'.format(NsemPsa._meta.model_name),  # add model
+            'add_{}'.format(NsemPsa._meta.model_name),
+            'add_{}'.format(NamedStormCoveredDataSnapshot._meta.model_name),
         ]
         perms = Permission.objects.filter(codename__in=perm_names)
         user.user_permissions.set([p for p in perms])  # iterate because it won't accept a Queryset

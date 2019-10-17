@@ -21,13 +21,13 @@ from rest_framework.viewsets import GenericViewSet
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
-    archive_nsem_covered_data_task, extract_nsem_psa_task, email_psa_covered_data_complete_task,
-    extract_nsem_covered_data_task, create_psa_user_export_task,
+    create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
+    extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
     email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task)
-from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
+from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport, NamedStormCoveredDataSnapshot
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-)
+    NamedStormCoveredDataSnapshotSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -53,7 +53,27 @@ class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CoveredDataSerializer
 
 
-class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.UpdateModelMixin, mixins.ListModelMixin, GenericViewSet):
+class NamedStormCoveredDataSnapshotViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
+    """
+    Named Storm Covered Data Snapshot ViewSet
+    """
+    queryset = NamedStormCoveredDataSnapshot.objects.all()
+    serializer_class = NamedStormCoveredDataSnapshotSerializer
+    permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
+
+    def perform_create(self, serializer):
+        # save the instance first so we can create a task to archive the covered data snapshot
+        obj = serializer.save()  # type: NamedStormCoveredDataSnapshot
+
+        chain(
+            # create a covered data snapshot in object storage for the nsem users to be able to download directly
+            create_named_storm_covered_data_snapshot_task.si(obj.id),
+            # send an email to the "nsem" user when the covered data snapshot archival is complete
+            email_nsem_user_covered_data_complete_task.si(obj.id),
+        )()
+
+
+class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
     """
     Named Storm Event Model ViewSet
     """
@@ -66,26 +86,13 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
         qs = self.queryset.filter(extracted=True, validated=True, processed=True)
-        qs = qs.order_by('named_storm', '-date_returned')
+        qs = qs.order_by('named_storm', '-date_created')
         qs = qs.distinct('named_storm')
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
-        # save the instance first so we can create a task to archive the covered data snapshot
-        obj = serializer.save()
-
-        chain(
-            # create a covered data snapshot in object storage for the nsem users to download directly
-            archive_nsem_covered_data_task.si(obj.id),
-            # send an email to the "nsem" user when the archival is complete
-            email_psa_covered_data_complete_task.s(),
-            # download and extract archives into file storage so they're available for discovery (i.e opendap)
-            extract_nsem_covered_data_task.s(),
-        )()
-
-    def perform_update(self, serializer):
         # save the instance first so we can create a task to extract and validate the model output
-        nsem_psa = serializer.save()
+        nsem_psa = serializer.save() # type: NsemPsa
 
         chain(
             # extract the psa
@@ -94,6 +101,8 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             validate_nsem_psa_task.si(nsem_psa.id),
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
+            # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
+            extract_named_storm_covered_data_snapshot_task.s(nsem_psa.covered_data_snapshot.id),
         )()
 
 
