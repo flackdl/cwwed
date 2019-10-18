@@ -1,15 +1,14 @@
 import os
 import logging
-from datetime import datetime
-import pytz
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
     NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
-from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
+from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data_snapshot, get_opendap_url_nsem_psa
 
 logger = logging.getLogger('cwwed')
 
@@ -61,11 +60,19 @@ class NamedStormCoveredDataSnapshotSerializer(serializers.ModelSerializer):
         model = NamedStormCoveredDataSnapshot
         fields = '__all__'
 
+    def validate(self, data):
+        named_storm = data['named_storm']  # type: NamedStorm
+        # verify there's covered data logs to create a snapshot from
+        if not named_storm.namedstormcovereddatalog_set.filter(success=True).exists():
+            raise serializers.ValidationError({api_settings.NON_FIELD_ERRORS_KEY: ['There are no covered data for this storm']})
+        return super().validate(data)
+
 
 class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsaManifestDataset
-        fields = '__all__'
+        #fields = '__all__'
+        exclude = ['nsem']
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
@@ -105,7 +112,11 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             return None
         if not obj.covered_data_snapshot:
             return None
-        return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_snapshot.covered_data_logs.all())
+        # TODO - XXX update to "Covered Data Snapshots/id" in opendap
+        return dict(
+            (cdl.covered_data.id, get_opendap_url_nsem_covered_data_snapshot(self.context['request'], obj, cdl.covered_data))
+            for cdl in obj.covered_data_snapshot.covered_data_logs.all()
+        )
 
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
@@ -115,9 +126,10 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return get_opendap_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
-        return obj.covered_data_snapshot.get_covered_data_storage_url() if obj.covered_data_snapshot else ''
+        return obj.covered_data_snapshot.get_covered_data_storage_url()
 
     def validate(self, data):
+
         # TODO - XXX
         # only validate on update
         nsem = self.instance  # type: NsemPsa
@@ -152,11 +164,13 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
         dataset_errors = {}
 
+        # TODO - "instance" won't exist on `create`
+
         # verify each dataset
         for i, dataset in enumerate(serializer.validated_data['datasets']):
 
             # attach this nsem id to the dataset
-            dataset['nsem'] = self.instance.id
+            #dataset['nsem'] = self.instance.id
 
             # create the individual dataset serializer and validate
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
@@ -169,34 +183,45 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
         return manifest
 
-    def validate_path(self, value):
+    def validate_path(self, s3_path):
         """
-        Check that the path is in the expected format (ie. "NSEM/upload/68.tgz") and exists in storage
+        Check that the path is in the expected format (ie. "NSEM/upload/*.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
-        obj = self.instance  # type: NsemPsa
-        if obj:
 
-            s3_path = self._get_model_output_upload_path(obj)
+        logger.info('====================')
+        logger.info(s3_path)
+        logger.info('====================')
 
-            # verify the path is in the expected format
-            if s3_path != value:
-                raise serializers.ValidationError("'path' should equal '{}'".format(s3_path))
+        # verify the uploaded psa is in the correct path
+        if not s3_path.startswith(self.get_model_output_upload_path()):
+            raise serializers.ValidationError("should be in '{}'".format(self.get_model_output_upload_path()))
 
-            # remove any prefixed "location" from the object storage instance
-            location_prefix = '{}/'.format(storage.location)
-            if s3_path.startswith(location_prefix):
-                s3_path = s3_path.replace(location_prefix, '')
+        # verify the path is in the expected format
+        if not s3_path.endswith(settings.CWWED_ARCHIVE_EXTENSION):
+            raise serializers.ValidationError("should be of the extension '.{}'".format(settings.CWWED_ARCHIVE_EXTENSION))
 
-            # verify the path exists
-            if not storage.exists(s3_path):
-                raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
+        # remove any prefixed "location" from the object storage instance
+        location_prefix = '{}/'.format(storage.location)
+        if s3_path.startswith(location_prefix):
+            s3_path = s3_path.replace(location_prefix, '')
 
-            return s3_path
-        return value
+        logger.info('====================')
+        logger.info(s3_path)
+        logger.info('====================')
 
-    def get_model_output_upload_path(self, obj: NsemPsa) -> str:
-        return self._get_model_output_upload_path(obj)
+        # verify the path exists
+        if not storage.exists(s3_path):
+            raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
+
+        return s3_path
+
+    def model_output_upload_path(self) -> str:
+        storage = S3ObjectStoragePrivate()
+        return storage.path(os.path.join(
+            settings.CWWED_NSEM_DIR_NAME,
+            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
+        ))
 
     def update(self, instance: NsemPsa, validated_data):
 
@@ -207,15 +232,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             dataset_serializer.save()
 
         return super().update(instance, validated_data)
-
-    @staticmethod
-    def _get_model_output_upload_path(obj: NsemPsa) -> str:
-        storage = S3ObjectStoragePrivate()
-        return storage.path(os.path.join(
-            settings.CWWED_NSEM_DIR_NAME,
-            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-            '{}.{}'.format(obj.id, settings.CWWED_ARCHIVE_EXTENSION)),
-        )
 
 
 class NsemPsaVariableSerializer(serializers.ModelSerializer):

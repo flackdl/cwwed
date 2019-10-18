@@ -26,15 +26,16 @@ from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.serializers import NsemPsaSerializer, NamedStormCoveredDataSnapshotSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, \
-    NsemPsaVariable, NamedStormCoveredDataSnapshot
+from named_storms.models import (
+    NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
+    NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
 from named_storms.utils import (
     processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
     create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_path)
 
+# celery logger
 logger = get_task_logger(__name__)
 
 
@@ -136,11 +137,11 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     - Creates a snapshot of a storm's covered data and archives in object storage
     """
 
-    # retrieve all the successful covered data by querying the logs
-    # exclude any logs where the snapshot archive hasn't been created yet
+    # retrieve all the successful covered data by querying the logs and exclude when the snapshot archive hasn't been created yet
     # sort by date descending and retrieve unique results
     covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=int(named_storm_covered_data_snapshot_id))
-    logs = covered_data_snapshot.covered_data_logs.filter(success=True).exclude(snapshot='').order_by('-date')
+    logs = covered_data_snapshot.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
+
     if not logs.exists():
         return None
     logs_to_archive = []
@@ -158,11 +159,12 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     for log in logs_to_archive:
         src_path = log.snapshot
         dest_path = os.path.join(storage_path, os.path.basename(src_path))
-        # copy snapshot to versioned nsem location in default storage
+        # copy snapshot to the storm's snapshot directory in default storage
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
     covered_data_snapshot.path = storage_path
     covered_data_snapshot.date_completed = pytz.utc.localize(datetime.utcnow())
+    covered_data_snapshot.save()
 
     return covered_data_snapshot.id
 

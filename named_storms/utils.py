@@ -201,7 +201,7 @@ def get_opendap_url_nsem_covered_data_root(request: HttpRequest, nsem: NsemPsa) 
     )
 
 
-def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NsemPsa, covered_data: CoveredData) -> str:
+def get_opendap_url_nsem_covered_data_snapshot(request: HttpRequest, nsem: NsemPsa, covered_data: CoveredData) -> str:
     return os.path.join(
         get_opendap_url_nsem_covered_data_root(request, nsem),
         parse.quote(covered_data.name),

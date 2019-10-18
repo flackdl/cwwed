@@ -2,7 +2,7 @@ from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NsemPsa,
     NamedStormCoveredDataLog, NsemPsaData,
-    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset)
+    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
 
 
 class CoveredDataInline(admin.TabularInline):
@@ -102,6 +102,15 @@ class NsemPsaManifestDatasetAdmin(admin.GeoModelAdmin):
 
     def named_storm(self, obj):
         return obj.nsem.named_storm
+
+
+@admin.register(NamedStormCoveredDataSnapshot)
+class NsemPsaManifestDatasetAdmin(admin.GeoModelAdmin):
+    list_display = ('id', 'named_storm', 'date_requested', 'date_completed', 'path')
+    list_filter = ('named_storm__name',)
+
+    def named_storm(self, obj):
+        return obj.named_storm
 
 
 @admin.register(NamedStormCoveredDataLog)

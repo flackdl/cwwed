@@ -90,9 +90,20 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
         qs = qs.distinct('named_storm')
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
+    def create(self, request, *args, **kwargs):
+        named_storm_id = request.data['named_storm']
+
+        # assign the most recent covered data snapshot for this storm to the request data
+        qs = NamedStormCoveredDataSnapshot.objects.filter(named_storm__id=named_storm_id, date_completed__isnull=False)
+        qs = qs.order_by('-date_completed')
+        covered_data_snapshot = qs.first()
+        request.data['covered_data_snapshot'] = covered_data_snapshot.id if covered_data_snapshot else None
+
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         # save the instance first so we can create a task to extract and validate the model output
-        nsem_psa = serializer.save() # type: NsemPsa
+        nsem_psa = serializer.save()  # type: NsemPsa
 
         chain(
             # extract the psa

@@ -140,7 +140,7 @@ class NamedStormCoveredDataSnapshot(models.Model):
     date_requested = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)  # manually set once snapshot is complete
     path = models.CharField(max_length=500, blank=True)  # path (prefix) in object storage
-    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
+    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of covered data logs gets populated after creation
 
     def get_covered_data_storage_url(self):
         from cwwed.storage_backends import S3ObjectStoragePrivate  # import locally to prevent circular references
@@ -156,8 +156,7 @@ class NsemPsa(models.Model):
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
-    # TODO - shouldn't be NULL
-    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, null=True, on_delete=models.SET_NULL)
+    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.CASCADE)
     manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
     path = models.TextField()  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
@@ -180,7 +179,7 @@ class NsemPsa(models.Model):
             validated=True,
             processed=True
         )
-        qs = qs.order_by('-date_returned')
+        qs = qs.order_by('-date_created')
         return qs.first()
 
 
