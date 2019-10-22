@@ -189,13 +189,9 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         """
         storage = S3ObjectStoragePrivate()
 
-        logger.info('====================')
-        logger.info(s3_path)
-        logger.info('====================')
-
         # verify the uploaded psa is in the correct path
-        if not s3_path.startswith(self.get_model_output_upload_path()):
-            raise serializers.ValidationError("should be in '{}'".format(self.get_model_output_upload_path()))
+        if not s3_path.startswith(self._model_output_upload_path()):
+            raise serializers.ValidationError("should be in '{}'".format(self._model_output_upload_path()))
 
         # verify the path is in the expected format
         if not s3_path.endswith(settings.CWWED_ARCHIVE_EXTENSION):
@@ -206,17 +202,17 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         if s3_path.startswith(location_prefix):
             s3_path = s3_path.replace(location_prefix, '')
 
-        logger.info('====================')
-        logger.info(s3_path)
-        logger.info('====================')
-
         # verify the path exists
         if not storage.exists(s3_path):
             raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
 
         return s3_path
 
-    def model_output_upload_path(self) -> str:
+    def get_model_output_upload_path(self, obj):
+        return self._model_output_upload_path()
+
+    @staticmethod
+    def _model_output_upload_path() -> str:
         storage = S3ObjectStoragePrivate()
         return storage.path(os.path.join(
             settings.CWWED_NSEM_DIR_NAME,

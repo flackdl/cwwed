@@ -91,9 +91,9 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
     def create(self, request, *args, **kwargs):
-        named_storm_id = request.data['named_storm']
 
         # assign the most recent covered data snapshot for this storm to the request data
+        named_storm_id = request.data.get('named_storm')
         qs = NamedStormCoveredDataSnapshot.objects.filter(named_storm__id=named_storm_id, date_completed__isnull=False)
         qs = qs.order_by('-date_completed')
         covered_data_snapshot = qs.first()
@@ -113,7 +113,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
             # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
-            extract_named_storm_covered_data_snapshot_task.s(nsem_psa.covered_data_snapshot.id),
+            extract_named_storm_covered_data_snapshot_task.si(nsem_psa.covered_data_snapshot.id),
         )()
 
 

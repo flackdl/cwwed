@@ -156,7 +156,7 @@ class NsemPsa(models.Model):
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
-    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.CASCADE)
+    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.PROTECT)
     manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
     path = models.TextField()  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage

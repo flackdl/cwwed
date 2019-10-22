@@ -164,6 +164,7 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
 
     covered_data_snapshot.path = storage_path
     covered_data_snapshot.date_completed = pytz.utc.localize(datetime.utcnow())
+    covered_data_snapshot.covered_data_logs.set(logs_to_archive)
     covered_data_snapshot.save()
 
     return covered_data_snapshot.id
