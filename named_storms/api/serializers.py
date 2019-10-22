@@ -68,18 +68,6 @@ class NamedStormCoveredDataSnapshotSerializer(serializers.ModelSerializer):
         return super().validate(data)
 
 
-class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = NsemPsaManifestDataset
-        #fields = '__all__'
-        exclude = ['nsem']
-
-
-class NsemPsaManifestSerializer(serializers.Serializer):
-    # validation of the individual datasets is handled in the main serializer
-    datasets = serializers.ListSerializer(child=serializers.JSONField())
-
-
 class NsemPsaSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
@@ -128,32 +116,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def get_covered_data_storage_url(self, obj: NsemPsa):
         return obj.covered_data_snapshot.get_covered_data_storage_url()
 
-    def validate(self, data):
-
-        # TODO - XXX
-        # only validate on update
-        nsem = self.instance  # type: NsemPsa
-        if nsem:
-            # manifest must exist
-            if 'manifest' not in data:
-                raise serializers.ValidationError({'manifest': ['Manifest is required']})
-            # path must exist
-            if 'path' not in data:
-                raise serializers.ValidationError({'path': ['Path is required']})
-            # no previous manifest datasets should exist
-            if nsem.nsempsamanifestdataset_set.exists():
-                raise serializers.ValidationError({'manifest': ['Cannot update because datasets have already been created for this PSA']})
-            # shouldn't have already been created
-            if nsem.date_created:
-                raise serializers.ValidationError({'date_created': ['Cannot update because the psa was already created']})
-            # shouldn't have an existing path
-            if nsem.path:
-                raise serializers.ValidationError({'path': ['Cannot update because the psa path has already been set']})
-            # shouldn't have already been extracted
-            if nsem.extracted:
-                raise serializers.ValidationError({'extracted': ['Cannot update because the psa has already been extracted']})
-        return super().validate(data)
-
     def validate_manifest(self, manifest: dict):
         serializer = NsemPsaManifestSerializer(data=manifest)
 
@@ -164,13 +126,8 @@ class NsemPsaSerializer(serializers.ModelSerializer):
 
         dataset_errors = {}
 
-        # TODO - "instance" won't exist on `create`
-
         # verify each dataset
         for i, dataset in enumerate(serializer.validated_data['datasets']):
-
-            # attach this nsem id to the dataset
-            #dataset['nsem'] = self.instance.id
 
             # create the individual dataset serializer and validate
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
@@ -219,15 +176,26 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             settings.CWWED_NSEM_UPLOAD_DIR_NAME,
         ))
 
-    def update(self, instance: NsemPsa, validated_data):
+    def create(self, validated_data):
+        nsem_psa = super().create(validated_data)  # type: NsemPsa
 
-        # save the individual psa manifest datasets
+        # manually save the individual psa manifest datasets
         for dataset in validated_data['manifest']['datasets']:
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
             dataset_serializer.is_valid(raise_exception=True)
-            dataset_serializer.save()
+            nsem_psa.nsempsamanifestdataset_set.create(**dataset_serializer.validated_data)
+        return nsem_psa
 
-        return super().update(instance, validated_data)
+
+class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NsemPsaManifestDataset
+        exclude = ['nsem']
+
+
+class NsemPsaManifestSerializer(serializers.Serializer):
+    # validation of the individual datasets is handled in the main serializer
+    datasets = serializers.ListSerializer(child=serializers.JSONField())
 
 
 class NsemPsaVariableSerializer(serializers.ModelSerializer):

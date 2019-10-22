@@ -269,21 +269,11 @@ Upload model output for a specific NSEM record:
     CHECKSUM=$(openssl md5 -binary "${FILE}" | base64)
     aws s3api put-object --bucket cwwed-archives --key "${UPLOAD_PATH}" --body "${FILE}" --metadata md5chksum=${CHECKSUM} --content-md5 ${CHECKSUM} --profile nsem
     
-Update the "nsem" record to indicate the post-storm assessment has been uploaded.
+Create the PSA record to begin the extraction, validation and ingest.
 
-    # update the nsem version with the aws s3 path (expects to be named by the version, i.e "76.tgz")
-    curl -s -XPATCH -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"path": "NSEM/upload/76.tgz"}' "http://127.0.0.1:8000/api/nsem/76/"
-    
-    {
-      "id": 76,
-      "covered_data_storage_url": "s3://cwwed-archives/NSEM/Harvey/76/Covered Data",
-      "date_created": "2018-05-09T18:48:47.685854Z",
-      "path": "NSEM/upload/58.tgz",
-      "extracted": false,
-      "named_storm": 1
-    }
-    
-The `extracted` field will initially be `false` until a background job has processed the upload.
+**TODO**
+
+    curl -s -H "content-type: application/json" -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -d '{"named_storm": 1, "path": "local/NSEM/upload/psa.tgz", "manifest": {"datasets": [{"path": "wind.nc", "dates": ["2012-10-29T12:00:00"], "variables": ["wspd10m"]}]}}' http://127.0.0.1:8000/api/nsem-psa/ | python -mjson.tool
 
 ## NSEM AWS policies
 

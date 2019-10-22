@@ -64,9 +64,8 @@ class NamedStormCoveredDataAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsa)
 class NSEMAdmin(admin.GeoModelAdmin):
-    # TODO - XXX include covered data snapshot path
-    list_display = ('id', 'named_storm', 'date_created', 'path',)
-    list_filter = ('named_storm__name', 'date_created',)
+    list_display = ('id', 'named_storm', 'date_created', 'path', 'extracted', 'validated', 'processed')
+    list_filter = ('named_storm__name', 'date_created', 'extracted', 'validated', 'processed',)
     readonly_fields = ('date_created',)
     inlines = (NsemPsaVariableInline,)
 
