@@ -30,9 +30,6 @@ class ApiPermissionTestCase(TestCase):
         # get the first coastal act project
         self.coastal_act_project = CoastalActProject.objects.all().first()  # type: CoastalActProject
 
-        # create a psa record
-        self.named_storm.nsempsa_set.create()
-
         # get the request client
         self.client = Client()
 
