@@ -87,13 +87,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()
-    opendap_url_psa = serializers.SerializerMethodField()
     opendap_url_covered_data = serializers.SerializerMethodField()
-
-    def get_opendap_url_psa(self, obj: NsemPsa):
-        if 'request' not in self.context:
-            return None
-        return get_opendap_url_nsem_psa(self.context['request'], obj)
 
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:

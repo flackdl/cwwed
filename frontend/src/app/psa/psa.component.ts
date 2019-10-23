@@ -139,7 +139,7 @@ export class PsaComponent implements OnInit {
     const psa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
       return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
     });
-    return psa ? psa.opendap_url_psa : '';
+    return psa ? psa.opendap_url : '';
   }
 
   public timeSeriesVariables() {

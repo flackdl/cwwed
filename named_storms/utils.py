@@ -144,16 +144,6 @@ def named_storm_nsem_version_path(nsem: NsemPsa) -> str:
         str(nsem.id))
 
 
-def named_storm_nsem_psa_version_path(nsem: NsemPsa) -> str:
-    """
-    Returns a path to a storm's NsemPsa product's version
-    """
-    return os.path.join(
-        named_storm_nsem_version_path(nsem),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
-    )
-
-
 def copy_path_to_default_storage(source_path: str, destination_path: str):
     """
     Copies source to destination using object storage and returns the path
@@ -210,7 +200,6 @@ def get_opendap_url_nsem(request: HttpRequest, nsem: NsemPsa) -> str:
 def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_nsem_root(request, nsem),
-        parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
         'catalog.html',
     )
 

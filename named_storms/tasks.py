@@ -31,9 +31,9 @@ from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
 from named_storms.utils import (
-    processor_class, copy_path_to_default_storage, named_storm_nsem_version_path,
-    get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_path,
+    processor_class, copy_path_to_default_storage, get_superuser_emails,
+    named_storm_nsem_version_path, root_data_path, create_directory,
+    get_geojson_feature_collection_from_psa_qs, named_storm_path,
     named_storm_covered_data_current_path)
 
 # celery logger
@@ -264,7 +264,6 @@ def extract_nsem_psa_task(nsem_id):
         settings.CWWED_NSEM_DIR_NAME,
         nsem.named_storm.name,
         str(nsem.id),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
         os.path.basename(uploaded_file_path),
     )
 
@@ -273,7 +272,6 @@ def extract_nsem_psa_task(nsem_id):
 
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
         os.path.basename(uploaded_file_path),
     )
 
@@ -415,7 +413,7 @@ def validate_nsem_psa_task(nsem_id):
     nsem_psa.validated_files = []
     nsem_psa.date_validation = None
 
-    psa_path = named_storm_nsem_psa_version_path(nsem_psa)
+    psa_path = named_storm_nsem_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
         if file_name.endswith('.nc'):
             file_path = os.path.join(psa_path, file_name)
@@ -495,7 +493,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
-    psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
+    psa_path = named_storm_nsem_version_path(nsem_psa_user_export.nsem)
     tmp_user_export_path = os.path.join(
         root_data_path(),
         settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
