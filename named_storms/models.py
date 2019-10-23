@@ -190,6 +190,9 @@ class NsemPsaManifestDataset(models.Model):
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
     dates = fields.ArrayField(base_field=models.DateTimeField())  # type: list
 
+    def __str__(self):
+        return '{}: {}'.format(self.nsem, self.path)
+
 
 class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'

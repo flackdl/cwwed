@@ -800,3 +800,24 @@ def cache_psa_geojson_task(storm_id: int):
             r = requests.get(url, data)
             logger.info('Cached {} with status {}'.format(r.url, r.status_code))
             logger.info(r.status_code)
+
+
+@app.task(**TASK_ARGS)
+def ingest_nsem_psa(nsem_psa_id):
+    """
+    Ingests an NSEM PSA into the CWWED database
+    """
+
+    # TODO
+
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+
+    # only extract if the psa was validated
+    if not nsem_psa.validated:
+        logger.warning('{} was not validated so skipping ingestion'.format(nsem_psa))
+        return None
+
+    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        logger.info('==============')
+        logger.info(dataset)
+        logger.info('==============')
