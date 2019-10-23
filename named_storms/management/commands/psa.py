@@ -63,7 +63,7 @@ LANDFALL_POLY = Polygon([  # mid atlantic coast
     [-78.50830078125, 33.76088200086917],
 ])
 
-WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/anil/'
+WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/'
 
 ARG_VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
 ARG_VARIABLE_WATER_LEVEL = 'water_level'
@@ -141,7 +141,7 @@ class Command(BaseCommand):
 
             for dataset_file in wind_dataset_paths:
                 # must be like "wrfout_d01_2012-10-29_14_00.nc", i.e on the hour since we're doing hourly right now, and using "domain 1"
-                if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
+                if re.match(r'sandy-wind_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
                     # open dataset and define landfall mask
                     self.dataset_structured = xarray.open_dataset(os.path.join(WIND_PATH, dataset_file))
 

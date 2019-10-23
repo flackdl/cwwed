@@ -173,22 +173,27 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
 
 
 @app.task(**TASK_ARGS)
-def extract_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
+def extract_named_storm_covered_data_snapshot_task(nsem_psa_id):
     """
     Downloads and extracts a named storm covered data snapshot into file storage
     """
-    named_storm_covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=named_storm_covered_data_snapshot_id)
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+
+    # only extract if the psa was validated
+    if not nsem_psa.validated:
+        logger.warning('{} was not validated so skipping covered data extraction'.format(nsem_psa))
+        return None
 
     file_system_path = os.path.join(
-        named_storm_path(named_storm_covered_data_snapshot.named_storm),
+        named_storm_path(nsem_psa.named_storm),
         settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME,
-        str(named_storm_covered_data_snapshot.id),
+        str(nsem_psa.covered_data_snapshot.id),
     )
 
     # download all the archives
     storage = S3ObjectStoragePrivate()
     storage.download_directory(
-        storage.path(named_storm_covered_data_snapshot.path), file_system_path)
+        storage.path(nsem_psa.covered_data_snapshot.path), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -200,7 +205,7 @@ def extract_named_storm_covered_data_snapshot_task(named_storm_covered_data_snap
             # remove the original archive now that it's extracted
             os.remove(file_path)
 
-    return named_storm_covered_data_snapshot.id
+    return nsem_psa.covered_data_snapshot.id
 
 
 class ExtractNSEMTaskBase(app.Task):
