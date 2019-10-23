@@ -8,7 +8,9 @@ from django.core.management.base import BaseCommand
 from named_storms.data.factory import ProcessorCoreFactory
 from named_storms.models import NamedStorm, NamedStormCoveredDataLog, NamedStormCoveredData
 from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
-from named_storms.utils import named_storm_covered_data_incomplete_path, named_storm_covered_data_path, create_directory, processor_factory_class, slack_channel
+from named_storms.utils import (
+    named_storm_covered_data_incomplete_path, create_directory, processor_factory_class,
+    slack_channel, named_storm_covered_data_current_path_root)
 
 logger = logging.getLogger('cwwed')
 
@@ -35,7 +37,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('Named Storm: %s' % storm))
 
             # create output directories
-            complete_path = named_storm_covered_data_path(storm)
+            complete_path = named_storm_covered_data_current_path_root(storm)
             incomplete_path = named_storm_covered_data_incomplete_path(storm)
             create_directory(complete_path)
             create_directory(incomplete_path, remove_if_exists=True)

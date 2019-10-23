@@ -112,9 +112,9 @@ class NamedStormCoveredData(models.Model):
         :return: Last successful covered data log for a particular storm
         :rtype named_storm.models.NamedStormCoveredDataLog
         """
-        # query last successful log by ordering by storm/data/date using "distinct" on storm/data
+        # query last successful log by ordering by storm/data/date_completed using "distinct" on storm/data
         log = named_storm.namedstormcovereddatalog_set.filter(success=True, covered_data=covered_data)
-        log = log.order_by('named_storm', 'covered_data', '-date').distinct('named_storm', 'covered_data')
+        log = log.order_by('named_storm', 'covered_data', '-date_completed').distinct('named_storm', 'covered_data')
         if log.exists():
             return log.get()
         return None
@@ -124,14 +124,15 @@ class NamedStormCoveredDataLog(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
     provider = models.ForeignKey(CoveredDataProvider, on_delete=models.CASCADE)
-    date = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)  # manually set once data has been archived in object storage
     success = models.BooleanField(default=False)  # whether the covered data collection was a success
     snapshot = models.TextField(blank=True)  # the path to the covered data snapshot
     exception = models.TextField(blank=True)  # any error message during a failed collection
 
     def __str__(self):
         if self.success:
-            return '{}: {}'.format(self.date.isoformat(), self.snapshot)
+            return '{}: {}'.format(self.date_created.isoformat(), self.snapshot)
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
 
 

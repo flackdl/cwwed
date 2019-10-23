@@ -8,7 +8,7 @@ from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
     NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
-from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data_snapshot, get_opendap_url_nsem_psa
+from named_storms.utils import get_opendap_url_nsem, get_opendap_url_covered_data_snapshot, get_opendap_url_nsem_psa
 
 logger = logging.getLogger('cwwed')
 
@@ -100,9 +100,8 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             return None
         if not obj.covered_data_snapshot:
             return None
-        # TODO - XXX update to "Covered Data Snapshots/id" in opendap
         return dict(
-            (cdl.covered_data.id, get_opendap_url_nsem_covered_data_snapshot(self.context['request'], obj, cdl.covered_data))
+            (cdl.covered_data.id, get_opendap_url_covered_data_snapshot(self.context['request'], obj.covered_data_snapshot, cdl.covered_data))
             for cdl in obj.covered_data_snapshot.covered_data_logs.all()
         )
 
@@ -179,7 +178,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         nsem_psa = super().create(validated_data)  # type: NsemPsa
 
-        # manually save the individual psa manifest datasets
+        # manually validate and save the individual psa manifest datasets
         for dataset in validated_data['manifest']['datasets']:
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
             dataset_serializer.is_valid(raise_exception=True)

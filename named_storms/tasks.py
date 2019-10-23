@@ -31,9 +31,10 @@ from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
 from named_storms.utils import (
-    processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
+    processor_class, copy_path_to_default_storage, named_storm_nsem_version_path,
     get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_path)
+    create_directory, get_geojson_feature_collection_from_psa_qs, named_storm_path,
+    named_storm_covered_data_current_path)
 
 # celery logger
 logger = get_task_logger(__name__)
@@ -101,7 +102,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
     covered_data = get_object_or_404(CoveredData, pk=covered_data_id)
     log = get_object_or_404(NamedStormCoveredDataLog, pk=log_id)
 
-    archive_path = named_storm_covered_data_archive_path(named_storm, covered_data)
+    archive_path = named_storm_covered_data_current_path(named_storm, covered_data)
     tar_path = '{}.{}'.format(
         os.path.join(os.path.dirname(archive_path), os.path.basename(archive_path)),  # guarantees no trailing slash
         settings.CWWED_ARCHIVE_EXTENSION,
@@ -126,6 +127,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 
     # update the log with the saved snapshot
     log.snapshot = snapshot_path
+    log.date_completed = pytz.utc.localize(datetime.utcnow())
     log.save()
 
     return log.snapshot
@@ -137,10 +139,10 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     - Creates a snapshot of a storm's covered data and archives in object storage
     """
 
-    # retrieve all the successful covered data by querying the logs and exclude when the snapshot archive hasn't been created yet
+    # retrieve all the successful covered data by querying the logs
     # sort by date descending and retrieve unique results
     covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=int(named_storm_covered_data_snapshot_id))
-    logs = covered_data_snapshot.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
+    logs = covered_data_snapshot.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(date_completed__isnull=True).order_by('-date_completed')
 
     if not logs.exists():
         return None
