@@ -245,35 +245,29 @@ User:admin
     
 ## NSEM process
 
-Submit a new NSEM request using the user's generated token:
+Create a new Covered Data Snapshot:
 
-    curl -sH "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -H "Content-Type: application/json" -d '{"named_storm": "1"}' http://127.0.0.1:8000/api/nsem-psa/
+    curl -s -H "content-type: application/json" -H "Authorization: Token 98ebf42f4c1bd0907d06084e37e0fef9b5ba2d3c" http://127.0.0.1:8000/api/named-storm-covered-data-snapshot/
+   
+This creates the snapshot in the background and emails the 'nsem' user once complete.  Retrieve the id.
     
-The `covered_data_storage_url` in the response will initially be empty, but a background process will have been initiated and eventually populate the AWS S3 bucket which you'll download the covered data from.
+Download the covered data snapshot (say, id=1):
 
-Wait a few minutes and re-query the "nsem" record to see if `covered_data_storage_url` has been populated.
-
-    curl -sH "Content-Type: application/json" http://127.0.0.1:8000/api/nsem-psa/76/
-
-Download the covered data snapshot for an NSEM record:
-
-    aws s3 cp --recursive "s3://cwwed-archives/NSEM/Harvey/76/Covered Data" /YOUR/OUTPUT/PATH --profile nsem
+    aws s3 cp --recursive "s3://cwwed-archives/NSEM/Harvey/Covered Data Snapshots/1/" /YOUR/OUTPUT/PATH --profile nsem
     
-Upload model output for a specific NSEM record:
+Upload PSA to S3 object storage:
 
-*NOTE: The input format must be tar+gzipped and named the correct version, i.e "76.tgz".*
+*NOTE:* The input format must be tar+gzipped and named the correct version, i.e "psa.tgz".
     
     # upload using checksum
-    FILE="output.tgz"
-    UPLOAD_PATH="NSEM/upload/76.tgz"
+    FILE="psa.tgz"
+    UPLOAD_PATH="NSEM/upload/psa.tgz"
     CHECKSUM=$(openssl md5 -binary "${FILE}" | base64)
     aws s3api put-object --bucket cwwed-archives --key "${UPLOAD_PATH}" --body "${FILE}" --metadata md5chksum=${CHECKSUM} --content-md5 ${CHECKSUM} --profile nsem
-    
-Create the PSA record to begin the extraction, validation and ingest.
 
-**TODO**
+Create a new PSA record to begin the extraction, validation and ingest:
 
-    curl -s -H "content-type: application/json" -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -d '{"named_storm": 1, "path": "local/NSEM/upload/psa.tgz", "manifest": {"datasets": [{"path": "wind.nc", "dates": ["2012-10-29T12:00:00"], "variables": ["wspd10m"]}]}}' http://127.0.0.1:8000/api/nsem-psa/ | python -mjson.tool
+    curl -s -H "content-type: application/json" -H "Authorization: Token aca89a70c8fa67144109b368b2b9994241bdbf2c" -d@samples/psa-create.json http://127.0.0.1:8000/api/nsem-psa/ | python -mjson.tool
 
 ## NSEM AWS policies
 

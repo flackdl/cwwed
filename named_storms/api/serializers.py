@@ -83,7 +83,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         ]
 
     manifest = serializers.JSONField(default=dict)
-    dates = serializers.ListField(child=serializers.DateTimeField(), read_only=True)
+    dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()

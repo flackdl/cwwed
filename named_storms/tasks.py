@@ -413,11 +413,6 @@ def validate_nsem_psa_task(nsem_id):
 
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
-    # clear any previous validations
-    nsem_psa.validation_exceptions = {}
-    nsem_psa.validated_files = []
-    nsem_psa.date_validation = None
-
     psa_path = named_storm_nsem_version_path(nsem_psa)
     for file_name in os.listdir(psa_path):
         if file_name.endswith('.nc'):
@@ -431,7 +426,7 @@ def validate_nsem_psa_task(nsem_id):
             else:
 
                 # cf conventions
-                cf_check = cfchecks.CFChecker()
+                cf_check = cfchecks.CFChecker(silent=True)
                 cf_check.checker(file_path)
                 file_exceptions += cf_check.results['global']['FATAL']
                 file_exceptions += cf_check.results['global']['ERROR']
@@ -466,21 +461,9 @@ def validate_nsem_psa_task(nsem_id):
     if not valid_files:
         exceptions['global'] = ['no valid files found']
 
-    # TODO - XXX must not reset anything since we don't have to re-snapshot the CD
-    #        XXX just have them create a new PSA
-
     # error
     if exceptions['global'] or exceptions['files']:
         nsem_psa.validation_exceptions = exceptions
-
-        # delete the psa from object storage
-        storage = S3ObjectStoragePrivate()
-        storage.delete(nsem_psa.path)
-
-        # reset the psa instance so more attempts can be made
-        nsem_psa.path = ''
-        nsem_psa.extracted = False
-
     # success
     else:
         nsem_psa.validated = True
