@@ -27,4 +27,4 @@ class Command(BaseCommand):
             'add_{}'.format(NamedStormCoveredDataSnapshot._meta.model_name),
         ]
         perms = Permission.objects.filter(codename__in=perm_names)
-        user.user_permissions.set([p for p in perms])  # iterate because it won't accept a Queryset
+        user.user_permissions.set(list(perms))

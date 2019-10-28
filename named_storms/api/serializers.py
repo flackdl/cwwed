@@ -78,7 +78,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = [
             'date_created', 'extracted', 'date_validation',
-            'validated', 'validation_exceptions', 'validated_files',
+            'validated', 'validation_exceptions',
             'processed', 'date_processed',
         ]
 

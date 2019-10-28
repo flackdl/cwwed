@@ -164,7 +164,6 @@ class NsemPsa(models.Model):
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
     validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
-    validated_files = fields.ArrayField(base_field=models.CharField(max_length=200), default=list, blank=True)  # type: list
     processed = models.BooleanField(default=False)  # whether the psa was fully ingested/processed
     date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the psa is processed
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list

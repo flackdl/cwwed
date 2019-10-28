@@ -3,11 +3,11 @@
   "dates": [
     "2012-10-29T12:00:00"
   ],
-  "path": "local/NSEM/upload/psa.tgz",
+  "path": "local/NSEM/upload/psa-valid.tgz",
   "manifest": {
     "datasets": [
       {
-        "path": "wind.nc",
+        "path": "valid-wind.nc",
         "dates": [
           "2012-10-29T12:00:00"
         ],

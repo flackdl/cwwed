@@ -401,6 +401,11 @@ def validate_nsem_psa_task(nsem_id):
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
     - netcdf only
     - NaNs
+
+    TODO - validate the following:
+        water & wind dataset exists
+        time-series: all files should have the same temporal frequency
+        structured
     """
 
     valid_files = []
@@ -413,50 +418,44 @@ def validate_nsem_psa_task(nsem_id):
 
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
-    psa_path = named_storm_nsem_version_path(nsem_psa)
-    for file_name in os.listdir(psa_path):
-        if file_name.endswith('.nc'):
-            file_path = os.path.join(psa_path, file_name)
-            file_exceptions = []
-            variable_exceptions = {}
-            try:
-                ds = xr.open_dataset(file_path)
-            except (ValueError, OSError) as e:
-                file_exceptions.append(str(e))
-            else:
+    psa_base_path = named_storm_nsem_version_path(nsem_psa)
+    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        file_path = os.path.join(psa_base_path, dataset.path)
+        file_exceptions = []
+        variable_exceptions = {}
+        try:
+            ds = xr.open_dataset(file_path)
+        except (ValueError, OSError) as e:
+            file_exceptions.append(str(e))
+        else:
 
-                # cf conventions
-                cf_check = cfchecks.CFChecker(silent=True)
-                cf_check.checker(file_path)
-                file_exceptions += cf_check.results['global']['FATAL']
-                file_exceptions += cf_check.results['global']['ERROR']
-                for variable, result in cf_check.results['variables'].items():
-                    if result['FATAL'] or result['ERROR']:
-                        variable_exceptions[variable] = result['FATAL'] + result['ERROR']
+            # cf conventions
+            cf_check = cfchecks.CFChecker(silent=True)
+            cf_check.checker(file_path)
+            file_exceptions += cf_check.results['global']['FATAL']
+            file_exceptions += cf_check.results['global']['ERROR']
+            for variable, result in cf_check.results['variables'].items():
+                if result['FATAL'] or result['ERROR']:
+                    variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
-                # coordinates
-                if not required_coords.issubset(list(ds.coords)):
-                    file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+            # coordinates
+            if not required_coords.issubset(list(ds.coords)):
+                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
-                # TODO - validate the following:
-                # water & wind dataset exists
-                # time-series: all files should have the same temporal frequency
-                # structured
+            # nans
+            # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
+            if required_wind_variables.issubset(list(ds.variables)):
+                for variable in required_wind_variables:
+                    if ds[variable].isnull().any():
+                        if variable not in variable_exceptions:
+                            variable_exceptions[variable] = []
+                        variable_exceptions[variable].append('has null values')
 
-                # nans
-                # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
-                if required_wind_variables.issubset(list(ds.variables)):
-                    for variable in required_wind_variables:
-                        if ds[variable].isnull().any():
-                            if variable not in variable_exceptions:
-                                variable_exceptions[variable] = []
-                            variable_exceptions[variable].append('has null values')
-
-            if file_exceptions or variable_exceptions:
-                e = {'file': file_exceptions, 'variables': variable_exceptions}
-                exceptions['files'][file_name] = e
-            else:
-                valid_files.append(file_name)
+        if file_exceptions or variable_exceptions:
+            e = {'file': file_exceptions, 'variables': variable_exceptions}
+            exceptions['files'][dataset.path] = e
+        else:
+            valid_files.append(dataset.path)
 
     if not valid_files:
         exceptions['global'] = ['no valid files found']
@@ -467,7 +466,6 @@ def validate_nsem_psa_task(nsem_id):
     # success
     else:
         nsem_psa.validated = True
-        nsem_psa.validated_files = valid_files
     nsem_psa.date_validation = datetime.utcnow().replace(tzinfo=pytz.utc)
     nsem_psa.save()
 
