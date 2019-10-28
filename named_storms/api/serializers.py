@@ -185,6 +185,12 @@ class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
         model = NsemPsaManifestDataset
         exclude = ['nsem']
 
+    def validate_variables(self, variables: list):
+        # validate the "variables" are a subset of NsemPsaVariable.VARIABLE_DATASETS
+        if not set(variables).issubset(NsemPsaVariable.VARIABLE_DATASETS):
+            raise serializers.ValidationError('variables must be in {}'.format(NsemPsaVariable.VARIABLE_DATASETS))
+        return variables
+
 
 class NsemPsaManifestSerializer(serializers.Serializer):
     # validation of the individual datasets is handled in the main serializer
