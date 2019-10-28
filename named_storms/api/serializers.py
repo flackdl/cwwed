@@ -195,10 +195,14 @@ class NsemPsaVariableSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model PSA Variable Serializer
     """
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = NsemPsaVariable
         fields = '__all__'
+
+    def get_display_name(self, nsem_psa_variable: NsemPsaVariable):
+        return nsem_psa_variable.display_name()
 
 
 class NsemPsaUserExportSerializer(serializers.ModelSerializer):

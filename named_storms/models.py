@@ -194,15 +194,48 @@ class NsemPsaManifestDataset(models.Model):
 
 
 class NsemPsaVariable(models.Model):
+    VARIABLE_WATER_LEVEL = 'Water Level'
+    VARIABLE_WAVE_HEIGHT = 'Wave Height'
+    VARIABLE_WIND_SPEED = 'Wind Speed'
+    VARIABLE_WIND_DIRECTION = 'Wind Direction'
+
+    VARIABLE_DATASET_WATER_LEVEL = 'water_level'
+    VARIABLE_DATASET_WAVE_HEIGHT = 'wave_height'
+    VARIABLE_DATASET_WIND_SPEED = 'wind_speed'
+    VARIABLE_DATASET_WIND_DIRECTION = 'wind_direction'
+    VARIABLE_DATASET_WIND_SPEED_MAX = 'wind_speed_max'
+    VARIABLE_DATASET_WATER_LEVEL_MAX = 'water_level_max'
+
     DATA_TYPE_TIME_SERIES = 'time-series'
     DATA_TYPE_MAX_VALUES = 'max-values'
+
     GEO_TYPE_POLYGON = 'polygon'
     GEO_TYPE_WIND_BARB = 'wind-barb'
+
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
     UNITS_DEGREES = 'degrees'
+
     ELEMENT_WATER = 'water'
     ELEMENT_WIND = 'wind'
+
+    VARIABLE_DATASETS = (
+        VARIABLE_DATASET_WATER_LEVEL,
+        VARIABLE_DATASET_WAVE_HEIGHT,
+        VARIABLE_DATASET_WIND_SPEED,
+        VARIABLE_DATASET_WIND_DIRECTION,
+        VARIABLE_DATASET_WATER_LEVEL_MAX,
+        VARIABLE_DATASET_WIND_SPEED_MAX,
+    )
+
+    VARIABLE_CHOICES = {
+        VARIABLE_DATASET_WATER_LEVEL: VARIABLE_WATER_LEVEL,
+        VARIABLE_DATASET_WATER_LEVEL_MAX: VARIABLE_WATER_LEVEL,
+        VARIABLE_DATASET_WAVE_HEIGHT: VARIABLE_WAVE_HEIGHT,
+        VARIABLE_DATASET_WIND_SPEED: VARIABLE_WIND_SPEED,
+        VARIABLE_DATASET_WIND_SPEED_MAX: VARIABLE_WIND_SPEED,
+        VARIABLE_DATASET_WIND_DIRECTION: VARIABLE_WIND_DIRECTION,
+    }
 
     ELEMENT_CHOICES = (
         (ELEMENT_WATER, ELEMENT_WATER),
@@ -226,7 +259,7 @@ class NsemPsaVariable(models.Model):
     )
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50)  # i.e "water_level"
+    name = models.CharField(max_length=50, choices=tuple(VARIABLE_CHOICES.items()))  # i.e "water_level"
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
     element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
@@ -237,6 +270,9 @@ class NsemPsaVariable(models.Model):
     class Meta:
         unique_together = ('nsem', 'name')
         ordering = ['name']
+
+    def display_name(self):
+        return self.VARIABLE_CHOICES[self.name]
 
     def __str__(self):
         return self.name

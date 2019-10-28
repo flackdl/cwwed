@@ -442,6 +442,10 @@ def validate_nsem_psa_task(nsem_id):
             if not required_coords.issubset(list(ds.coords)):
                 file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
+            # verify that the variables in the manifest dataset exist in the actual dataset
+            if not set(dataset.variables).issubset(list(ds.variables)):
+                file_exceptions.append('Manifest dataset variables were not found in actual dataset')
+
             # nans
             # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
             if required_wind_variables.issubset(list(ds.variables)):

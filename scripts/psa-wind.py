@@ -4,7 +4,8 @@ import numpy as np
 import re
 
 
-wind_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/anil'
+path_root = '/media/bucket/cwwed/OPENDAP/PSA_demo'
+wind_path = os.path.join(path_root, 'anil')
 
 ds_max = xr.Dataset()
 
@@ -17,19 +18,19 @@ for dataset_file in sorted(os.listdir(wind_path)):
 
         # create new dataset with just the variables we want
         ds_updated = xr.Dataset({
-            'spduv10max': ds_current['spduv10max'],
-            'wspd10m': ds_current['wspd10m'],
-            'wdir10m': ds_current['wdir10m'],
+            'wind_speed_max': ds_current['spduv10max'],
+            'wind_speed': ds_current['wspd10m'],
+            'wind_direction': ds_current['wdir10m'],
         })
 
         # fix cf conventions
-        ds_updated['spduv10max'].attrs['standard_name'] = 'wind_speed'
+        ds_updated['wind_speed_max'].attrs['standard_name'] = 'wind_speed'
 
         # save updated ds
-        ds_updated.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-wind_{}.nc'.format(match['date']))
+        ds_updated.to_netcdf(os.path.join(path_root, 'sandy-wind_{}.nc'.format(match['date'])))
 
         # current max wind speed data array
-        da = xr.DataArray(ds_updated['spduv10max'].isel(time=0))
+        da = xr.DataArray(ds_updated['wind_speed_max'].isel(time=0))
 
         if 'wind_speed_max' not in ds_max:
             ds_max['wind_speed_max'] = da
@@ -37,4 +38,4 @@ for dataset_file in sorted(os.listdir(wind_path)):
             ds_max['wind_speed_max'] = np.maximum(ds_max['wind_speed_max'], da)
 
 # save as netcdf classic because hyrax chokes on 64bit ints
-ds_max.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-wind-max.nc', format='NETCDF4_CLASSIC')
+ds_max.to_netcdf(os.path.join(path_root, 'sandy-wind-max.nc'), format='NETCDF4_CLASSIC')

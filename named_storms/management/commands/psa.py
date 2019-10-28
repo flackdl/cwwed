@@ -442,7 +442,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            wind_speeds = self.dataset_structured.sel(time=date)['spduv10max'].values
+            wind_speeds = self.dataset_structured.sel(time=date)['wind_speed_max'].values
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
@@ -476,8 +476,8 @@ class Command(BaseCommand):
 
             # masked values and subset so we're not displaying every single point
             subset = 10
-            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wspd10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
-            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wdir10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wind_speed'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wind_direction'][::subset, ::subset], self.mask_structured[::subset, ::subset])
             xi = np.ma.masked_array(self.dataset_structured['lon'][::subset, ::subset], self.mask_structured[::subset, ::subset])
             yi = np.ma.masked_array(self.dataset_structured['lat'][::subset, ::subset], self.mask_structured[::subset, ::subset])
 
