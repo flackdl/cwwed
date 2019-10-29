@@ -227,8 +227,7 @@ def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
             "type": "Feature",
             "properties": {
                 "name": data['nsem_psa_variable__name'],
-                # include display name as well
-                "display_name": NsemPsaVariable.display_name(data['nsem_psa_variable__name']),
+                "display_name": data['nsem_psa_variable__display_name'],
                 "units": data['nsem_psa_variable__units'],
                 "value": data['value'],
                 "meta": data['meta'],

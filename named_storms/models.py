@@ -221,6 +221,15 @@ class NsemPsaVariable(models.Model):
     ELEMENT_WATER = 'water'
     ELEMENT_WIND = 'wind'
 
+    VARIABLES = (
+        VARIABLE_WATER_LEVEL,
+        VARIABLE_WATER_LEVEL_MAX,
+        VARIABLE_WAVE_HEIGHT,
+        VARIABLE_WIND_SPEED,
+        VARIABLE_WIND_SPEED_MAX,
+        VARIABLE_WIND_BARBS,
+    )
+
     VARIABLE_DATASETS = (
         VARIABLE_DATASET_WATER_LEVEL,
         VARIABLE_DATASET_WAVE_HEIGHT,
@@ -262,6 +271,7 @@ class NsemPsaVariable(models.Model):
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50, choices=tuple(VARIABLE_CHOICES.items()))  # i.e "water_level"
+    display_name = models.CharField(max_length=50, choices=zip(VARIABLES, VARIABLES))  # i.e "Water Level" (automatically set in save())
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
     element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
@@ -273,9 +283,10 @@ class NsemPsaVariable(models.Model):
         unique_together = ('nsem', 'name')
         ordering = ['name']
 
-    @classmethod
-    def display_name(cls, name):
-        return cls.VARIABLE_CHOICES[name]
+    def save(self, **kwargs):
+        # automatically define variable display name
+        self.display_name = self.VARIABLE_CHOICES[self.name]
+        return super().save(**kwargs)
 
     def __str__(self):
         return self.name
