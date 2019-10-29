@@ -201,6 +201,14 @@ export class PsaComponent implements OnInit {
     });
   }
 
+  public getPsaVariableNameFormatted(psaVariable) {
+    // remove maximum/max from `max-values` data types
+    if (psaVariable.data_type === 'max-values') {
+      return psaVariable.display_name.replace(/ max(imum)?$/i, '');
+    }
+    return psaVariable.display_name;
+  }
+
   public toggleFullscreen(psaContainer: HTMLElement) {
     if (this.isFullscreen()) {
       document.exitFullscreen();
