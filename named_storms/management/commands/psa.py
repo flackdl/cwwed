@@ -159,19 +159,14 @@ class Command(BaseCommand):
 
             self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc')
 
-            # TODO - need an authoritative dataset to define the date range for a hurricane
-            # save the datetime's on our nsem instance
-            #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
-            #self.nsem.save()
-
             logger.info('creating geo mask')
 
             # create a mask to subset data from the landfall geo's convex hull
             # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
-            self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
+            self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.lon, self.dataset_unstructured.lat))])
 
-            x = self.dataset_unstructured.x[self.mask_unstructured]
-            y = self.dataset_unstructured.y[self.mask_unstructured]
+            x = self.dataset_unstructured.lon[self.mask_unstructured]
+            y = self.dataset_unstructured.lat[self.mask_unstructured]
 
             logger.info('building triangulation')
 
@@ -335,7 +330,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Wave Height',
+            name=NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT,
             color_bar=self.color_bar_values(self.dataset_unstructured['wave_height'].min(), self.dataset_unstructured['wave_height'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
@@ -359,7 +354,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Water Level',
+            name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL,
             color_bar=self.color_bar_values(self.dataset_unstructured['water_level'].min(), self.dataset_unstructured['water_level'].max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
@@ -385,7 +380,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Water Level Maximum',
+            name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
@@ -406,7 +401,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Wind Speed Maximum',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
             geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
@@ -425,7 +420,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_speed, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind Speed',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED,
             defaults=dict(
                 geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
@@ -459,7 +454,7 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind Barbs',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
             defaults=dict(
                 geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
                 data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,

@@ -1,18 +1,42 @@
 {
   "named_storm": 1,
   "dates": [
-    "2012-10-29T12:00:00"
+    "2012-10-29T13:00:00",
+    "2012-10-29T14:00:00"
   ],
-  "path": "local/NSEM/upload/psa-valid.tgz",
+  "path": "local/NSEM/upload/psa.tgz",
   "manifest": {
     "datasets": [
       {
-        "path": "valid-wind.nc",
+        "path": "sandy-wind_2012-10-29_13_00.nc",
         "dates": [
-          "2012-10-29T12:00:00"
+          "2012-10-29T13:00:00"
         ],
         "variables": [
-          "wspd10m"
+          "wind_speed",
+          "wind_direction"
+        ]
+      },
+      {
+        "path": "sandy-wind_2012-10-29_14_00.nc",
+        "dates": [
+          "2012-10-29T14:00:00"
+        ],
+        "variables": [
+          "wind_speed",
+          "wind_direction"
+        ]
+      },
+      {
+        "path": "water.nc",
+        "dates": [
+          "2012-10-29T13:00:00",
+          "2012-10-29T14:00:00"
+        ],
+        "variables": [
+          "wave_height",
+          "water_level",
+          "water_level_max"
         ]
       }
     ]

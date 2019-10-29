@@ -400,17 +400,16 @@ def validate_nsem_psa_task(nsem_id):
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
     - netcdf only
-    - NaNs
+    - no NaNs
 
     TODO - validate the following:
-        water & wind dataset exists
-        time-series: all files should have the same temporal frequency
+        all required variables exist
+        psa dates must be satisfied
         structured
     """
 
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
-    required_wind_variables = {'wspd10m', 'wdir10m'}
     exceptions = {
         'global': [],
         'files': {},
@@ -419,6 +418,7 @@ def validate_nsem_psa_task(nsem_id):
     nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
 
     psa_base_path = named_storm_nsem_version_path(nsem_psa)
+
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         file_path = os.path.join(psa_base_path, dataset.path)
         file_exceptions = []
@@ -442,14 +442,14 @@ def validate_nsem_psa_task(nsem_id):
             if not required_coords.issubset(list(ds.coords)):
                 file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
-            # verify that the variables in the manifest dataset exist in the actual dataset
-            if not set(dataset.variables).issubset(list(ds.variables)):
+            # variables in the manifest dataset must exist in the actual dataset
+            if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
             # nans
-            # TODO - only validating NaNs with wind dataset because the water dataset isn't structured yet and has Nans
-            if required_wind_variables.issubset(list(ds.variables)):
-                for variable in required_wind_variables:
+            # TODO - only validating wind product because water product isn't structured yet and has NaNs
+            if {NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED}.issubset(dataset.variables):
+                for variable in dataset.variables:
                     if ds[variable].isnull().any():
                         if variable not in variable_exceptions:
                             variable_exceptions[variable] = []

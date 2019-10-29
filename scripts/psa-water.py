@@ -29,8 +29,8 @@ ds = xr.Dataset(
     coords={
         # arbitrarily using water level for coord values
         'time': (['time'], dataset_water_level.time[date_mask(dataset_water_level)]),
-        'x': (['node'], dataset_water_level.x),
-        'y': (['node'], dataset_water_level.y),
+        'lon': (['node'], dataset_water_level.x),
+        'lat': (['node'], dataset_water_level.y),
     },
 )
 
