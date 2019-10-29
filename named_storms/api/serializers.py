@@ -208,7 +208,7 @@ class NsemPsaVariableSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def get_display_name(self, nsem_psa_variable: NsemPsaVariable):
-        return nsem_psa_variable.display_name()
+        return NsemPsaVariable.display_name(nsem_psa_variable.name)
 
 
 class NsemPsaUserExportSerializer(serializers.ModelSerializer):

@@ -273,8 +273,9 @@ class NsemPsaVariable(models.Model):
         unique_together = ('nsem', 'name')
         ordering = ['name']
 
-    def display_name(self):
-        return self.VARIABLE_CHOICES[self.name]
+    @classmethod
+    def display_name(cls, name):
+        return cls.VARIABLE_CHOICES[name]
 
     def __str__(self):
         return self.name

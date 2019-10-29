@@ -13,7 +13,7 @@ from cwwed import slack
 from named_storms.models import (
     CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
     PROCESSOR_DATA_SOURCE_FILE_HDF,
-    NamedStormCoveredDataSnapshot)
+    NamedStormCoveredDataSnapshot, NsemPsaVariable)
 
 
 def slack_channel(message: str, channel='#errors'):
@@ -227,6 +227,8 @@ def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
             "type": "Feature",
             "properties": {
                 "name": data['nsem_psa_variable__name'],
+                # include display name as well
+                "display_name": NsemPsaVariable.display_name(data['nsem_psa_variable__name']),
                 "units": data['nsem_psa_variable__units'],
                 "value": data['value'],
                 "meta": data['meta'],

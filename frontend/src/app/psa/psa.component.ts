@@ -664,6 +664,7 @@ export class PsaComponent implements OnInit {
         features.forEach((feature) => {
 
           const variableName = feature.get('name');
+          const variableDisplayName = feature.get('display_name');
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnits = feature.get('units');
           const variableMeta = feature.get('meta') || {};
@@ -681,7 +682,7 @@ export class PsaComponent implements OnInit {
                 currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
               }
             } else {
-              currentFeature[variableName] = `${variableValue} ${variableUnits}`;
+              currentFeature[variableDisplayName] = `${variableValue} ${variableUnits}`;
             }
           }
         });
@@ -724,7 +725,7 @@ export class PsaComponent implements OnInit {
         this._lineChartDataAll = _.map(data, (variableData: any) => {
           const variable = variableData.variable;
           return {
-            label: variable.name,
+            label: variable.display_name,
             data: variableData.values,
             yAxisID: variable.element_type,
             variable: variable,  // include actual variable for later comparison against form variables
