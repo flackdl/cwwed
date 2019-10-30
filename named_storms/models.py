@@ -194,20 +194,6 @@ class NsemPsaManifestDataset(models.Model):
 
 
 class NsemPsaVariable(models.Model):
-    VARIABLE_WATER_LEVEL = 'Water Level'
-    VARIABLE_WATER_LEVEL_MAX = 'Water Level Max'
-    VARIABLE_WAVE_HEIGHT = 'Wave Height'
-    VARIABLE_WIND_SPEED = 'Wind Speed'
-    VARIABLE_WIND_SPEED_MAX = 'Wind Speed Max'
-    VARIABLE_WIND_BARBS = 'Wind Barbs'
-
-    VARIABLE_DATASET_WATER_LEVEL = 'water_level'
-    VARIABLE_DATASET_WAVE_HEIGHT = 'wave_height'
-    VARIABLE_DATASET_WIND_SPEED = 'wind_speed'
-    VARIABLE_DATASET_WIND_DIRECTION = 'wind_direction'
-    VARIABLE_DATASET_WIND_SPEED_MAX = 'wind_speed_max'
-    VARIABLE_DATASET_WATER_LEVEL_MAX = 'water_level_max'
-
     DATA_TYPE_TIME_SERIES = 'time-series'
     DATA_TYPE_MAX_VALUES = 'max-values'
 
@@ -220,33 +206,6 @@ class NsemPsaVariable(models.Model):
 
     ELEMENT_WATER = 'water'
     ELEMENT_WIND = 'wind'
-
-    VARIABLES = (
-        VARIABLE_WATER_LEVEL,
-        VARIABLE_WATER_LEVEL_MAX,
-        VARIABLE_WAVE_HEIGHT,
-        VARIABLE_WIND_SPEED,
-        VARIABLE_WIND_SPEED_MAX,
-        VARIABLE_WIND_BARBS,
-    )
-
-    VARIABLE_DATASETS = (
-        VARIABLE_DATASET_WATER_LEVEL,
-        VARIABLE_DATASET_WAVE_HEIGHT,
-        VARIABLE_DATASET_WIND_SPEED,
-        VARIABLE_DATASET_WIND_DIRECTION,
-        VARIABLE_DATASET_WATER_LEVEL_MAX,
-        VARIABLE_DATASET_WIND_SPEED_MAX,
-    )
-
-    VARIABLE_CHOICES = {
-        VARIABLE_DATASET_WATER_LEVEL: VARIABLE_WATER_LEVEL,
-        VARIABLE_DATASET_WATER_LEVEL_MAX: VARIABLE_WATER_LEVEL_MAX,
-        VARIABLE_DATASET_WAVE_HEIGHT: VARIABLE_WAVE_HEIGHT,
-        VARIABLE_DATASET_WIND_SPEED: VARIABLE_WIND_SPEED,
-        VARIABLE_DATASET_WIND_SPEED_MAX: VARIABLE_WIND_SPEED_MAX,
-        VARIABLE_DATASET_WIND_DIRECTION: VARIABLE_WIND_BARBS,
-    }
 
     ELEMENT_CHOICES = (
         (ELEMENT_WATER, ELEMENT_WATER),
@@ -269,9 +228,68 @@ class NsemPsaVariable(models.Model):
         (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
     )
 
+    VARIABLE_WATER_LEVEL = 'Water Level'
+    VARIABLE_WATER_LEVEL_MAX = 'Water Level Max'
+    VARIABLE_WAVE_HEIGHT = 'Wave Height'
+    VARIABLE_WIND_SPEED = 'Wind Speed'
+    VARIABLE_WIND_SPEED_MAX = 'Wind Speed Max'
+    VARIABLE_WIND_BARBS = 'Wind Barbs'
+
+    VARIABLE_DATASET_WATER_LEVEL = 'water_level'
+    VARIABLE_DATASET_WAVE_HEIGHT = 'wave_height'
+    VARIABLE_DATASET_WIND_SPEED = 'wind_speed'
+    VARIABLE_DATASET_WIND_DIRECTION = 'wind_direction'
+    VARIABLE_DATASET_WIND_SPEED_MAX = 'wind_speed_max'
+    VARIABLE_DATASET_WATER_LEVEL_MAX = 'water_level_max'
+
+    VARIABLE_NAMES = (
+        VARIABLE_WATER_LEVEL,
+        VARIABLE_WATER_LEVEL_MAX,
+        VARIABLE_WAVE_HEIGHT,
+        VARIABLE_WIND_SPEED,
+        VARIABLE_WIND_SPEED_MAX,
+        VARIABLE_WIND_BARBS,
+    )
+
+    VARIABLE_DATASETS = (
+        VARIABLE_DATASET_WATER_LEVEL,
+        VARIABLE_DATASET_WAVE_HEIGHT,
+        VARIABLE_DATASET_WIND_SPEED,
+        VARIABLE_DATASET_WIND_DIRECTION,
+        VARIABLE_DATASET_WATER_LEVEL_MAX,
+        VARIABLE_DATASET_WIND_SPEED_MAX,
+    )
+
+    VARIABLES = {
+        VARIABLE_DATASET_WATER_LEVEL: {
+            'display_name': VARIABLE_WATER_LEVEL,
+            'units': UNITS_METERS,
+        },
+        VARIABLE_DATASET_WATER_LEVEL_MAX: {
+            'display_name': VARIABLE_WATER_LEVEL_MAX,
+            'units': UNITS_METERS,
+        },
+        VARIABLE_DATASET_WAVE_HEIGHT: {
+            'display_name': VARIABLE_WAVE_HEIGHT,
+            'units': UNITS_METERS,
+        },
+        VARIABLE_DATASET_WIND_SPEED: {
+            'display_name': VARIABLE_WIND_SPEED,
+            'units': UNITS_METERS_PER_SECOND,
+        },
+        VARIABLE_DATASET_WIND_SPEED_MAX: {
+            'display_name': VARIABLE_WIND_SPEED_MAX,
+            'units': UNITS_METERS_PER_SECOND,
+        },
+        VARIABLE_DATASET_WIND_DIRECTION: {
+            'display_name': VARIABLE_WIND_BARBS,
+            'units': UNITS_DEGREES,
+        },
+    }
+
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50, choices=tuple(VARIABLE_CHOICES.items()))  # i.e "water_level"
-    display_name = models.CharField(max_length=50, choices=zip(VARIABLES, VARIABLES))  # i.e "Water Level" (automatically set in save())
+    name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
+    display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level" (automatically set in save())
     geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
     data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
     element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
@@ -285,7 +303,7 @@ class NsemPsaVariable(models.Model):
 
     def save(self, **kwargs):
         # automatically define variable display name
-        self.display_name = self.VARIABLE_CHOICES[self.name]
+        self.display_name = self.VARIABLES[self.name]['display_name']
         return super().save(**kwargs)
 
     def __str__(self):

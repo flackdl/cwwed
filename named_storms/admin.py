@@ -72,7 +72,7 @@ class NSEMAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsaVariable)
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'named_storm', 'nsem', 'name', 'data_type', 'auto_displayed')
+    list_display = ('id', 'named_storm', 'nsem', 'name', 'display_name', 'data_type', 'auto_displayed')
     list_filter = ('nsem__named_storm__name',)
     readonly_fields = ('display_name',)
 
