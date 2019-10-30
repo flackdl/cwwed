@@ -74,7 +74,7 @@ class NSEMAdmin(admin.GeoModelAdmin):
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'named_storm', 'nsem', 'name', 'display_name', 'data_type', 'auto_displayed')
     list_filter = ('nsem__named_storm__name',)
-    readonly_fields = ('display_name',)
+    readonly_fields = ('display_name', 'geo_type', 'data_type', 'element_type', 'units')
 
     def named_storm(self, nsem_psa_variable: NsemPsaVariable):
         return nsem_psa_variable.nsem.named_storm

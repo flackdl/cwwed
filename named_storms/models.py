@@ -207,25 +207,25 @@ class NsemPsaVariable(models.Model):
     ELEMENT_WATER = 'water'
     ELEMENT_WIND = 'wind'
 
-    ELEMENT_CHOICES = (
-        (ELEMENT_WATER, ELEMENT_WATER),
-        (ELEMENT_WIND, ELEMENT_WIND),
+    ELEMENTS = (
+        ELEMENT_WATER,
+        ELEMENT_WIND,
     )
 
-    DATA_TYPE_CHOICES = (
-        (DATA_TYPE_TIME_SERIES, DATA_TYPE_TIME_SERIES),
-        (DATA_TYPE_MAX_VALUES, DATA_TYPE_MAX_VALUES),
+    DATA_TYPES = (
+        DATA_TYPE_TIME_SERIES,
+        DATA_TYPE_MAX_VALUES,
     )
 
-    UNITS_CHOICES = (
-        (UNITS_METERS_PER_SECOND, UNITS_METERS_PER_SECOND),
-        (UNITS_METERS, UNITS_METERS),
-        (UNITS_DEGREES, UNITS_DEGREES),
+    UNITS = (
+        UNITS_METERS_PER_SECOND,
+        UNITS_METERS,
+        UNITS_DEGREES,
     )
 
-    GEO_TYPE_CHOICES = (
-        (GEO_TYPE_POLYGON, GEO_TYPE_POLYGON),
-        (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
+    GEO_TYPES = (
+        GEO_TYPE_POLYGON,
+        GEO_TYPE_WIND_BARB,
     )
 
     VARIABLE_WATER_LEVEL = 'Water Level'
@@ -264,46 +264,70 @@ class NsemPsaVariable(models.Model):
         VARIABLE_DATASET_WATER_LEVEL: {
             'display_name': VARIABLE_WATER_LEVEL,
             'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WATER,
         },
         VARIABLE_DATASET_WATER_LEVEL_MAX: {
             'display_name': VARIABLE_WATER_LEVEL_MAX,
             'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_MAX_VALUES,
+            'element_type': ELEMENT_WATER,
         },
         VARIABLE_DATASET_WAVE_HEIGHT: {
             'display_name': VARIABLE_WAVE_HEIGHT,
             'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WATER,
         },
         VARIABLE_DATASET_WIND_SPEED: {
             'display_name': VARIABLE_WIND_SPEED,
             'units': UNITS_METERS_PER_SECOND,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WIND,
         },
         VARIABLE_DATASET_WIND_SPEED_MAX: {
             'display_name': VARIABLE_WIND_SPEED_MAX,
             'units': UNITS_METERS_PER_SECOND,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_MAX_VALUES,
+            'element_type': ELEMENT_WIND,
         },
         VARIABLE_DATASET_WIND_DIRECTION: {
             'display_name': VARIABLE_WIND_BARBS,
             'units': UNITS_DEGREES,
+            'geo_type': GEO_TYPE_WIND_BARB,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WIND,
         },
     }
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
-    display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level" (automatically set in save())
-    geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
-    data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
-    element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
     color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
-    units = models.CharField(choices=UNITS_CHOICES, max_length=20)
     auto_displayed = models.BooleanField(default=False)
+
+    # fields automatically set in save() based on variable
+    display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level"
+    geo_type = models.CharField(choices=zip(GEO_TYPES, GEO_TYPES), max_length=20)  # i.e "polygon"
+    data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
+    element_type = models.CharField(choices=zip(ELEMENTS, ELEMENTS), max_length=20)  # i.e "water"
+    units = models.CharField(choices=zip(UNITS, UNITS), max_length=20)  # i.e "m/s"
 
     class Meta:
         unique_together = ('nsem', 'name')
         ordering = ['name']
 
     def save(self, **kwargs):
-        # automatically define variable display name
+        # automatically define based on variable
         self.display_name = self.VARIABLES[self.name]['display_name']
+        self.geo_type = self.VARIABLES[self.name]['geo_type']
+        self.data_type = self.VARIABLES[self.name]['data_type']
+        self.element_type = self.VARIABLES[self.name]['element_type']
+        self.units = self.VARIABLES[self.name]['units']
         return super().save(**kwargs)
 
     def __str__(self):
