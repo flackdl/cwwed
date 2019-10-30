@@ -3,7 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
-import { debounceTime, mergeMap, tap } from 'rxjs/operators';
+import { debounceTime, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
@@ -54,6 +54,7 @@ export class PsaComponent implements OnInit {
   public namedStorm: any;
   public nsemPsa: any;
   public psaVariables: any[];
+  public psaDatesFormatted: string[];  // ng2-charts has a performance issue with accessing these dynamically
   public form: FormGroup;
   public currentFeature: any;
   public currentConfidence: Number;
@@ -95,6 +96,10 @@ export class PsaComponent implements OnInit {
 
     this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
       return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+    });
+
+    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
+      return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
     });
 
     // create initial form group
@@ -797,13 +802,6 @@ export class PsaComponent implements OnInit {
     });
 
     this.lineChartData = lineChartData;
-  }
-
-  public getPsaDatesFormatted() {
-    // dates are in UTC
-    return this.nsemPsa.dates.map((date) => {
-      return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
-    });
   }
 
   protected _configureMapExtentInteraction() {
