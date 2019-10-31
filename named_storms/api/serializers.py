@@ -82,7 +82,7 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             'processed', 'date_processed',
         ]
 
-    manifest = serializers.JSONField(default=dict)
+    manifest = serializers.JSONField(default=dict)  # manually validating since nested writes aren't supported in drf
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -110,27 +110,10 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         return obj.covered_data_snapshot.get_covered_data_storage_url()
 
     def validate_manifest(self, manifest: dict):
+        # manually validating manifest since nested writes aren't supported in drf
         serializer = NsemPsaManifestSerializer(data=manifest)
-
         if not serializer.is_valid():
             raise serializers.ValidationError(serializer.errors)
-        elif len(serializer.validated_data['datasets']) == 0:
-            raise serializers.ValidationError({'datasets': ['Missing datasets']})
-
-        dataset_errors = {}
-
-        # verify each dataset
-        for i, dataset in enumerate(serializer.validated_data['datasets']):
-
-            # create the individual dataset serializer and validate
-            dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
-
-            if not dataset_serializer.is_valid():
-                dataset_errors[i] = dataset_serializer.errors
-
-        if dataset_errors:
-            raise serializers.ValidationError({'datasets': dataset_errors})
-
         return manifest
 
     def validate_path(self, s3_path):
@@ -172,9 +155,10 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         nsem_psa = super().create(validated_data)  # type: NsemPsa
 
-        # manually validate and save the individual psa manifest datasets
+        # manually save the individual psa manifest datasets since nested writes aren't supported in drf
         for dataset in validated_data['manifest']['datasets']:
             dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
+            # this will have already been validated but it's necessary to populate `validate_data`
             dataset_serializer.is_valid(raise_exception=True)
             nsem_psa.nsempsamanifestdataset_set.create(**dataset_serializer.validated_data)
         return nsem_psa
@@ -193,8 +177,7 @@ class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
 
 
 class NsemPsaManifestSerializer(serializers.Serializer):
-    # validation of the individual datasets is handled in the main serializer
-    datasets = serializers.ListSerializer(child=serializers.JSONField())
+    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer(), allow_empty=False)
 
 
 class NsemPsaVariableSerializer(serializers.ModelSerializer):
