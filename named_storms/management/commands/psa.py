@@ -332,10 +332,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT,
             color_bar=self.color_bar_values(self.dataset_unstructured['wave_height'].min(), self.dataset_unstructured['wave_height'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'units'),
         )
         nsem_psa_variable.save()
 
@@ -356,10 +356,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL,
             color_bar=self.color_bar_values(self.dataset_unstructured['water_level'].min(), self.dataset_unstructured['water_level'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'units'),
         )
         nsem_psa_variable.save()
 
@@ -382,10 +382,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'units'),
             auto_displayed=True,
         )
         nsem_psa_variable.save()
@@ -403,10 +403,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
-            element_type=NsemPsaVariable.ELEMENT_WIND,
-            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'units'),
             auto_displayed=True,
         )
         nsem_psa_variable.save()

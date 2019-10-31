@@ -309,8 +309,6 @@ class NsemPsaVariable(models.Model):
     name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
     color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
     auto_displayed = models.BooleanField(default=False)
-
-    # fields automatically set in save() based on variable
     display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level"
     geo_type = models.CharField(choices=zip(GEO_TYPES, GEO_TYPES), max_length=20)  # i.e "polygon"
     data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
@@ -322,13 +320,25 @@ class NsemPsaVariable(models.Model):
         ordering = ['name']
 
     def save(self, **kwargs):
-        # automatically define based on variable
-        self.display_name = self.VARIABLES[self.name]['display_name']
-        self.geo_type = self.VARIABLES[self.name]['geo_type']
-        self.data_type = self.VARIABLES[self.name]['data_type']
-        self.element_type = self.VARIABLES[self.name]['element_type']
-        self.units = self.VARIABLES[self.name]['units']
+        # automatically define display name
+        self.display_name = self.get_attribute('display_name')
+
+        # validate variable attributes
+        assert self.geo_type == self.get_attribute('geo_type'), 'improper attribute value'
+        assert self.data_type == self.get_attribute('data_type'), 'improper attribute value'
+        assert self.element_type == self.get_attribute('element_type'), 'improper attribute value'
+        assert self.units == self.get_attribute('units'), 'improper attribute value'
+
         return super().save(**kwargs)
+
+    def get_attribute(self, attribute: str):
+        return NsemPsaVariable.get_variable_attribute(self.name, attribute)
+
+    @classmethod
+    def get_variable_attribute(cls, variable, attribute: str):
+        assert variable in cls.VARIABLES, 'unknown variable "{}"'.format(variable)
+        assert attribute in cls.VARIABLES[variable], 'unknown attribute "{}"'.format(attribute)
+        return cls.VARIABLES[variable][attribute]
 
     def __str__(self):
         return self.name
