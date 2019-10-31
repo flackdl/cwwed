@@ -8,31 +8,14 @@
   "manifest": {
     "datasets": [
       {
-        "path": "sandy-wind_2012-10-29_13_00.nc",
-        "dates": [
-          "2012-10-29T13:00:00"
-        ],
+        "path": "sandy-wind-demo.nc",
         "variables": [
           "wind_speed",
           "wind_direction"
         ]
       },
       {
-        "path": "sandy-wind_2012-10-29_14_00.nc",
-        "dates": [
-          "2012-10-29T14:00:00"
-        ],
-        "variables": [
-          "wind_speed",
-          "wind_direction"
-        ]
-      },
-      {
-        "path": "water.nc",
-        "dates": [
-          "2012-10-29T13:00:00",
-          "2012-10-29T14:00:00"
-        ],
+        "path": "sandy-water-demo.nc",
         "variables": [
           "wave_height",
           "water_level",

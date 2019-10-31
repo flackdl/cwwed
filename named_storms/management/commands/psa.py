@@ -422,10 +422,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED,
             defaults=dict(
-                geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                element_type=NsemPsaVariable.ELEMENT_WIND,
-                units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+                geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'geo_type'),
+                data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'data_type'),
+                element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'element_type'),
+                units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'units'),
             ),
         )
 
@@ -456,10 +456,10 @@ class Command(BaseCommand):
             nsem=self.nsem,
             name=NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
             defaults=dict(
-                geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                element_type=NsemPsaVariable.ELEMENT_WIND,
-                units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
+                geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'geo_type'),
+                data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'data_type'),
+                element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'element_type'),
+                units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'units'),
             ),
         )
 

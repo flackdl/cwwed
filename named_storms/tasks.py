@@ -27,6 +27,7 @@ from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.data.processors import ProcessorData
+from named_storms.psa import PsaDataset
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
@@ -803,6 +804,5 @@ def ingest_nsem_psa(nsem_psa_id):
         return None
 
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
-        logger.info('==============')
-        logger.info(dataset)
-        logger.info('==============')
+        psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
+        psa_dataset.ingest()

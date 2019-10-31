@@ -7,6 +7,7 @@ import re
 path_root = '/media/bucket/cwwed/OPENDAP/PSA_demo'
 wind_path = os.path.join(path_root, 'anil')
 
+datasets = []
 ds_max = xr.Dataset()
 
 for dataset_file in sorted(os.listdir(wind_path)):
@@ -26,8 +27,7 @@ for dataset_file in sorted(os.listdir(wind_path)):
         # fix cf conventions
         ds_updated['wind_speed_max'].attrs['standard_name'] = 'wind_speed'
 
-        # save updated ds
-        ds_updated.to_netcdf(os.path.join(path_root, 'sandy-wind_{}.nc'.format(match['date'])))
+        datasets.append(ds_updated)
 
         # current max wind speed data array
         da = xr.DataArray(ds_updated['wind_speed_max'].isel(time=0))
@@ -37,5 +37,17 @@ for dataset_file in sorted(os.listdir(wind_path)):
         else:
             ds_max['wind_speed_max'] = np.maximum(ds_max['wind_speed_max'], da)
 
-# save as netcdf classic because hyrax chokes on 64bit ints
+
+# save netcdf's in classic format because hyrax/opendap chokes on 64bit ints
+
+# save max ds
 ds_max.to_netcdf(os.path.join(path_root, 'sandy-wind-max.nc'), format='NETCDF4_CLASSIC')
+
+# save combined ds
+ds_combined = xr.concat(datasets, 'time')  # type: xr.Dataset
+ds_combined.to_netcdf(os.path.join(path_root, 'sandy-wind-combined.nc'), format='NETCDF4_CLASSIC')
+
+# save a two-day psa demo
+ds_demo = xr.concat([ds_combined.isel(time=1), ds_combined.isel(time=2)], 'time')  # type: xr.Dataset
+ds_demo.to_netcdf(os.path.join(path_root, 'sandy-wind-demo.nc'), format='NETCDF4_CLASSIC')
+

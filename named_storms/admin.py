@@ -77,13 +77,14 @@ class NsemPsaVariableAdmin(admin.GeoModelAdmin):
     readonly_fields = ('display_name',)
 
     def named_storm(self, nsem_psa_variable: NsemPsaVariable):
+        # for list_display
         return nsem_psa_variable.nsem.named_storm
 
 
 @admin.register(NsemPsaData)
 class NsemPsaDataAdmin(admin.GeoModelAdmin):
     list_display = ('nsem_psa_variable', 'value', 'date')
-    list_filter = ('nsem_psa_variable',)
+    list_filter = ('nsem_psa_variable__nsem', 'nsem_psa_variable',)
 
 
 @admin.register(NsemPsaUserExport)
@@ -91,17 +92,11 @@ class NsemPsaUserExportAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'nsem', 'user', 'date_created', 'date_expires')
     list_filter = ('nsem__named_storm__name',)
 
-    def named_storm(self, obj):
-        return obj.nsem.named_storm
-
 
 @admin.register(NsemPsaManifestDataset)
 class NsemPsaManifestDatasetAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'nsem', 'path')
-    list_filter = ('nsem__named_storm__name',)
-
-    def named_storm(self, obj):
-        return obj.nsem.named_storm
+    list_filter = ('nsem__named_storm',)
 
 
 @admin.register(NamedStormCoveredDataSnapshot)
@@ -110,6 +105,7 @@ class NsemPsaManifestDatasetAdmin(admin.GeoModelAdmin):
     list_filter = ('named_storm__name',)
 
     def named_storm(self, obj):
+        # for list_display
         return obj.named_storm
 
 

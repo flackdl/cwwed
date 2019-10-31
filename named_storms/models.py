@@ -187,7 +187,6 @@ class NsemPsaManifestDataset(models.Model):
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
-    dates = fields.ArrayField(base_field=models.DateTimeField())  # type: list
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
