@@ -478,8 +478,6 @@ def validate_nsem_psa_task(nsem_id):
 @app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
-    # TODO - this is a proof of concept while we wait on a finalized psa structure
-
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
@@ -501,13 +499,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # netcdf/csv - extract low level data from netcdf files
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
-        for ds_file in os.listdir(psa_path):
+        for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-            # only processing netcdf files
-            if not ds_file.endswith('.nc'):
-                continue
-
-            ds_file_path = os.path.join(psa_path, ds_file)
+            ds_file_path = os.path.join(psa_path, psa_dataset.path)
 
             # open dataset
             ds = xr.open_dataset(ds_file_path)
@@ -527,7 +521,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
-                ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+                ds.to_netcdf(os.path.join(tmp_user_export_path, psa_dataset.path))
 
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
@@ -539,32 +533,23 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # subset by export date filter
                 ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
 
-                # TODO - we're only including the following variables while we're waiting on explicit instruction
-                wind_variables = ['wspd10m', 'wdir10m']
-                water_variables = ['water_level', 'wave_height']
-
-                # test if this is the water product
-                if set(water_variables).intersection(ds.variables.keys()):
-                    variables = water_variables
-                elif set(wind_variables).intersection(ds.variables.keys()):
-                    variables = wind_variables
-                else:  # none found, skip this dataset
-                    logger.warning('No expected data fround in {}'.format(ds_file))
-                    continue
-
                 # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
 
                 # insert a new column for each variable to df_out
-                for i, variable in enumerate(variables):
-                    df = ds[variable].to_dataframe()
+                for i, variable in enumerate(psa_dataset.variables):
 
-                    # initialize df_out DataFrame on first iteration
-                    if i == 0:
-                        df_out = df
-                    # insert df Series as a new column
-                    else:
-                        df_out.insert(len(df_out.columns), variable, df[variable])
+                    # verify this variable exists in the dataset
+                    if variable in list(ds.data_vars):
+
+                        df = ds[variable].to_dataframe()
+
+                        # initialize df_out DataFrame on first iteration
+                        if i == 0:
+                            df_out = df
+                        # insert df Series as a new column
+                        else:
+                            df_out.insert(len(df_out.columns), variable, df[variable])
 
                 # NOTE: due to the "crooked" shape of the structured grid
                 # this is necessary because the above xarray "where" bbox/extent
@@ -574,7 +559,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
                 # write csv
                 df_out.to_csv(
-                    os.path.join(tmp_user_export_path, '{}.csv'.format(ds_file)), index=False)
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
@@ -632,7 +617,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # only return the export's bbox intersection
             # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
-            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
