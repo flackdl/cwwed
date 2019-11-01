@@ -50,4 +50,3 @@ ds_combined.to_netcdf(os.path.join(path_root, 'sandy-wind-combined.nc'), format=
 # save a two-day psa demo
 ds_demo = xr.concat([ds_combined.isel(time=1), ds_combined.isel(time=2)], 'time')  # type: xr.Dataset
 ds_demo.to_netcdf(os.path.join(path_root, 'sandy-wind-demo.nc'), format='NETCDF4_CLASSIC')
-

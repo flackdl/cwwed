@@ -72,19 +72,22 @@ class NSEMAdmin(admin.GeoModelAdmin):
 
 @admin.register(NsemPsaVariable)
 class NsemPsaVariableAdmin(admin.GeoModelAdmin):
-    list_display = ('id', 'named_storm', 'nsem', 'name', 'display_name', 'data_type', 'auto_displayed')
-    list_filter = ('nsem__named_storm__name',)
+    list_display = ('id', 'nsem', 'name', 'display_name', 'data_type', 'auto_displayed')
+    list_filter = ('nsem__named_storm',)
     readonly_fields = ('display_name',)
 
-    def named_storm(self, nsem_psa_variable: NsemPsaVariable):
-        # for list_display
-        return nsem_psa_variable.nsem.named_storm
+    def get_list_filter(self, request):
+        filters = list(super().get_list_filter(request))
+        # conditionally include nsem filter if a specific storm filter exists
+        if 'nsem__named_storm__id__exact' in request.GET:
+            filters = filters + ['nsem']
+        return tuple(filters)
 
 
 @admin.register(NsemPsaData)
 class NsemPsaDataAdmin(admin.GeoModelAdmin):
     list_display = ('nsem_psa_variable', 'value', 'date')
-    list_filter = ('nsem_psa_variable__nsem', 'nsem_psa_variable',)
+    list_filter = ('nsem_psa_variable__nsem__named_storm',)
 
 
 @admin.register(NsemPsaUserExport)

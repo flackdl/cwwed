@@ -228,10 +228,8 @@ class NsemPsaVariable(models.Model):
     )
 
     VARIABLE_WATER_LEVEL = 'Water Level'
-    VARIABLE_WATER_LEVEL_MAX = 'Water Level Max'
     VARIABLE_WAVE_HEIGHT = 'Wave Height'
     VARIABLE_WIND_SPEED = 'Wind Speed'
-    VARIABLE_WIND_SPEED_MAX = 'Wind Speed Max'
     VARIABLE_WIND_BARBS = 'Wind Barbs'
 
     VARIABLE_DATASET_WATER_LEVEL = 'water_level'
@@ -243,10 +241,8 @@ class NsemPsaVariable(models.Model):
 
     VARIABLE_NAMES = (
         VARIABLE_WATER_LEVEL,
-        VARIABLE_WATER_LEVEL_MAX,
         VARIABLE_WAVE_HEIGHT,
         VARIABLE_WIND_SPEED,
-        VARIABLE_WIND_SPEED_MAX,
         VARIABLE_WIND_BARBS,
     )
 
@@ -268,7 +264,7 @@ class NsemPsaVariable(models.Model):
             'element_type': ELEMENT_WATER,
         },
         VARIABLE_DATASET_WATER_LEVEL_MAX: {
-            'display_name': VARIABLE_WATER_LEVEL_MAX,
+            'display_name': VARIABLE_WATER_LEVEL,
             'units': UNITS_METERS,
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_MAX_VALUES,
@@ -289,7 +285,7 @@ class NsemPsaVariable(models.Model):
             'element_type': ELEMENT_WIND,
         },
         VARIABLE_DATASET_WIND_SPEED_MAX: {
-            'display_name': VARIABLE_WIND_SPEED_MAX,
+            'display_name': VARIABLE_WIND_SPEED,
             'units': UNITS_METERS_PER_SECOND,
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_MAX_VALUES,

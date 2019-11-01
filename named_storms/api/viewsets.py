@@ -112,10 +112,10 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             validate_nsem_psa_task.si(nsem_psa.id),
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
-            # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
-            extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
             # ingest the psa
             ingest_nsem_psa.si(nsem_psa.id),
+            # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
+            extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
         )()
 
 

@@ -40,4 +40,3 @@ ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc', format='NETC
 # save a two day psa demo
 ds_demo = xr.concat([ds.isel(time=0), ds.isel(time=1)], 'time')  # type: xr.Dataset
 ds_demo.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water-demo.nc', format='NETCDF4_CLASSIC')
-
