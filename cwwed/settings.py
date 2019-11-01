@@ -236,7 +236,7 @@ LOGGING = {
         'cwwed': {
             'level': 'INFO',
             'handlers': ['console'],
-            'propagate': True,
+            'propagate': False,
         },
         'django': {
             'level': 'WARNING',
