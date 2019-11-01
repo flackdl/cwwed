@@ -791,3 +791,43 @@ def ingest_nsem_psa(nsem_psa_id):
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
         psa_dataset.ingest()
+
+
+@app.task(**TASK_ARGS)
+def email_psa_ingested_task(nsem_psa_id):
+    """
+    Email the "nsem" user indicating the PSA has been ingested
+    """
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
+
+    body = """
+        PSA has been ingested.
+
+        API: {api_url}
+        """.format(
+        api_url=nsem_psa_api_url,
+    )
+
+    html_body = render_to_string(
+        'email_psa_ingested.html',
+        context={
+            "nsem_psa": nsem_psa,
+            "nsem_psa_api_url": nsem_psa_api_url,
+        })
+
+    # include the "nsem" user and all super users
+    recipients = get_superuser_emails()
+    if nsem_user.email:
+        recipients.append(nsem_user.email)
+
+    send_mail(
+        subject='PSA ingested ({psa_id})'.format(psa_id=nsem_psa.id),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        html_message=html_body,
+    )
+    return nsem_psa.id
