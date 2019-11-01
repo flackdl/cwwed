@@ -19,6 +19,7 @@ if os.environ.get('DEPLOY_STAGE') == 'local':
 else:
     API_ROOT = API_ROOT_PROD
 
+ENDPOINT_COVERED_DATA_SNAPSHOT = 'named-storm-covered-data-snapshot/'
 ENDPOINT_NSEM = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'
 ENDPOINT_STORMS = 'named-storms/'
@@ -48,6 +49,23 @@ def get_auth_headers(token):
     }
 
 
+def create_covered_data_snapshot(args):
+    url = os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT)
+    data = {
+        "named_storm": args['storm-id'],
+    }
+    # request a new post-storm assessment from the api
+    response = requests.post(url, data=data, headers=get_auth_headers(args['api-token']))
+    snapshot_data = response.json()
+    if not response.ok:
+        print('ERROR')
+        sys.exit(snapshot_data)
+    else:
+        print('Successfully created covered data snapshot record: {}'.format(snapshot_data['id']))
+        print('Packaging covered data snapshot. This may take a few minutes. '
+              'The email address associated with this account will be emailed when it is complete.')
+
+
 def create_psa(args):
     url = os.path.join(API_ROOT, ENDPOINT_NSEM)
     data = {
@@ -60,7 +78,7 @@ def create_psa(args):
         sys.exit(nsem_data)
     else:
         print('Successfully created PSA Id: {}'.format(nsem_data['id']))
-        print('Packaging Covered Data. This may take a few minutes.  The email address associated with this account will be emailed when it is complete.')
+        print("The email address associated with this account will be emailed when it's been extracted, validated and ingested.")
 
 
 def upload_psa(args):
@@ -122,31 +140,44 @@ def fetch_psa(psa_id):
     return response_json
 
 
+def fetch_cd_snapshot(snapshot_id):
+    # query the api using a particular snapshot
+    url = '{}{}/'.format(
+        os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT),
+        snapshot_id,
+    )
+    response = requests.get(url)
+    response_json = response.json()
+    if not response.ok:
+        sys.exit(response_json)
+    return response_json
+
+
 def list_psa(args):
     print(json.dumps(fetch_psa(args['psa-id']), indent=2))
 
 
 def download_cd(args):
-    psa_id = args['psa-id']
+    snapshot_id = args['snapshot-id']
 
     # create the output directory if it's been declared
     output_dir = args['output_dir']
     if output_dir:
         create_directory(output_dir)
     else:
-        output_dir = './PSA-{}-CD'.format(psa_id)
+        output_dir = './Covered_Data_Snapshot-{}'.format(snapshot_id)
 
-    # query the psa and see if the covered data has been packaged and ready for download.
+    # query the snapshot and see if the covered data has been packaged and ready for download.
     # sleep in between attempts for a limited amount of tries
     for _ in range(COVERED_DATA_SNAPSHOT_ATTEMPTS):
 
         # query the psa
-        nsem_data = fetch_psa(psa_id)
+        snapshot_data = fetch_cd_snapshot(snapshot_id)
 
-        # verify the "storage key" exists and points to an S3 object store
-        # i.e s3://cwwed-archives/NSEM/Harvey/76/Covered Data
+        # verify it's complete, the "storage key" exists and points to an S3 object store
+        # i.e s3://cwwed-archives/local/NSEM/Sandy/Covered Data Snapshots/9
         storage_key = 'covered_data_storage_url'
-        if not nsem_data.get(storage_key) or not nsem_data[storage_key].startswith('s3://'):
+        if not snapshot_data['date_completed'] or not snapshot_data.get(storage_key, '').startswith('s3://'):
             # Covered data isn't ready so print message and try again in a few seconds
             print('Covered Data is not ready for download yet.  Waiting...')
             sleep(COVERED_DATA_SNAPSHOT_WAIT_SECONDS)
@@ -162,7 +193,7 @@ def download_cd(args):
     #
 
     # parse the s3 bucket and key from "storage_key"
-    parsed = parse.urlparse(nsem_data[storage_key])
+    parsed = parse.urlparse(snapshot_data[storage_key])
     bucket = parsed.netloc
     path = parsed.path.lstrip('/')  # S3 paths are relative so remove leading slash
 
@@ -227,11 +258,11 @@ subparsers = parser.add_subparsers(title='Commands', help='Commands')
 #
 
 # authenticate and retrieve token
-parser_cd = subparsers.add_parser('auth', help='Authenticate with username/password and receive token')
-parser_cd.set_defaults(func=authenticate)
+parser_auth = subparsers.add_parser('auth', help='Authenticate with username/password and receive token')
+parser_auth.set_defaults(func=authenticate)
 
 #
-# Storms
+# Named Storm
 #
 
 # authenticate and retrieve token
@@ -239,9 +270,32 @@ parser_storm = subparsers.add_parser('search-storms', help='Search for a particu
 parser_storm.add_argument("storm-name", help='The name of the storm')
 parser_storm.set_defaults(func=search_storms)
 
+
+#
+# Covered Data Snapshot
+#
+
+parser_cd = subparsers.add_parser('cd', help='Manage Covered Data Snapshots')
+parser_cd.set_defaults(func=lambda _: parser_cd.print_help())
+subparsers_cd = parser_cd.add_subparsers(help='Covered Data sub-commands', dest='cd')
+
+# create
+parser_cd_create = subparsers_cd.add_parser('create', help='Create a new covered data snapshot')
+parser_cd_create.set_defaults(func=create_covered_data_snapshot)
+parser_cd_create.add_argument("storm-id", help='The id for the storm', type=int)
+parser_cd_create.add_argument("api-token", help='API token')
+
+# download
+parser_cd_download = subparsers_cd.add_parser('download', help='Download a covered data snapshot')
+parser_cd_download.add_argument("snapshot-id", help='The id of the covered data snapshot', type=int)
+parser_cd_download.add_argument("--output-dir", help='The output directory')
+parser_cd_download.set_defaults(func=download_cd)
+
 #
 # Post Storm Assessment
 #
+
+# TODO - need to update using the new e2e refactor
 
 parser_psa = subparsers.add_parser('psa', help='Manage a Post Storm Assessment')
 parser_psa.set_defaults(func=lambda _: parser_psa.print_help())
@@ -265,19 +319,16 @@ parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
 parser_psa_list.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
 parser_psa_list.set_defaults(func=list_psa)
 
-# psa - download covered data
-parser_psa_download_cd = subparsers_psa.add_parser('download-cd', help='Download Covered Data for a particular PSA')
-parser_psa_download_cd.add_argument("psa-id", help='The id for the psa', type=int)
-parser_psa_download_cd.add_argument("--output-dir", help='The output directory')
-parser_psa_download_cd.set_defaults(func=download_cd)
 
-#
 # process args
-#
+def process_args(args):
 
-args = parser.parse_args()
-if 'func' in args:
-    args.func(vars(args))
-else:
-    print(args)
-    parser.print_help(sys.stderr)
+    if 'func' in args:
+        args.func(vars(args))
+    else:
+        print(args)
+        parser.print_help(sys.stderr)
+
+
+if __name__ == '__main__':
+    process_args(parser.parse_args())

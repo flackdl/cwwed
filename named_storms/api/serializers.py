@@ -55,10 +55,14 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
 
 
 class NamedStormCoveredDataSnapshotSerializer(serializers.ModelSerializer):
+    covered_data_storage_url = serializers.SerializerMethodField()
 
     class Meta:
         model = NamedStormCoveredDataSnapshot
         fields = '__all__'
+
+    def get_covered_data_storage_url(self, obj: NamedStormCoveredDataSnapshot):
+        return obj.get_covered_data_storage_url()
 
     def validate(self, data):
         named_storm = data['named_storm']  # type: NamedStorm
