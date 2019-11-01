@@ -60,6 +60,9 @@ class NamedStorm(models.Model):
     active = models.BooleanField(default=True)
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ['-date_start']
+
     def __str__(self):
         return self.name
 
@@ -262,6 +265,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WATER,
+            'auto_displayed': True,
         },
         VARIABLE_DATASET_WATER_LEVEL_MAX: {
             'display_name': VARIABLE_WATER_LEVEL,
@@ -269,6 +273,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_MAX_VALUES,
             'element_type': ELEMENT_WATER,
+            'auto_displayed': False,
         },
         VARIABLE_DATASET_WAVE_HEIGHT: {
             'display_name': VARIABLE_WAVE_HEIGHT,
@@ -276,6 +281,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WATER,
+            'auto_displayed': True,
         },
         VARIABLE_DATASET_WIND_SPEED: {
             'display_name': VARIABLE_WIND_SPEED,
@@ -283,6 +289,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WIND,
+            'auto_displayed': True,
         },
         VARIABLE_DATASET_WIND_SPEED_MAX: {
             'display_name': VARIABLE_WIND_SPEED,
@@ -290,6 +297,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_POLYGON,
             'data_type': DATA_TYPE_MAX_VALUES,
             'element_type': ELEMENT_WIND,
+            'auto_displayed': False,
         },
         VARIABLE_DATASET_WIND_DIRECTION: {
             'display_name': VARIABLE_WIND_BARBS,
@@ -297,6 +305,7 @@ class NsemPsaVariable(models.Model):
             'geo_type': GEO_TYPE_WIND_BARB,
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WIND,
+            'auto_displayed': False,
         },
     }
 

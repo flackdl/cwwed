@@ -33,7 +33,6 @@ const randomColor = require('randomcolor');
   providers: [DecimalPipe],
 })
 export class PsaComponent implements OnInit {
-  public DEMO_NAMED_STORM_ID = 1;
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
@@ -91,11 +90,11 @@ export class PsaComponent implements OnInit {
   ngOnInit() {
 
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
-      return storm.id === this.DEMO_NAMED_STORM_ID;
+      return this.route.snapshot.params['id'] == storm.id;
     });
 
     this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
-      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+      return nsemPsa.named_storm === this.namedStorm.id;
     });
 
     this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
@@ -142,7 +141,7 @@ export class PsaComponent implements OnInit {
 
   public getOpenDapUrl(): string {
     const psa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
-      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+      return nsemPsa.named_storm === this.namedStorm.id;
     });
     return psa ? psa.opendap_url : '';
   }
@@ -171,10 +170,6 @@ export class PsaComponent implements OnInit {
 
   public isExtentActive(): boolean {
     return Boolean(this._extentInteraction && this._extentInteraction.getActive());
-  }
-
-  public hasExtentSelection(): boolean {
-    return Boolean(this._extentInteraction && this._extentInteraction.getExtent());
   }
 
   public getExtentCoords() {
@@ -324,7 +319,7 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    const url = CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.id, date);
+    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.id, date);
     const format = new GeoJSON();
 
     const vectorSource = new VectorSource({
@@ -425,7 +420,7 @@ export class PsaComponent implements OnInit {
   protected _fetchDataAndBuildMap() {
 
     // fetch psa variables
-    this.cwwedService.fetchPSAVariables(this.DEMO_NAMED_STORM_ID).pipe(
+    this.cwwedService.fetchPSAVariables(this.namedStorm.id).pipe(
       tap(
         (data: any[]) => {
           this.isLoading = false;
@@ -714,9 +709,9 @@ export class PsaComponent implements OnInit {
 
     const latLon = toLonLat(event.coordinate);
 
-    this.lineChartExportURL = `${this.cwwedService.getPSATimeSeriesDataURL(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0])}?export=csv`;
+    this.lineChartExportURL = `${this.cwwedService.getPSATimeSeriesDataURL(this.namedStorm.id, latLon[1], latLon[0])}?export=csv`;
 
-    this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
+    this.cwwedService.fetchPSATimeSeriesData(this.namedStorm.id, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
         this._lineChartDataAll = _.map(data, (variableData: any) => {

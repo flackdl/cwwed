@@ -48,6 +48,7 @@ class PsaDataset:
                     data_type=NsemPsaVariable.get_variable_attribute(variable, 'data_type'),
                     element_type=NsemPsaVariable.get_variable_attribute(variable, 'element_type'),
                     units=NsemPsaVariable.get_variable_attribute(variable, 'units'),
+                    auto_displayed=NsemPsaVariable.get_variable_attribute(variable, 'auto_displayed'),
                 )
             )
 
@@ -83,6 +84,10 @@ class PsaDataset:
                     self.build_wind_barbs(psa_variable, wind_directions, wind_speeds, xi, yi, date)
 
             psa_variable.save()
+
+        self.psa_manifest_dataset.nsem.processed = True
+        self.psa_manifest_dataset.nsem.date_processed = datetime.utcnow()
+        self.psa_manifest_dataset.nsem.save()
 
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
 
