@@ -5,10 +5,11 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
+from named_storms.api.fields import SnapshotDefault
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
     NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
-from named_storms.utils import get_opendap_url_nsem, get_opendap_url_covered_data_snapshot, get_opendap_url_nsem_psa
+from named_storms.utils import get_opendap_url_nsem, get_opendap_url_covered_data_snapshot
 
 logger = logging.getLogger('cwwed')
 
@@ -92,6 +93,11 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()
     opendap_url_covered_data = serializers.SerializerMethodField()
+    covered_data_snapshot = serializers.ModelField(
+        model_field=NsemPsa()._meta.get_field('covered_data_snapshot'),
+        # automatically associates the most recent snapshot
+        default=SnapshotDefault(),
+    )
 
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:

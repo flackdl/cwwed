@@ -20,12 +20,14 @@ else:
     API_ROOT = API_ROOT_PROD
 
 ENDPOINT_COVERED_DATA_SNAPSHOT = 'named-storm-covered-data-snapshot/'
-ENDPOINT_NSEM = 'nsem-psa/'
+ENDPOINT_PSA = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'
 ENDPOINT_STORMS = 'named-storms/'
 
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
 COVERED_DATA_SNAPSHOT_ATTEMPTS = 30
+
+S3_BUCKET = 'cwwed-archives'
 
 DESCRIPTION = """
 Utility for interacting with CWWED:
@@ -67,12 +69,17 @@ def create_covered_data_snapshot(args):
 
 
 def create_psa(args):
-    url = os.path.join(API_ROOT, ENDPOINT_NSEM)
-    data = {
-        "named_storm": args['storm-id'],
-    }
+    url = os.path.join(API_ROOT, ENDPOINT_PSA)
+    try:
+        data = json.load(open(args['body'], 'r'))
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        sys.exit(str(e))
+
+    # upload the psa
+    upload_psa(file=args['file'], path=data.get('path'))
+
     # request a new post-storm assessment from the api
-    response = requests.post(url, data=data, headers=get_auth_headers(args['api-token']))
+    response = requests.post(url, json=data, headers=get_auth_headers(args['api-token']))
     nsem_data = response.json()
     if not response.ok:
         sys.exit(nsem_data)
@@ -81,56 +88,27 @@ def create_psa(args):
         print("The email address associated with this account will be emailed when it's been extracted, validated and ingested.")
 
 
-def upload_psa(args):
-    psa_id = args['psa-id']
-    file = args['file']
-
-    # query the psa
-    nsem_data = fetch_psa(psa_id)
-
-    # verify the covered data has been packaged (necessary for parsing bucket)
-    if not nsem_data.get('covered_data_storage_url'):
-        sys.exit('Error. Covered Data has not been packaged yet and nothing can be uploaded yet')
+def upload_psa(file: str, path: str):
 
     # verify the "file" is of the correct type
     _, extension = os.path.splitext(file)
     if extension != '.tgz':
         sys.exit('File to upload must be ".tgz" (tar+gzipped)')
 
-    # parse the s3 bucket from 'covered_data_storage_url'
-    parsed = parse.urlparse(nsem_data['covered_data_storage_url'])
-    bucket = parsed.netloc
-
     # create the s3 instance
     s3 = boto3.resource('s3')
-    s3_bucket = s3.Bucket(bucket)
+    s3_bucket = s3.Bucket(S3_BUCKET)
 
     # upload the file to the specified path
-    upload_path = nsem_data['model_output_upload_path']
-    print('uploading {} to s3://{}/{}'.format(file, bucket, upload_path))
-    s3_bucket.upload_file(file, upload_path)
-    print('Successfully uploaded file')
-
-    # update the PSA record in CWWED to point to the uploaded file so it can be extracted
-    print('Updating PSA record in CWWED to extract the PSA')
-    url = '{}{}/'.format(
-        os.path.join(API_ROOT, ENDPOINT_NSEM),
-        psa_id,
-    )
-    data = {
-        'path': upload_path,
-    }
-    response = requests.patch(url, data=data, headers=get_auth_headers(args['api-token']))
-    if not response.ok:
-        sys.exit(response.json())
-    else:
-        print('Successfully updated PSA in CWWED')
+    print('uploading {} to s3://{}/{}'.format(file, S3_BUCKET, path))
+    s3_bucket.upload_file(file, path)
+    print('Successfully uploaded psa')
 
 
 def fetch_psa(psa_id):
     # query the api using a particular psa to find the object storage path for the Covered Data
     url = '{}{}/'.format(
-        os.path.join(API_ROOT, ENDPOINT_NSEM),
+        os.path.join(API_ROOT, ENDPOINT_PSA),
         psa_id,
     )
     response = requests.get(url)
@@ -160,6 +138,8 @@ def list_psa(args):
 def download_cd(args):
     snapshot_id = args['snapshot-id']
 
+    storage_key = 'covered_data_storage_url'
+
     # create the output directory if it's been declared
     output_dir = args['output_dir']
     if output_dir:
@@ -176,7 +156,6 @@ def download_cd(args):
 
         # verify it's complete, the "storage key" exists and points to an S3 object store
         # i.e s3://cwwed-archives/local/NSEM/Sandy/Covered Data Snapshots/9
-        storage_key = 'covered_data_storage_url'
         if not snapshot_data['date_completed'] or not snapshot_data.get(storage_key, '').startswith('s3://'):
             # Covered data isn't ready so print message and try again in a few seconds
             print('Covered Data is not ready for download yet.  Waiting...')
@@ -186,7 +165,7 @@ def download_cd(args):
             print('Covered Data found and will begin downloading...')
             break
     else:
-        sys.exit('Covered Data took too long to be packaged. Please try again')
+        sys.exit('Covered Data still not ready. Please try again')
 
     #
     # the covered data is ready for download
@@ -218,7 +197,7 @@ def download_cd(args):
     print('Successfully downloaded Covered Data to {}'.format(output_dir))
 
 
-def authenticate(args):
+def authenticate(*args):
     username = input('Username: ')
     password = getpass('Password: ')
     url = os.path.join(API_ROOT, ENDPOINT_AUTH)
@@ -295,24 +274,16 @@ parser_cd_download.set_defaults(func=download_cd)
 # Post Storm Assessment
 #
 
-# TODO - need to update using the new e2e refactor
-
 parser_psa = subparsers.add_parser('psa', help='Manage a Post Storm Assessment')
 parser_psa.set_defaults(func=lambda _: parser_psa.print_help())
 subparsers_psa = parser_psa.add_subparsers(help='PSA sub-commands', dest='psa')
 
 # psa - create
 parser_psa_create = subparsers_psa.add_parser('create', help='Create a new PSA version')
-parser_psa_create.add_argument("storm-id", help='The id for the storm', type=int)
+parser_psa_create.add_argument("body", help='The body json file describing the post storm assessment')
+parser_psa_create.add_argument("file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload')
 parser_psa_create.add_argument("api-token", help='API token')
 parser_psa_create.set_defaults(func=create_psa)
-
-# psa - upload
-parser_psa_upload = subparsers_psa.add_parser('upload', help='Upload a PSA product')
-parser_psa_upload.add_argument("psa-id", help='The id of this post-storm assessment', type=int)
-parser_psa_upload.add_argument("file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload')
-parser_psa_upload.add_argument("api-token", help='API token')
-parser_psa_upload.set_defaults(func=upload_psa)
 
 # psa - list
 parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
