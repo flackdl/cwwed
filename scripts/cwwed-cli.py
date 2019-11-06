@@ -14,15 +14,15 @@ API_ROOT_PROD = 'https://dev.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
 
 if os.environ.get('DEPLOY_STAGE') == 'local':
-    API_ROOT = API_ROOT_LOCAL
     print('>> In Development')
+    API_ROOT = API_ROOT_LOCAL
 else:
     API_ROOT = API_ROOT_PROD
 
 ENDPOINT_COVERED_DATA_SNAPSHOT = 'named-storm-covered-data-snapshot/'
 ENDPOINT_PSA = 'nsem-psa/'
 ENDPOINT_AUTH = 'auth/'
-ENDPOINT_STORMS = 'named-storms/'
+ENDPOINT_STORMS = 'named-storm/'
 
 COVERED_DATA_SNAPSHOT_WAIT_SECONDS = 5
 COVERED_DATA_SNAPSHOT_ATTEMPTS = 30
@@ -31,8 +31,11 @@ S3_BUCKET = 'cwwed-archives'
 
 DESCRIPTION = """
 Utility for interacting with CWWED:
-    - download Covered Data for a particular storm
-    - upload a Post Storm Assessment (PSA) for a particular storm
+    - authenticate with CWWED
+    - create a  Covered Data snapshot for a named storm
+    - download a Covered Data snapshot for a named storm
+    - upload a Post Storm Assessment for a named storm
+    - list all Post Storm Assessments
 """
 
 
@@ -211,8 +214,18 @@ def authenticate(*args):
     print(token_response)
 
 
+def list_storms(*args):
+    url = os.path.join(API_ROOT, ENDPOINT_STORMS)
+    response = requests.get(url)
+    if not response.ok:
+        sys.exit(response)
+    else:
+        response = response.json()
+        print(json.dumps(response, indent=2))
+
+
 def search_storms(args):
-    storm_name = args['storm-name']
+    storm_name = args['name']
     url = os.path.join(API_ROOT, ENDPOINT_STORMS)
     data = {
         "search": storm_name,
@@ -244,10 +257,18 @@ parser_auth.set_defaults(func=authenticate)
 # Named Storm
 #
 
-# authenticate and retrieve token
-parser_storm = subparsers.add_parser('search-storms', help='Search for a particular storm')
-parser_storm.add_argument("storm-name", help='The name of the storm')
-parser_storm.set_defaults(func=search_storms)
+parser_storm = subparsers.add_parser('storm', help='List and search storms')
+parser_storm.set_defaults(func=lambda _: parser_storm.print_help())
+subparsers_storm = parser_storm.add_subparsers(help='Storm sub-commands')
+
+# search
+parser_storm_search = subparsers_storm.add_parser('search', help='Search for a storm by name')
+parser_storm_search.add_argument("name", help='The name of the storm')
+parser_storm_search.set_defaults(func=search_storms)
+
+# list
+parser_storm_list = subparsers_storm.add_parser('list', help='List storms')
+parser_storm_list.set_defaults(func=list_storms)
 
 
 #
