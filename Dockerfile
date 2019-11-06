@@ -21,6 +21,7 @@ RUN echo "Installing dependencies and building application" \
         nodejs \
         python3-tk \
         libudunits2-dev \
+    && pip install --upgrade pip \
     && pip install -r requirements.txt \
     && npm --prefix frontend install \
     && npm --prefix frontend run build-prod \
