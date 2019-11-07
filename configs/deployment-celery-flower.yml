@@ -31,4 +31,4 @@ spec:
         # secrets
         envFrom:
           - secretRef:
-              name: cwwed-secrets
+              name: cwwed-secrets-alpha

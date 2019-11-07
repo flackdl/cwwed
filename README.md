@@ -82,43 +82,58 @@ Connect to remote Postgres:
     
     
 ## Production
-
-Setup RDS (relational database service) with proper VPC and security group permissions.
-
-EFS (elastic file system):
-- Create EFS instance
-- Assign EFS security group to EC2 instance(s).  (TODO - figure out how auto scaling default security groups work)
     
 ### Create Kubernetes cluster
 
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
     # create cluster (dev)
-    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.medium --zones us-east-1a --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.medium --zones us-east-1a --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
     # (if necessary) configure kubectl environment to point at aws cluster
-    kops export kubecfg --name cwwed-dev-cluster.k8s.local --state=s3://cwwed-kops-state
+    kops export kubecfg --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state
+
+#### Setup RDS (relational database service) with proper VPC (from cluster) and security group permissions.
+
+Do this in the AWS Console.
     
-Create EFS and make sure it's in the same VPC as the cluster, along with the node's security group.
+#### Create EFS
+Create EFS (elastic file system) in console and **make sure** it's in the same region, VPC and security group as the cluster.
+
+efs-provisioner: https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
+**NOTE** I had to modify yaml settings via github issues: [1](https://github.com/kubernetes-incubator/external-storage/issues/1209), [2](https://github.com/kubernetes-incubator/external-storage/issues/953)
+
+Copy the `File System Id` from the new efs instance and update `configs/manifest.yml` accordingly.
+
+Create kubernetes persistent volume & claim with the new efs instance:
     
     # create efs volume (can take a couple minutes to create the provisioner pod)
-    # https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
-    kubectl apply -f configs/volume-efs.yml
-    # patch (after RBAC stuff)
-    kubectl patch deployment efs-provisioner -p '{"spec":{"template":{"spec":{"serviceAccount":"efs-provisioner"}}}}'
+    kubectl apply -f configs/aws-efs/rbac.yaml
+    kubectl apply -f configs/aws-efs/manifest.yaml
+    
+### Nginx Ingress
+
+User nginx as the kubernetes ingress.
+
+https://kubernetes.github.io/ingress-nginx/
+
+    kubectl apply -f configs/nginx-ingress/mandatory.yml
+    kubectl apply -f configs/nginx-ingress/service-14.yml
+    kubectl apply -f configs/nginx-ingress/patch-configmap-14.yml
     
 ### Secrets
     
-    # create secrets
+    # create secrets using proper stage
+    # update $DEPLOY_STAGE to "dev", "alpha" etc
+    DEPLOY_STAGE=alpha
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
-    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets`
-    # NOTE: swap correct host secret/file
-    kubectl create secret generic cwwed-secrets \
-        --from-literal=CWWED_HOST=$(cat ~/Documents/cwwed/secrets/host_dev.txt) \
+    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets-$DEPLOY_STAGE`
+    kubectl create secret generic cwwed-secrets-$DEPLOY_STAGE \
+        --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/$DEPLOY_STAGE/database_url.txt) \
+        --from-literal=CWWED_HOST=$(cat ~/Documents/cwwed/secrets/$DEPLOY_STAGE/host.txt) \
         --from-literal=CWWED_NSEM_PASSWORD=$(cat ~/Documents/cwwed/secrets/cwwed_nsem_password.txt) \
         --from-literal=SECRET_KEY=$(cat ~/Documents/cwwed/secrets/secret_key.txt) \
         --from-literal=SLACK_BOT_TOKEN=$(cat ~/Documents/cwwed/secrets/slack_bot_token.txt) \
-        --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) \
         --from-literal=CWWED_ARCHIVES_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/cwwed_archives_access_key_id.txt) \
         --from-literal=CWWED_ARCHIVES_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/cwwed_archives_secret_access_key.txt) \
         --from-literal=CELERY_FLOWER_USER=$(cat ~/Documents/cwwed/secrets/celery_flower_user.txt) \
@@ -139,26 +154,30 @@ monitor the new external Load Balancer and get it's external IP address.
 Use that IP and configure DNS via Cloudflare.
 
 ### Install all the services, volumes, deployments etc.
+
+** TODO need to define yml templates for other config files as well **
+
+For yaml templates, us `emrichen` to generate yaml and pipe to `kubectl`.
+
+For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
+
+    emrichen --define deploy_stage=alpha --define tag=psa-validation deployment-cwwed.in.yml | kubectl apply -f -
     
-
-Create everything all at once (services and deployments):
-
-    ls -1 configs/service-*.yml configs/deployment-* | xargs -L 1 kubectl apply -f
-    
-Or individually:
-
-    # create services individually
+    # services
     kubectl apply -f configs/service-cwwed.yml
     kubectl apply -f configs/service-opendap.yml
     kubectl apply -f configs/service-rabbitmq.yml
     kubectl apply -f configs/service-celery-flower.yml
     
-    # create deployments individually
+    # deployments
     kubectl apply -f configs/deployment-cwwed.yml
     kubectl apply -f configs/deployment-opendap.yml
     kubectl apply -f configs/deployment-rabbitmq.yml
     kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml
+
+    # ingress
+    kubectl apply -f configs/ingress.yml
     
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
@@ -166,11 +185,13 @@ Or individually:
     
 ### Initializations
 
+Create the default super user:
+
     kubectl exec -it $CWWED_POD python manage.py createsuperuser
-    kubectl exec -it $CWWED_POD python manage.py cwwed-init
     
-    # alternatively exectute commands from local environment using production settings
-    DATABASE_URL=$(cat ~/Documents/cwwed/secrets/database_url.txt) DEPLOY_STAGE=prod python manage.py dbshell
+Run initializations like creating the "nsem" user and assignging permissions:
+
+    kubectl exec -it $CWWED_POD python manage.py cwwed-init
     
 ### Helpers
     
@@ -181,7 +202,7 @@ Or individually:
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
     # get pod name
-    CWWED_POD=$(kubectl get pods -l app=cwwed-container --no-headers -o custom-columns=:metadata.name)
+    CWWED_POD=$(kubectl get pods -l app=cwwed --no-headers -o custom-columns=:metadata.name)
     
     # load demo data
     kubectl exec -it $CWWED_POD python manage.py loaddata dev-db.json
@@ -223,12 +244,13 @@ Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-fo
 
     kubectl port-forward celery-flower-deployment-644fd6d758-882nv 5556:5555
     
-### Social auth (WIP)
+### Social auth
+
+**TODO**
 
 Configure Django "Sites" (in admin)
 
     For example, log into the admin and create a site as `dev.cwwed-staging.com`.
-    
     
 ### Monitoring
 
@@ -285,10 +307,3 @@ Create AWS user *cwwed-archives* and assign the following polices:
 Assign lifecycle for *User Exports* objects to expire after a certain amount of time. 
 
     aws s3api put-bucket-lifecycle-configuration --bucket cwwed-archives --lifecycle-configuration file://configs/aws/s3-lifecycle-cwwed-archives.json
-     
- 
- ## Post storm assessment
- 
-Ingest post storm assessment:
-
-    python manage.py psa --delete --variable wind_speed --variable wind_barbs --variable water_level_max --variable water_level --variable wave_height

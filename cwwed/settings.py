@@ -33,11 +33,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'ssshhh...')
 
+# deploy stages
 DEPLOY_STAGE_LOCAL = 'local'
+DEPLOY_STAGE_ALPHA = 'alpha'
 DEPLOY_STAGE_DEV = 'dev'
 DEPLOY_STAGE_TEST = 'test'
 DEPLOY_STAGE_PROD = 'prod'
+DEPLOY_STAGES = [DEPLOY_STAGE_LOCAL, DEPLOY_STAGE_ALPHA, DEPLOY_STAGE_DEV, DEPLOY_STAGE_TEST, DEPLOY_STAGE_PROD]
 DEPLOY_STAGE = os.environ.get('DEPLOY_STAGE', DEPLOY_STAGE_LOCAL)
+assert DEPLOY_STAGE in DEPLOY_STAGES, 'unknown DEPLOY_STAGE "{}"'.format(DEPLOY_STAGE)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else False
@@ -71,6 +75,7 @@ INSTALLED_APPS = [
     'storages',  # django-storages
     'allauth',
     'allauth.account',
+    # TODO - setup social accounts?
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'crispy_forms',

@@ -1,26 +1,30 @@
+!Defaults
+image: !Format "flackdl/cwwed:{tag}"
+secret_name: !Format "cwwed-secrets-{deploy_stage}"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cwwed-deployment
+  labels:
+    app: cwwed
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cwwed-container
+      app: cwwed
   template:
     metadata:
       labels:
-        app: cwwed-container
+        app: cwwed
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-        # minikube
-        #claimName: cwwed-volume-claim
          claimName: efs
       containers:
-      - name: cwwed-container
-        image: flackdl/cwwed
+      - name: cwwed
+        image: !Var image
         imagePullPolicy: Always
         ports:
         - containerPort: 80
@@ -34,7 +38,7 @@ spec:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
           - name: DEPLOY_STAGE
-            value: prod
+            value: !Var deploy_stage
           - name: CELERY_BROKER
             value: rabbitmq-service
           - name: CELERY_BACKEND
@@ -44,4 +48,4 @@ spec:
         # secrets
         envFrom:
           - secretRef:
-              name: cwwed-secrets
+              name: !Var secret_name
