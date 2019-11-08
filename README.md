@@ -193,6 +193,10 @@ Run initializations like creating the "nsem" user and assignging permissions:
 
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
     
+Create caches:
+
+    python manage.py createcachetable
+    
 ### Helpers
     
     # collect covered data via job
