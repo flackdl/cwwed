@@ -1,22 +1,24 @@
 !Defaults
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
+app: !Format "cwwed-{deploy_stage}"
+deployment_name: !Format "cwwed-deployment-{deploy_stage}"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cwwed-deployment
+  name: !Var deployment_name
   labels:
-    app: cwwed
+    app: !Var app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cwwed
+      app: !Var app
   template:
     metadata:
       labels:
-        app: cwwed
+        app: !Var app
     spec:
       volumes:
       - name: cwwed-volume-storage

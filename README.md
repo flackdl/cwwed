@@ -155,26 +155,34 @@ Use that IP and configure DNS via Cloudflare.
 
 ### Install all the services, volumes, deployments etc.
 
-** TODO need to define yml templates for other config files as well **
-
 For yaml templates, us `emrichen` to generate yaml and pipe to `kubectl`.
 
 For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
 
+    # alpha
     emrichen --define deploy_stage=alpha --define tag=psa-validation deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=psa-validation service-cwwed.in.yml | kubectl apply -f -
+
+    # dev
+    emrichen --define deploy_stage=dev --define tag=latest deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=latest service-cwwed.in.yml | kubectl apply -f -
     
-    # services
-    kubectl apply -f configs/service-cwwed.yml
-    kubectl apply -f configs/service-opendap.yml
-    kubectl apply -f configs/service-rabbitmq.yml
-    kubectl apply -f configs/service-celery-flower.yml
     
-    # deployments
-    kubectl apply -f configs/deployment-cwwed.yml
-    kubectl apply -f configs/deployment-opendap.yml
-    kubectl apply -f configs/deployment-rabbitmq.yml
+** TODO ** define yaml templates for the following **
+
     kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml
+    kubectl apply -f configs/service-celery-flower.yml
+   
+Everything else:
+    
+    # services
+    kubectl apply -f configs/service-opendap.yml
+    kubectl apply -f configs/service-rabbitmq.yml
+    
+    # deployments
+    kubectl apply -f configs/deployment-opendap.yml
+    kubectl apply -f configs/deployment-rabbitmq.yml
 
     # ingress
     kubectl apply -f configs/ingress.yml

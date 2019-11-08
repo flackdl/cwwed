@@ -1,0 +1,15 @@
+!Defaults
+app: !Format "cwwed-{deploy_stage}"
+name: !Format "cwwed-{deploy_stage}"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: !Var name
+spec:
+  selector:
+    app: !Var app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
