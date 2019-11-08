@@ -5,7 +5,6 @@ from django.contrib.auth.models import User
 from rest_framework import serializers
 from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.fields import SnapshotDefault
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
     NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
@@ -87,7 +86,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             'processed', 'date_processed',
         ]
 
-    manifest = serializers.JSONField(default=dict)  # manually validating since nested writes aren't supported in drf
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
@@ -95,9 +93,18 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     opendap_url_covered_data = serializers.SerializerMethodField()
     covered_data_snapshot = serializers.ModelField(
         model_field=NsemPsa()._meta.get_field('covered_data_snapshot'),
-        # automatically associates the most recent snapshot
-        default=SnapshotDefault(),
+        # automatically associates the most recent snapshot in validate()
+        required=False,
     )
+
+    def validate(self, attrs):
+        if not self.instance:
+            # populate the most recent covered data snapshot for this storm
+            named_storm_id = self.context['request'].data.get('named_storm')
+            qs = NamedStormCoveredDataSnapshot.objects.filter(named_storm__id=named_storm_id, date_completed__isnull=False)
+            qs = qs.order_by('-date_completed')
+            attrs['covered_data_snapshot'] = qs.first()
+        return super().validate(attrs)
 
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:
