@@ -37,3 +37,4 @@ pandas==0.22.0
 boto3==1.9.214
 PyYAML==5.1.2
 cfchecker==4.0.0
+uritemplate==3.0.0
