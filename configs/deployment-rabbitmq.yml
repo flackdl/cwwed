@@ -6,14 +6,14 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rabbitmq-container
+      app: rabbitmq
   template:
     metadata:
       labels:
-        app: rabbitmq-container
+        app: rabbitmq
     spec:
       containers:
-      - name: rabbitmq-container
+      - name: rabbitmq
         image: rabbitmq:3
         ports:
         - containerPort: 5672

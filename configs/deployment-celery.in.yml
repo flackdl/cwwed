@@ -1,3 +1,7 @@
+!Defaults
+image: !Format "flackdl/cwwed:{tag}"
+secret_name: !Format "cwwed-secrets-{deploy_stage}"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,7 +22,7 @@ spec:
          claimName: efs
       containers:
       - name: celery-container
-        image: flackdl/cwwed
+        image: !Var image
         imagePullPolicy: Always
         command: ['celery']
         args: ['worker', '--concurrency=10', '-A', 'cwwed', '-l', 'info']
@@ -32,7 +36,7 @@ spec:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
           - name: DEPLOY_STAGE
-            value: alpha
+            value: !Var deploy_stage
           - name: CELERY_BROKER
             value: rabbitmq-service
           - name: CELERY_BACKEND
@@ -40,4 +44,4 @@ spec:
         # secrets
         envFrom:
           - secretRef:
-              name: cwwed-secrets-alpha
+              name: !Var secret_name

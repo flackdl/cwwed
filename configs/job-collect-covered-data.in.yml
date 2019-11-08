@@ -1,3 +1,7 @@
+!Defaults
+image: !Format "flackdl/cwwed:{tag}"
+secret_name: !Format "cwwed-secrets-{deploy_stage}"
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -14,7 +18,7 @@ spec:
       restartPolicy: Never  # don't restart the container if the entire process fails
       containers:
       - name: cwwed-covered-data
-        image: flackdl/cwwed
+        image: !Var image
         command: ['python']
         args: ['manage.py', 'collect_covered_data']
         # args: ['manage.py', 'collect_covered_data', '--storm_id', '1', '--covered_data_id', '9']
@@ -25,7 +29,7 @@ spec:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
           - name: DEPLOY_STAGE
-            value: alpha
+            value: !Var deploy_stage
           - name: CELERY_BROKER
             value: rabbitmq-service
           - name: CELERY_BACKEND
@@ -33,4 +37,4 @@ spec:
         # secrets
         envFrom:
           - secretRef:
-              name: cwwed-secrets-alpha
+              name: !Var secret_name
