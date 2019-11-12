@@ -1,12 +1,16 @@
 import os
+import logging
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from rest_framework.fields import CurrentUserDefault
+from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.fields import CurrentNsemPsaDefault
-from named_storms.models import NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider, NsemPsaVariable, NsemPsaUserExport
-from named_storms.utils import get_opendap_url_nsem, get_opendap_url_nsem_covered_data, get_opendap_url_nsem_psa
+from named_storms.models import (
+    NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
+    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
+from named_storms.utils import get_opendap_url_nsem, get_opendap_url_covered_data_snapshot
+
+logger = logging.getLogger('cwwed')
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
@@ -50,6 +54,24 @@ class NamedStormCoveredDataSerializer(serializers.ModelSerializer):
         depth = 1
 
 
+class NamedStormCoveredDataSnapshotSerializer(serializers.ModelSerializer):
+    covered_data_storage_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = NamedStormCoveredDataSnapshot
+        fields = '__all__'
+
+    def get_covered_data_storage_url(self, obj: NamedStormCoveredDataSnapshot):
+        return obj.get_covered_data_storage_url()
+
+    def validate(self, data):
+        named_storm = data['named_storm']  # type: NamedStorm
+        # verify there's covered data logs to create a snapshot from
+        if not named_storm.namedstormcovereddatalog_set.filter(success=True).exists():
+            raise serializers.ValidationError({api_settings.NON_FIELD_ERRORS_KEY: ['There are no covered data for this storm']})
+        return super().validate(data)
+
+
 class NsemPsaSerializer(serializers.ModelSerializer):
     """
     Named Storm Event Model Serializer
@@ -58,81 +80,122 @@ class NsemPsaSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsa
         fields = '__all__'
+        read_only_fields = [
+            'date_created', 'extracted', 'date_validation',
+            'validated', 'validation_exceptions',
+            'processed', 'date_processed',
+        ]
 
     dates = serializers.ListField(child=serializers.DateTimeField())
     model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()
-    opendap_url_psa = serializers.SerializerMethodField()
     opendap_url_covered_data = serializers.SerializerMethodField()
+    covered_data_snapshot = serializers.ModelField(
+        model_field=NsemPsa()._meta.get_field('covered_data_snapshot'),
+        # automatically associates the most recent snapshot in validate()
+        required=False,
+    )
 
-    def get_opendap_url_psa(self, obj: NsemPsa):
-        if 'request' not in self.context:
-            return None
-        return get_opendap_url_nsem_psa(self.context['request'], obj)
+    def validate(self, attrs):
+        if not self.instance:
+            # populate the most recent covered data snapshot for this storm
+            named_storm_id = self.context['request'].data.get('named_storm')
+            qs = NamedStormCoveredDataSnapshot.objects.filter(named_storm__id=named_storm_id, date_completed__isnull=False)
+            qs = qs.order_by('-date_completed')
+            attrs['covered_data_snapshot'] = qs.first()
+        return super().validate(attrs)
 
     def get_opendap_url_covered_data(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.covered_data_snapshot_path:
+        if not obj.covered_data_snapshot:
             return None
-        return dict((cdl.covered_data.id, get_opendap_url_nsem_covered_data(self.context['request'], obj, cdl.covered_data)) for cdl in obj.covered_data_logs.all())
+        return dict(
+            (cdl.covered_data.id, get_opendap_url_covered_data_snapshot(self.context['request'], obj.covered_data_snapshot, cdl.covered_data))
+            for cdl in obj.covered_data_snapshot.covered_data_logs.all()
+        )
 
     def get_opendap_url(self, obj: NsemPsa):
         if 'request' not in self.context:
             return None
-        if not obj.snapshot_extracted:
+        if not obj.validated:
             return None
         return get_opendap_url_nsem(self.context['request'], obj)
 
     def get_covered_data_storage_url(self, obj: NsemPsa):
-        storage = S3ObjectStoragePrivate()
-        if obj.covered_data_snapshot_path:
-            return storage.storage_url(obj.covered_data_snapshot_path)
-        return None
+        return obj.covered_data_snapshot.get_covered_data_storage_url()
 
-    def validate_model_output_snapshot(self, value):
+    def validate_manifest(self, manifest: dict):
+        # manually validating manifest since nested writes aren't supported in drf
+        serializer = NsemPsaManifestSerializer(data=manifest)
+        if not serializer.is_valid():
+            raise serializers.ValidationError(serializer.errors)
+        return manifest
+
+    def validate_path(self, s3_path):
         """
-        Check that it hasn't already been processed
-        Check that the path is in the expected format (ie. "NSEM/upload/v68.tgz") and exists in storage
+        Check that the path is in the expected format (ie. "NSEM/upload/*.tgz") and exists in storage
         """
         storage = S3ObjectStoragePrivate()
-        obj = self.instance  # type: NsemPsa
-        if obj:
 
-            # already extracted
-            if obj.snapshot_extracted:
-                raise serializers.ValidationError('Cannot be updated since the model output has already been processed')
+        # verify the uploaded psa is in the correct path
+        if not s3_path.startswith(self._model_output_upload_path()):
+            raise serializers.ValidationError("should be in '{}'".format(self._model_output_upload_path()))
 
-            s3_path = self._get_model_output_upload_path(obj)
+        # verify the path is in the expected format
+        if not s3_path.endswith(settings.CWWED_ARCHIVE_EXTENSION):
+            raise serializers.ValidationError("should be of the extension '.{}'".format(settings.CWWED_ARCHIVE_EXTENSION))
 
-            # verify the path is in the expected format
-            if s3_path != value:
-                raise serializers.ValidationError("'snapshot_path' should equal '{}'".format(s3_path))
+        # remove any prefixed "location" from the object storage instance
+        location_prefix = '{}/'.format(storage.location)
+        if s3_path.startswith(location_prefix):
+            s3_path = s3_path.replace(location_prefix, '')
 
-            # remove any prefixed "location" from the object storage instance
-            location_prefix = '{}/'.format(storage.location)
-            if s3_path.startswith(location_prefix):
-                s3_path = s3_path.replace(location_prefix, '')
+        # verify the path exists
+        if not storage.exists(s3_path):
+            raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
 
-            # verify the path exists
-            if not storage.exists(s3_path):
-                raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
+        return s3_path
 
-            return s3_path
-        return value
-
-    def get_model_output_upload_path(self, obj: NsemPsa) -> str:
-        return self._get_model_output_upload_path(obj)
+    def get_model_output_upload_path(self, obj):
+        return self._model_output_upload_path()
 
     @staticmethod
-    def _get_model_output_upload_path(obj: NsemPsa) -> str:
+    def _model_output_upload_path() -> str:
         storage = S3ObjectStoragePrivate()
         return storage.path(os.path.join(
             settings.CWWED_NSEM_DIR_NAME,
             settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-            'v{}.{}'.format(obj.id, settings.CWWED_ARCHIVE_EXTENSION)),
-        )
+        ))
+
+    def create(self, validated_data):
+        nsem_psa = super().create(validated_data)  # type: NsemPsa
+
+        # manually save the individual psa manifest datasets since nested writes aren't supported in drf
+        for dataset in validated_data['manifest']['datasets']:
+            dataset_serializer = NsemPsaManifestDatasetSerializer(data=dataset)
+            # this will have already been validated but it's necessary to populate `validate_data`
+            dataset_serializer.is_valid(raise_exception=True)
+            nsem_psa.nsempsamanifestdataset_set.create(**dataset_serializer.validated_data)
+
+        return nsem_psa
+
+
+class NsemPsaManifestDatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NsemPsaManifestDataset
+        exclude = ['nsem']
+
+    def validate_variables(self, variables: list):
+        # validate the "variables" are a subset of NsemPsaVariable.VARIABLE_DATASETS
+        if not set(variables).issubset(NsemPsaVariable.VARIABLE_DATASETS):
+            raise serializers.ValidationError('variables must be in {}'.format(NsemPsaVariable.VARIABLE_DATASETS))
+        return variables
+
+
+class NsemPsaManifestSerializer(serializers.Serializer):
+    datasets = serializers.ListSerializer(child=NsemPsaManifestDatasetSerializer(), allow_empty=False)
 
 
 class NsemPsaVariableSerializer(serializers.ModelSerializer):
@@ -150,11 +213,10 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
     Named Storm Event Model PSA User Export Serializer
     """
 
-    # overriding these fields to use the provided serializer context
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), default=CurrentUserDefault())
-    nsem = serializers.PrimaryKeyRelatedField(queryset=NsemPsa.objects.all(), default=CurrentNsemPsaDefault())
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     def validate(self, data):
+
         data = super().validate(data)
 
         # require date_filter for specific formats

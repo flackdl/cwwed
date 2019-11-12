@@ -1,0 +1,19 @@
+{
+  "named_storm": 1,
+  "dates": [
+    "2012-10-29T13:00:00",
+    "2012-10-29T14:00:00"
+  ],
+  "path": "local/NSEM/upload/psa.tgz",
+  "manifest": {
+    "datasets": [
+      {
+        "path": "sandy-wind-demo.nc",
+        "variables": [
+          "wind_speed",
+          "wind_direction"
+        ]
+      }
+    ]
+  }
+}

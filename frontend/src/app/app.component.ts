@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { forkJoin } from "rxjs";
 import { CwwedService } from "./cwwed.service";
+import { ToastrService } from 'ngx-toastr';
 
 
 @Component({
@@ -14,6 +15,7 @@ export class AppComponent implements OnInit {
 
   constructor(
     private cwwedService: CwwedService,
+    private toastr: ToastrService,
   ) {
   }
 
@@ -46,6 +48,7 @@ export class AppComponent implements OnInit {
       },
       (error) => {
         console.log(error);
+        this.toastr.error('An unknown error occurred loading initial data');
         this.isLoading = false;
       });
   }

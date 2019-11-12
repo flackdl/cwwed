@@ -1,7 +1,13 @@
+!Defaults
+image: !Format "flackdl/cwwed:{tag}"
+secret_name: !Format "cwwed-secrets-{deploy_stage}"
+volume_claim_name: !Format "efs-{deploy_stage}"
+rabbitmq_service: !Format "rabbitmq-{deploy_stage}"
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: cwwed-post-storm-assessment
+  name: cwwed-job-covered-data
 spec:
   backoffLimit: 2  # number of retries
   template:
@@ -9,14 +15,15 @@ spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-         claimName: efs
+         claimName: !Var volume_claim_name
       # https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/#handling-pod-and-container-failures
       restartPolicy: Never  # don't restart the container if the entire process fails
       containers:
-      - name: cwwed-post-storm-assessment
-        image: flackdl/cwwed
+      - name: cwwed-covered-data
+        image: !Var image
         command: ['python']
-        args: ['manage.py', 'psa']
+        args: ['manage.py', 'collect_covered_data']
+        # args: ['manage.py', 'collect_covered_data', '--storm_id', '1', '--covered_data_id', '9']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
@@ -24,12 +31,12 @@ spec:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
           - name: DEPLOY_STAGE
-            value: prod
+            value: !Var deploy_stage
           - name: CELERY_BROKER
-            value: rabbitmq-service
+            value: !Var rabbitmq_service
           - name: CELERY_BACKEND
-            value: rabbitmq-service
+            value: !Var rabbitmq_service
         # secrets
         envFrom:
           - secretRef:
-              name: cwwed-secrets
+              name: !Var secret_name

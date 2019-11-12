@@ -1,0 +1,20 @@
+<h5>Choose a named storm</h5>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Date Start</th>
+        <th>Date End</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let storm of namedStorms">
+        <td><a [routerLink]="['/post-storm-assessment', storm.id]">{{ storm.name }}</a></td>
+        <td>{{ storm.date_start }}</td>
+        <td>{{ storm.date_end }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>

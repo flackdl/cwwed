@@ -8,6 +8,8 @@ import { RouterModule, Routes } from "@angular/router";
 import { NgxLoadingModule } from 'ngx-loading';
 import { MomentModule } from 'ngx-moment';
 import { ChartsModule } from "ng2-charts";
+import { ToastrModule } from 'ngx-toastr';
+
 import * as Sentry from "@sentry/browser";
 
 
@@ -21,6 +23,7 @@ import { CoastalActComponent } from './coastal-act/coastal-act.component';
 import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-projects.component';
 import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
 import { PsaExportComponent } from './psa/psa-export.component';
+import { PsaListComponent } from './psa/psa-list.component';
 
 Sentry.init({
   dsn: "https://80b326e2a7fa4e6abf9d3a9d19481c40@sentry.io/1281345",
@@ -60,7 +63,7 @@ const appRoutes: Routes = [
   {
     path: 'post-storm-assessment',
     children: [
-      { path: '', component: PsaComponent },  // TODO - remove path entry once we're dynamically choosing storms
+      { path: '', component: PsaListComponent },
       { path: ':id', component: PsaComponent },
       { path: ':id/export', component: PsaExportComponent },
     ],
@@ -82,6 +85,7 @@ const appRoutes: Routes = [
     CoastalActProjectsComponent,
     CoastalActProjectsDetailComponent,
     PsaExportComponent,
+    PsaListComponent,
   ],
   imports: [
     RouterModule.forRoot(
@@ -106,6 +110,7 @@ const appRoutes: Routes = [
     MomentModule,
     ReactiveFormsModule,
     ChartsModule,
+    ToastrModule.forRoot(),
   ],
   entryComponents: [],
   providers: [{ provide: ErrorHandler, useClass: SentryErrorHandler }],

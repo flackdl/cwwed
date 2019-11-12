@@ -29,10 +29,14 @@ ds = xr.Dataset(
     coords={
         # arbitrarily using water level for coord values
         'time': (['time'], dataset_water_level.time[date_mask(dataset_water_level)]),
-        'x': (['node'], dataset_water_level.x),
-        'y': (['node'], dataset_water_level.y),
+        'lon': (['node'], dataset_water_level.x),
+        'lat': (['node'], dataset_water_level.y),
     },
 )
 
 # save as netcdf classic because hyrax chokes on 64bit ints
 ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc', format='NETCDF4_CLASSIC')
+
+# save a two day psa demo
+ds_demo = xr.concat([ds.isel(time=0), ds.isel(time=1)], 'time')  # type: xr.Dataset
+ds_demo.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water-demo.nc', format='NETCDF4_CLASSIC')

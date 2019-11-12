@@ -4,9 +4,10 @@ kind: ConfigMap
 metadata:
   name: efs-provisioner
 data:
-  file.system.id: fs-62499b2a
+  file.system.id: fs-8c80050d
   aws.region: us-east-1
   provisioner.name: example.com/aws-efs
+  dns.name: ""
 ---
 kind: Deployment
 apiVersion: extensions/v1beta1
@@ -21,6 +22,7 @@ spec:
       labels:
         app: efs-provisioner
     spec:
+      serviceAccount: efs-provisioner
       containers:
         - name: efs-provisioner
           image: quay.io/external_storage/efs-provisioner:latest
@@ -35,6 +37,12 @@ spec:
                 configMapKeyRef:
                   name: efs-provisioner
                   key: aws.region
+            - name: DNS_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: efs-provisioner
+                  key: dns.name
+                  optional: true
             - name: PROVISIONER_NAME
               valueFrom:
                 configMapKeyRef:
@@ -46,7 +54,7 @@ spec:
       volumes:
         - name: pv-volume
           nfs:
-            server: fs-62499b2a.efs.us-east-1.amazonaws.com
+            server: fs-8c80050d.efs.us-east-1.amazonaws.com
             path: /
 ---
 kind: StorageClass
@@ -54,13 +62,11 @@ apiVersion: storage.k8s.io/v1
 metadata:
   name: aws-efs
 provisioner: example.com/aws-efs
-parameters:
-  gidAllocate: "false"
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: efs
+  name: efs-alpha
   annotations:
     volume.beta.kubernetes.io/storage-class: "aws-efs"
 spec:
@@ -70,43 +76,29 @@ spec:
     requests:
       storage: 1Mi
 ---
-
-#
-# RBAC configuration
-#
-
+kind: PersistentVolumeClaim
 apiVersion: v1
-kind: ServiceAccount
 metadata:
-  name: efs-provisioner
+  name: efs-dev
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
 ---
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
+kind: PersistentVolumeClaim
+apiVersion: v1
 metadata:
-  name: efs-provisioner-runner
-rules:
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch", "create", "delete"]
-  - apiGroups: [""]
-    resources: ["persistentvolumeclaims"]
-    verbs: ["get", "list", "watch", "update"]
-  - apiGroups: ["storage.k8s.io"]
-    resources: ["storageclasses"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["events"]
-    verbs: ["list", "watch", "create", "update", "patch"]
+  name: efs-prod
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
 ---
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: run-efs-provisioner
-subjects:
-  - kind: ServiceAccount
-    name: efs-provisioner
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: efs-provisioner-runner
-  apiGroup: rbac.authorization.k8s.io

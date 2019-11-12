@@ -13,7 +13,7 @@ from cwwed import slack
 from named_storms.models import (
     CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
     PROCESSOR_DATA_SOURCE_FILE_HDF,
-)
+    NamedStormCoveredDataSnapshot, NsemPsaVariable)
 
 
 def slack_channel(message: str, channel='#errors'):
@@ -73,9 +73,30 @@ def named_storm_path(named_storm: NamedStorm) -> str:
     )
 
 
-def named_storm_covered_data_path(named_storm: NamedStorm) -> str:
+def named_storm_covered_data_current_path_root(named_storm: NamedStorm) -> str:
     """
-    Returns a path to a storm's covered data
+    Returns a path to a storm's "current" covered data in file storage
+    """
+    return os.path.join(
+        root_data_path(),
+        settings.CWWED_COVERED_DATA_CURRENT_DIR_NAME,
+        str(named_storm),
+    )
+
+
+def named_storm_covered_data_current_path(named_storm: NamedStorm, covered_data: CoveredData) -> str:
+    """
+    Returns a path to a specific storm's "current" covered data in file storage
+    """
+    return os.path.join(
+        named_storm_covered_data_current_path_root(named_storm),
+        str(covered_data),
+    )
+
+
+def named_storm_covered_data_archive_path_root(named_storm: NamedStorm) -> str:
+    """
+    Returns a path to a storm's covered data in the archive
     """
     return os.path.join(
         named_storm_path(named_storm),
@@ -99,7 +120,7 @@ def named_storm_covered_data_archive_path(named_storm: NamedStorm, covered_data:
     Returns a path to a storm's covered data archive
     """
     return os.path.join(
-        named_storm_covered_data_path(named_storm),
+        named_storm_covered_data_archive_path_root(named_storm),
         covered_data.name,
     )
 
@@ -120,17 +141,7 @@ def named_storm_nsem_version_path(nsem: NsemPsa) -> str:
     """
     return os.path.join(
         named_storm_nsem_path(nsem),
-        'v{}'.format(nsem.id))
-
-
-def named_storm_nsem_psa_version_path(nsem: NsemPsa) -> str:
-    """
-    Returns a path to a storm's NsemPsa product's version
-    """
-    return os.path.join(
-        named_storm_nsem_version_path(nsem),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
-    )
+        str(nsem.id))
 
 
 def copy_path_to_default_storage(source_path: str, destination_path: str):
@@ -175,7 +186,7 @@ def get_opendap_url_nsem_root(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_named_storm_root(request, nsem.named_storm),
         parse.quote(settings.CWWED_NSEM_DIR_NAME),
-        'v{}'.format(nsem.id),
+        str(nsem.id),
     )
 
 
@@ -189,21 +200,15 @@ def get_opendap_url_nsem(request: HttpRequest, nsem: NsemPsa) -> str:
 def get_opendap_url_nsem_psa(request: HttpRequest, nsem: NsemPsa) -> str:
     return os.path.join(
         get_opendap_url_nsem_root(request, nsem),
-        parse.quote(settings.CWWED_NSEM_PSA_DIR_NAME),
         'catalog.html',
     )
 
 
-def get_opendap_url_nsem_covered_data_root(request: HttpRequest, nsem: NsemPsa) -> str:
+def get_opendap_url_covered_data_snapshot(request: HttpRequest, covered_data_snapshot: NamedStormCoveredDataSnapshot, covered_data: CoveredData) -> str:
     return os.path.join(
-        get_opendap_url_nsem_root(request, nsem),
-        parse.quote(settings.CWWED_COVERED_DATA_DIR_NAME),
-    )
-
-
-def get_opendap_url_nsem_covered_data(request: HttpRequest, nsem: NsemPsa, covered_data: CoveredData) -> str:
-    return os.path.join(
-        get_opendap_url_nsem_covered_data_root(request, nsem),
+        get_opendap_url_named_storm_root(request, covered_data_snapshot.named_storm),
+        parse.quote(settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME),
+        str(covered_data_snapshot.id),
         parse.quote(covered_data.name),
         'catalog.html',
     )
@@ -222,6 +227,7 @@ def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
             "type": "Feature",
             "properties": {
                 "name": data['nsem_psa_variable__name'],
+                "display_name": data['nsem_psa_variable__display_name'],
                 "units": data['nsem_psa_variable__units'],
                 "value": data['value'],
                 "meta": data['meta'],

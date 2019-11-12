@@ -60,6 +60,9 @@ class NamedStorm(models.Model):
     active = models.BooleanField(default=True)
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ['-date_start']
+
     def __str__(self):
         return self.name
 
@@ -112,9 +115,9 @@ class NamedStormCoveredData(models.Model):
         :return: Last successful covered data log for a particular storm
         :rtype named_storm.models.NamedStormCoveredDataLog
         """
-        # query last successful log by ordering by storm/data/date using "distinct" on storm/data
+        # query last successful log by ordering by storm/data/date_completed using "distinct" on storm/data
         log = named_storm.namedstormcovereddatalog_set.filter(success=True, covered_data=covered_data)
-        log = log.order_by('named_storm', 'covered_data', '-date').distinct('named_storm', 'covered_data')
+        log = log.order_by('named_storm', 'covered_data', '-date_completed').distinct('named_storm', 'covered_data')
         if log.exists():
             return log.get()
         return None
@@ -124,15 +127,31 @@ class NamedStormCoveredDataLog(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
     provider = models.ForeignKey(CoveredDataProvider, on_delete=models.CASCADE)
-    date = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)  # manually set once data has been archived in object storage
     success = models.BooleanField(default=False)  # whether the covered data collection was a success
     snapshot = models.TextField(blank=True)  # the path to the covered data snapshot
     exception = models.TextField(blank=True)  # any error message during a failed collection
 
     def __str__(self):
         if self.success:
-            return '{}: {}'.format(self.date.isoformat(), self.snapshot)
+            return '{}: {}'.format(self.date_created.isoformat(), self.snapshot)
         return 'Error:: {}: {}'.format(self.named_storm, self.covered_data)
+
+
+class NamedStormCoveredDataSnapshot(models.Model):
+    named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
+    date_requested = models.DateTimeField(auto_now_add=True)
+    date_completed = models.DateTimeField(null=True, blank=True)  # manually set once snapshot is complete
+    path = models.CharField(max_length=500, blank=True)  # path (prefix) in object storage
+    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of covered data logs gets populated after creation
+
+    def get_covered_data_storage_url(self):
+        from cwwed.storage_backends import S3ObjectStoragePrivate  # import locally to prevent circular references
+        storage = S3ObjectStoragePrivate()
+        if self.date_completed and self.path:
+            return storage.storage_url(self.path)
+        return None
 
 
 class NsemPsa(models.Model):
@@ -140,63 +159,190 @@ class NsemPsa(models.Model):
     Named Storm Event Model
     """
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
-    date_requested = models.DateTimeField(auto_now_add=True)
-    date_returned = models.DateTimeField(null=True, blank=True)  # manually set once the psa is returned
-    covered_data_snapshot_path = models.TextField(blank=True)  # path to the covered data snapshot
-    covered_data_logs = models.ManyToManyField(NamedStormCoveredDataLog, blank=True)  # list of logs going into the snapshot
-    snapshot_path = models.TextField(blank=True)  # path to the psa snapshot
-    snapshot_extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
+    date_created = models.DateTimeField(auto_now_add=True)
+    covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.PROTECT)
+    manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
+    path = models.TextField()  # path to the psa
+    extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
+    date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
+    validated = models.BooleanField(default=False)  # whether the supplied psa was validated
+    validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
+    processed = models.BooleanField(default=False)  # whether the psa was fully ingested/processed
     date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the psa is processed
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list
 
     def __str__(self):
         return '{} ({})'.format(self.named_storm, self.id)
 
+    @classmethod
+    def get_last_valid_psa(cls, storm_id: int):
+        qs = cls.objects.filter(
+            named_storm__id=storm_id,
+            extracted=True,
+            validated=True,
+            processed=True
+        )
+        qs = qs.order_by('-date_created')
+        return qs.first()
+
+
+class NsemPsaManifestDataset(models.Model):
+    nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
+    path = models.CharField(max_length=200)
+    variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
+
+    def __str__(self):
+        return '{}: {}'.format(self.nsem, self.path)
+
 
 class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'
     DATA_TYPE_MAX_VALUES = 'max-values'
+
     GEO_TYPE_POLYGON = 'polygon'
     GEO_TYPE_WIND_BARB = 'wind-barb'
+
     UNITS_METERS = 'm'
     UNITS_METERS_PER_SECOND = 'm/s'
     UNITS_DEGREES = 'degrees'
+
     ELEMENT_WATER = 'water'
     ELEMENT_WIND = 'wind'
 
-    ELEMENT_CHOICES = (
-        (ELEMENT_WATER, ELEMENT_WATER),
-        (ELEMENT_WIND, ELEMENT_WIND),
+    ELEMENTS = (
+        ELEMENT_WATER,
+        ELEMENT_WIND,
     )
 
-    DATA_TYPE_CHOICES = (
-        (DATA_TYPE_TIME_SERIES, DATA_TYPE_TIME_SERIES),
-        (DATA_TYPE_MAX_VALUES, DATA_TYPE_MAX_VALUES),
+    DATA_TYPES = (
+        DATA_TYPE_TIME_SERIES,
+        DATA_TYPE_MAX_VALUES,
     )
 
-    UNITS_CHOICES = (
-        (UNITS_METERS_PER_SECOND, UNITS_METERS_PER_SECOND),
-        (UNITS_METERS, UNITS_METERS),
-        (UNITS_DEGREES, UNITS_DEGREES),
+    UNITS = (
+        UNITS_METERS_PER_SECOND,
+        UNITS_METERS,
+        UNITS_DEGREES,
     )
 
-    GEO_TYPE_CHOICES = (
-        (GEO_TYPE_POLYGON, GEO_TYPE_POLYGON),
-        (GEO_TYPE_WIND_BARB, GEO_TYPE_WIND_BARB),
+    GEO_TYPES = (
+        GEO_TYPE_POLYGON,
+        GEO_TYPE_WIND_BARB,
     )
+
+    VARIABLE_WATER_LEVEL = 'Water Level'
+    VARIABLE_WAVE_HEIGHT = 'Wave Height'
+    VARIABLE_WIND_SPEED = 'Wind Speed'
+    VARIABLE_WIND_BARBS = 'Wind Barbs'
+
+    VARIABLE_DATASET_WATER_LEVEL = 'water_level'
+    VARIABLE_DATASET_WAVE_HEIGHT = 'wave_height'
+    VARIABLE_DATASET_WIND_SPEED = 'wind_speed'
+    VARIABLE_DATASET_WIND_DIRECTION = 'wind_direction'
+    VARIABLE_DATASET_WIND_SPEED_MAX = 'wind_speed_max'
+    VARIABLE_DATASET_WATER_LEVEL_MAX = 'water_level_max'
+
+    VARIABLE_NAMES = (
+        VARIABLE_WATER_LEVEL,
+        VARIABLE_WAVE_HEIGHT,
+        VARIABLE_WIND_SPEED,
+        VARIABLE_WIND_BARBS,
+    )
+
+    VARIABLE_DATASETS = (
+        VARIABLE_DATASET_WATER_LEVEL,
+        VARIABLE_DATASET_WAVE_HEIGHT,
+        VARIABLE_DATASET_WIND_SPEED,
+        VARIABLE_DATASET_WIND_DIRECTION,
+        VARIABLE_DATASET_WATER_LEVEL_MAX,
+        VARIABLE_DATASET_WIND_SPEED_MAX,
+    )
+
+    VARIABLES = {
+        VARIABLE_DATASET_WATER_LEVEL: {
+            'display_name': VARIABLE_WATER_LEVEL,
+            'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WATER,
+            'auto_displayed': True,
+        },
+        VARIABLE_DATASET_WATER_LEVEL_MAX: {
+            'display_name': VARIABLE_WATER_LEVEL,
+            'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_MAX_VALUES,
+            'element_type': ELEMENT_WATER,
+            'auto_displayed': False,
+        },
+        VARIABLE_DATASET_WAVE_HEIGHT: {
+            'display_name': VARIABLE_WAVE_HEIGHT,
+            'units': UNITS_METERS,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WATER,
+            'auto_displayed': True,
+        },
+        VARIABLE_DATASET_WIND_SPEED: {
+            'display_name': VARIABLE_WIND_SPEED,
+            'units': UNITS_METERS_PER_SECOND,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WIND,
+            'auto_displayed': True,
+        },
+        VARIABLE_DATASET_WIND_SPEED_MAX: {
+            'display_name': VARIABLE_WIND_SPEED,
+            'units': UNITS_METERS_PER_SECOND,
+            'geo_type': GEO_TYPE_POLYGON,
+            'data_type': DATA_TYPE_MAX_VALUES,
+            'element_type': ELEMENT_WIND,
+            'auto_displayed': False,
+        },
+        VARIABLE_DATASET_WIND_DIRECTION: {
+            'display_name': VARIABLE_WIND_BARBS,
+            'units': UNITS_DEGREES,
+            'geo_type': GEO_TYPE_WIND_BARB,
+            'data_type': DATA_TYPE_TIME_SERIES,
+            'element_type': ELEMENT_WIND,
+            'auto_displayed': False,
+        },
+    }
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50)  # i.e "water_level"
-    geo_type = models.CharField(choices=GEO_TYPE_CHOICES, max_length=20)
-    data_type = models.CharField(choices=DATA_TYPE_CHOICES, max_length=20)
-    element_type = models.CharField(choices=ELEMENT_CHOICES, max_length=20)
+    name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
     color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
-    units = models.CharField(choices=UNITS_CHOICES, max_length=20)
     auto_displayed = models.BooleanField(default=False)
+    display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level"
+    geo_type = models.CharField(choices=zip(GEO_TYPES, GEO_TYPES), max_length=20)  # i.e "polygon"
+    data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
+    element_type = models.CharField(choices=zip(ELEMENTS, ELEMENTS), max_length=20)  # i.e "water"
+    units = models.CharField(choices=zip(UNITS, UNITS), max_length=20)  # i.e "m/s"
 
     class Meta:
         unique_together = ('nsem', 'name')
         ordering = ['name']
+
+    def save(self, **kwargs):
+        # automatically define display name
+        self.display_name = self.get_attribute('display_name')
+
+        # validate variable attributes
+        assert self.geo_type == self.get_attribute('geo_type'), 'improper attribute value'
+        assert self.data_type == self.get_attribute('data_type'), 'improper attribute value'
+        assert self.element_type == self.get_attribute('element_type'), 'improper attribute value'
+        assert self.units == self.get_attribute('units'), 'improper attribute value'
+
+        return super().save(**kwargs)
+
+    def get_attribute(self, attribute: str):
+        return NsemPsaVariable.get_variable_attribute(self.name, attribute)
+
+    @classmethod
+    def get_variable_attribute(cls, variable, attribute: str):
+        assert variable in cls.VARIABLES, 'unknown variable "{}"'.format(variable)
+        assert attribute in cls.VARIABLES[variable], 'unknown attribute "{}"'.format(attribute)
+        return cls.VARIABLES[variable][attribute]
 
     def __str__(self):
         return self.name

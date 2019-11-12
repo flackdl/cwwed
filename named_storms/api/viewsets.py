@@ -1,5 +1,4 @@
 import csv
-import pytz
 import logging
 from celery import chain
 from django.core.cache import caches, BaseCache
@@ -12,23 +11,26 @@ from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
 from django.views.decorators.cache import cache_control
 from django.contrib.gis.db.models import Collect, GeometryField
-from rest_framework import viewsets
+from rest_framework import viewsets, mixins
 from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
+from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
-    archive_nsem_covered_data_task, extract_nsem_psa_task, email_nsem_covered_data_complete_task,
-    extract_nsem_covered_data_task, create_psa_user_export_task,
-    email_psa_user_export_task)
-from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport
+    create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
+    extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
+    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa)
+from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport, NamedStormCoveredDataSnapshot
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-)
+    NamedStormCoveredDataSnapshotSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
+
+logger = logging.getLogger('cwwed')
 
 
 class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
@@ -38,6 +40,7 @@ class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = NamedStorm.objects.all()
     serializer_class = NamedStormSerializer
     filterset_fields = ('name',)
+    search_fields = ('name',)
 
     def get_serializer_class(self):
         # return a more detailed representation for a specific storm
@@ -51,47 +54,62 @@ class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CoveredDataSerializer
 
 
-class NsemPsaViewSet(viewsets.ModelViewSet):
+class NamedStormCoveredDataSnapshotViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
+    """
+    Named Storm Covered Data Snapshot ViewSet
+    """
+    queryset = NamedStormCoveredDataSnapshot.objects.all()
+    serializer_class = NamedStormCoveredDataSnapshotSerializer
+    permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
+
+    def perform_create(self, serializer):
+        # save the instance first so we can create a task to archive the covered data snapshot
+        obj = serializer.save()  # type: NamedStormCoveredDataSnapshot
+
+        chain(
+            # create a covered data snapshot in object storage for the nsem users to be able to download directly
+            create_named_storm_covered_data_snapshot_task.si(obj.id),
+            # send an email to the "nsem" user when the covered data snapshot archival is complete
+            email_nsem_user_covered_data_complete_task.si(obj.id),
+        )()
+
+
+class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):
     """
     Named Storm Event Model ViewSet
     """
     queryset = NsemPsa.objects.all()
     serializer_class = NsemPsaSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filterset_fields = ('named_storm__id', 'snapshot_extracted')
+    filterset_fields = ('named_storm__id', 'extracted', 'validated', 'processed')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
-        return Response(NsemPsaSerializer(
-            self.queryset.filter(snapshot_extracted=True).order_by('named_storm', '-date_returned').distinct('named_storm'),
-            many=True, context=self.get_serializer_context()).data)
+        qs = self.queryset.filter(extracted=True, validated=True, processed=True)
+        # NOTE: order by `named_storm_id` vs `named_storm` to prevent table join which django has issues with using distinct on
+        qs = qs.order_by('named_storm_id', '-date_created')
+        qs = qs.distinct('named_storm_id')
+        return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
     def perform_create(self, serializer):
-        # save the instance first so we can create a task to archive the covered data snapshot
-        obj = serializer.save()
+        # save the instance first so we can create a task to extract and validate the model output
+        nsem_psa = serializer.save()  # type: NsemPsa
 
-        # base url for email
-        base_url = '{}://{}'.format(
-            self.request.scheme,
-            self.request.get_host(),
-        )
-
-        # create an archive in object storage for the nsem users to download directly
-        archive_nsem_covered_data_task.apply_async(
-            (obj.id,),
-            link=[
-                # send an email to the "nsem" user when the archival is complete
-                email_nsem_covered_data_complete_task.s(base_url),
-                # download and extract archives into file storage so they're available for discovery (i.e opendap)
-                extract_nsem_covered_data_task.s()
-            ],
-        )
-
-    def perform_update(self, serializer):
-        # save the instance first so we can create a task to extract the model output snapshot
-        obj = serializer.save()
-        extract_nsem_psa_task.delay(obj.id)
+        chain(
+            # extract the psa
+            extract_nsem_psa_task.s(nsem_psa.id),
+            # validate once extracted
+            validate_nsem_psa_task.si(nsem_psa.id),
+            # email validation result
+            email_psa_validated_task.si(nsem_psa.id),
+            # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
+            extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
+            # ingest the psa
+            ingest_nsem_psa.si(nsem_psa.id),
+            # email psa ingest completion
+            email_psa_validated_task.si(nsem_psa.id),
+        )()
 
 
 class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -107,17 +125,16 @@ class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
         storm = NamedStorm.objects.filter(id=storm_id)
 
         # get the storm's most recent & valid nsem
-        nsem = NsemPsa.objects.filter(named_storm__id=storm_id, snapshot_extracted=True).order_by('-date_returned')
+        self.nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)
 
         # validate
-        if not storm.exists() or not nsem.exists():
+        if not storm.exists() or not self.nsem:
             # returning responses via dispatch isn't part of the drf workflow so manually returning JsonResponse instead
             return JsonResponse(
                 status=exceptions.NotFound.status_code,
                 data={'detail': exceptions.NotFound.default_detail},
             )
 
-        self.nsem = nsem.first()
         self.storm = storm.first()
 
         return super().dispatch(request, *args, **kwargs)
@@ -137,6 +154,11 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
 
+    def get_serializer_class(self):
+        # required placeholder because this class isn't using a serializer
+        from rest_framework.serializers import BaseSerializer
+        return BaseSerializer
+
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="{}-time-series.csv"'.format(self.nsem.named_storm)
@@ -146,8 +168,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         for result in results:
             for i, value in enumerate(result['values']):
                 writer.writerow([
-                    # TODO - remove timezone localization once data is correctly consumed in UTC
-                    pytz.timezone('US/Eastern').localize(self.nsem.dates[i].replace(tzinfo=None)),
+                    self.nsem.dates[i],
                     lat,
                     lon,
                     result['variable']['name'],
@@ -220,12 +241,17 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
     pagination_class = None
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
+    def get_serializer_class(self):
+        # required placeholder because this class isn't using a serializer
+        from rest_framework.serializers import BaseSerializer
+        return BaseSerializer
+
     def get_queryset(self):
         """
         group all geometries together by same variable & value which reduces total features
         """
         qs = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
-        qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+        qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
         qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
@@ -239,10 +265,11 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         # return cached data if it exists
         cache = caches['psa_geojson']  # type: BaseCache
         cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
-        cached_response = cache.get(cache_key)
-        if cached_response:
-            logging.info('returning cached response for {}'.format(cache_key))
-            return HttpResponse(cached_response, content_type='application/json')
+        if cache_key:
+            cached_response = cache.get(cache_key)
+            if cached_response:
+                logger.info('returning cached response for {}'.format(cache_key))
+                return HttpResponse(cached_response, content_type='application/json')
 
         self._validate()
 
@@ -279,6 +306,11 @@ class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet)
             return NsemPsaUserExport.objects.filter(user=self.request.user)
         else:
             return NsemPsaUserExport.objects.none()
+
+    def create(self, request, *args, **kwargs):
+        # manually add the requesting user to the data
+        request.data['user'] = request.user.id
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         super().perform_create(serializer)

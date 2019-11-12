@@ -1,4 +1,3 @@
-import json
 import os
 import shutil
 import pytz
@@ -8,7 +7,8 @@ import xarray as xr
 import boto3
 import numpy as np
 import pandas as pd
-import logging
+from celery.utils.log import get_task_logger
+from cfchecker import cfchecks
 from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
@@ -26,13 +26,19 @@ from django.urls import reverse
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
-from named_storms.api.serializers import NsemPsaSerializer
 from named_storms.data.processors import ProcessorData
-from named_storms.models import NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport, NsemPsaData, NsemPsaVariable
+from named_storms.psa import PsaDataset
+from named_storms.models import (
+    NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
+    NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
 from named_storms.utils import (
-    processor_class, named_storm_covered_data_archive_path, copy_path_to_default_storage, named_storm_nsem_version_path,
-    get_superuser_emails, named_storm_nsem_psa_version_path, root_data_path,
-    create_directory, get_geojson_feature_collection_from_psa_qs)
+    processor_class, copy_path_to_default_storage, get_superuser_emails,
+    named_storm_nsem_version_path, root_data_path, create_directory,
+    get_geojson_feature_collection_from_psa_qs, named_storm_path,
+    named_storm_covered_data_current_path)
+
+# celery logger
+logger = get_task_logger(__name__)
 
 
 TASK_ARGS = dict(
@@ -97,7 +103,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
     covered_data = get_object_or_404(CoveredData, pk=covered_data_id)
     log = get_object_or_404(NamedStormCoveredDataLog, pk=log_id)
 
-    archive_path = named_storm_covered_data_archive_path(named_storm, covered_data)
+    archive_path = named_storm_covered_data_current_path(named_storm, covered_data)
     tar_path = '{}.{}'.format(
         os.path.join(os.path.dirname(archive_path), os.path.basename(archive_path)),  # guarantees no trailing slash
         settings.CWWED_ARCHIVE_EXTENSION,
@@ -122,23 +128,23 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
 
     # update the log with the saved snapshot
     log.snapshot = snapshot_path
+    log.date_completed = pytz.utc.localize(datetime.utcnow())
     log.save()
 
     return log.snapshot
 
 
 @app.task(**TASK_ARGS)
-def archive_nsem_covered_data_task(nsem_id):
+def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
     """
-    - Copies all covered data archives to a versioned NSEM location in object storage so users can download them directly
-    :param nsem_id: id of NsemPsa record
+    - Creates a snapshot of a storm's covered data and archives in object storage
     """
 
     # retrieve all the successful covered data by querying the logs
-    # exclude any logs where the snapshot archive hasn't been created yet
     # sort by date descending and retrieve unique results
-    nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    logs = nsem.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(snapshot='').order_by('-date')
+    covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=int(named_storm_covered_data_snapshot_id))
+    logs = covered_data_snapshot.named_storm.namedstormcovereddatalog_set.filter(success=True).exclude(date_completed__isnull=True).order_by('-date_completed')
+
     if not logs.exists():
         return None
     logs_to_archive = []
@@ -148,39 +154,47 @@ def archive_nsem_covered_data_task(nsem_id):
 
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
-        nsem.named_storm.name,
-        'v{}'.format(nsem.id),
-        settings.CWWED_COVERED_DATA_DIR_NAME,
+        covered_data_snapshot.named_storm.name,
+        settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME,
+        str(covered_data_snapshot.id),
     )
 
     for log in logs_to_archive:
         src_path = log.snapshot
         dest_path = os.path.join(storage_path, os.path.basename(src_path))
-        # copy snapshot to versioned nsem location in default storage
+        # copy snapshot to the storm's snapshot directory in default storage
         S3ObjectStoragePrivate().copy_within_storage(src_path, dest_path)
 
-    nsem.covered_data_logs.set(logs_to_archive)  # many to many field
-    nsem.covered_data_snapshot_path = storage_path
-    nsem.save()
+    covered_data_snapshot.path = storage_path
+    covered_data_snapshot.date_completed = pytz.utc.localize(datetime.utcnow())
+    covered_data_snapshot.covered_data_logs.set(logs_to_archive)
+    covered_data_snapshot.save()
 
-    return NsemPsaSerializer(instance=nsem).data
+    return covered_data_snapshot.id
 
 
 @app.task(**TASK_ARGS)
-def extract_nsem_covered_data_task(nsem_data: dict):
+def extract_named_storm_covered_data_snapshot_task(nsem_psa_id):
     """
-    Downloads and extracts nsem covered data into file storage
-    :param nsem_data: dictionary of NsemPsa record
+    Downloads and extracts a named storm covered data snapshot into file storage
     """
-    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+
+    # only extract if the psa was validated
+    if not nsem_psa.validated:
+        logger.warning('{} was not validated so skipping covered data extraction'.format(nsem_psa))
+        return None
+
     file_system_path = os.path.join(
-        named_storm_nsem_version_path(nsem),
-        settings.CWWED_COVERED_DATA_DIR_NAME,
+        named_storm_path(nsem_psa.named_storm),
+        settings.CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME,
+        str(nsem_psa.covered_data_snapshot.id),
     )
+
     # download all the archives
     storage = S3ObjectStoragePrivate()
     storage.download_directory(
-        storage.path(nsem.covered_data_snapshot_path), file_system_path)
+        storage.path(nsem_psa.covered_data_snapshot.path), file_system_path)
 
     # extract the archives
     for file in os.listdir(file_system_path):
@@ -191,7 +205,8 @@ def extract_nsem_covered_data_task(nsem_data: dict):
             tar.close()
             # remove the original archive now that it's extracted
             os.remove(file_path)
-    return NsemPsaSerializer(instance=nsem).data
+
+    return nsem_psa.covered_data_snapshot.id
 
 
 class ExtractNSEMTaskBase(app.Task):
@@ -214,7 +229,7 @@ class ExtractNSEMTaskBase(app.Task):
                 if nsem_user.email:
                     recipients.append(nsem_user.email)
                 send_mail(
-                    subject='Failed extracting PSA v{}'.format(nsem.id),
+                    subject='Failed extracting PSA {}'.format(nsem.id),
                     message=str(exc),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=recipients,
@@ -234,14 +249,19 @@ def extract_nsem_psa_task(nsem_id):
     """
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
-    uploaded_file_path = nsem.snapshot_path
+    uploaded_file_path = nsem.path
     storage = S3ObjectStoragePrivate()
 
+    # remove any prefixed "location" from the object storage instance (i.e , "local", "dev", "test")
+    location_prefix = '{}/'.format(storage.location)
+    if uploaded_file_path.startswith(location_prefix):
+        uploaded_file_path = uploaded_file_path.replace(location_prefix, '')
+
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
-    if nsem.snapshot_extracted:
+    if nsem.extracted:
         return None
     elif not uploaded_file_path:
-        raise Http404("Missing model output snapshot")
+        raise Http404("Missing model output")
     # verify the uploaded output exists in storage
     elif not storage.exists(uploaded_file_path):
         raise Http404("{} doesn't exist in storage".format(uploaded_file_path))
@@ -249,8 +269,7 @@ def extract_nsem_psa_task(nsem_id):
     storage_path = os.path.join(
         settings.CWWED_NSEM_DIR_NAME,
         nsem.named_storm.name,
-        'v{}'.format(nsem.id),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
+        str(nsem.id),
         os.path.basename(uploaded_file_path),
     )
 
@@ -259,7 +278,6 @@ def extract_nsem_psa_task(nsem_id):
 
     file_system_path = os.path.join(
         named_storm_nsem_version_path(nsem),
-        settings.CWWED_NSEM_PSA_DIR_NAME,
         os.path.basename(uploaded_file_path),
     )
 
@@ -282,10 +300,9 @@ def extract_nsem_psa_task(nsem_id):
     # remove the tgz now that we've extracted everything
     os.remove(file_system_path)
 
-    # update output path to the copied path, flag success and set the date returned
-    nsem.snapshot_path = storage_path
-    nsem.snapshot_extracted = True
-    nsem.date_returned = datetime.utcnow()
+    # update output path to the copied path and flag success
+    nsem.path = storage_path
+    nsem.extracted = True
     nsem.save()
 
     # delete the original/uploaded copy
@@ -295,25 +312,27 @@ def extract_nsem_psa_task(nsem_id):
 
 
 @app.task(**TASK_ARGS)
-def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
+def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot_id: int):
     """
-    Email the "nsem" user indicating the Covered Data for a particular post storm assessment is complete and ready for download.
-    :param nsem_data serialized NsemPsa instance
-    :param base_url the scheme & domain that this request arrived
+    Email the "nsem" user indicating the Covered Data for a particular storm is complete and ready for download.
     """
-    nsem = get_object_or_404(NsemPsa, pk=nsem_data['id'])
+    named_storm_covered_data_snapshot = get_object_or_404(NamedStormCoveredDataSnapshot, pk=named_storm_covered_data_snapshot_id)
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
 
     body = """
-        {}
+        Covered Data is ready to download for {}.
         
-        {}
+        COVERED DATA URL: {}
         """.format(
-        # link to api endpoint for this nsem instance
-        '{}{}'.format(base_url, reverse('nsempsa-detail', args=[nsem.id])),
-        # raw json dump
-        json.dumps(nsem_data, indent=2),
+        named_storm_covered_data_snapshot.named_storm,
+        named_storm_covered_data_snapshot.get_covered_data_storage_url(),
     )
+
+    html_body = render_to_string(
+        'email_nsem_user_covered_data_complete.html',
+        context={
+            "named_storm_covered_data_snapshot": named_storm_covered_data_snapshot,
+        })
 
     # include the "nsem" user and all super users
     recipients = get_superuser_emails()
@@ -321,21 +340,149 @@ def email_nsem_covered_data_complete_task(nsem_data: dict, base_url: str):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='Covered Data is ready for download (PSA v{})'.format(nsem.id),
+        subject='Covered Data is ready to download for {}'.format(named_storm_covered_data_snapshot.named_storm),
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,
+        html_message=html_body,
     )
-    return nsem_data
+
+    return named_storm_covered_data_snapshot.id
+
+
+@app.task(**TASK_ARGS)
+def email_psa_validated_task(nsem_psa_id):
+    """
+    Email the "nsem" user indicating whether the PSA has been validated or not
+    """
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
+
+    body = """
+        {message}
+        
+        API: {api_url}
+        """.format(
+        message='PSA was validated' if nsem_psa.validated else 'PSA was rejected: {}'.format(nsem_psa.validation_exceptions),
+        api_url=nsem_psa_api_url,
+    )
+
+    html_body = render_to_string(
+        'email_psa_validated.html',
+        context={
+            "nsem_psa": nsem_psa,
+            "nsem_psa_api_url": nsem_psa_api_url,
+        })
+
+    # include the "nsem" user and all super users
+    recipients = get_superuser_emails()
+    if nsem_user.email:
+        recipients.append(nsem_user.email)
+
+    send_mail(
+        subject='PSA {validated} ({psa_id})'.format(
+            validated='validated' if nsem_psa.validated else 'rejected', psa_id=nsem_psa.id),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        html_message=html_body,
+    )
+    return nsem_psa.id
+
+
+@app.task(**EXTRACT_NSEM_TASK_ARGS)
+def validate_nsem_psa_task(nsem_id):
+    """
+    Validates the PSA model product output from file storage with the following:
+    - cf conventions - http://cfconventions.org/
+    - expected coordinates
+    - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
+    - duplicate dimension & scalar values (xarray throws ValueError if encountered)
+    - netcdf only
+    - no NaNs
+
+    TODO - validate the following:
+        all required variables exist
+        psa dates must be satisfied
+        structured
+    """
+
+    valid_files = []
+    required_coords = {'time', 'lat', 'lon'}
+    exceptions = {
+        'global': [],
+        'files': {},
+    }
+
+    nsem_psa = get_object_or_404(NsemPsa, pk=int(nsem_id))
+
+    psa_base_path = named_storm_nsem_version_path(nsem_psa)
+
+    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        file_path = os.path.join(psa_base_path, dataset.path)
+        file_exceptions = []
+        variable_exceptions = {}
+        try:
+            ds = xr.open_dataset(file_path)
+        except (ValueError, OSError) as e:
+            file_exceptions.append(str(e))
+        else:
+
+            # cf conventions
+            cf_check = cfchecks.CFChecker(silent=True)
+            cf_check.checker(file_path)
+            file_exceptions += cf_check.results['global']['FATAL']
+            file_exceptions += cf_check.results['global']['ERROR']
+            for variable, result in cf_check.results['variables'].items():
+                if result['FATAL'] or result['ERROR']:
+                    variable_exceptions[variable] = result['FATAL'] + result['ERROR']
+
+            # coordinates
+            if not required_coords.issubset(list(ds.coords)):
+                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+
+            # variables in the manifest dataset must exist in the actual dataset
+            if not set(dataset.variables).issubset(list(ds.data_vars)):
+                file_exceptions.append('Manifest dataset variables were not found in actual dataset')
+
+            # nans
+            # TODO - only validating wind product because water product isn't structured yet and has NaNs
+            if {NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED}.issubset(dataset.variables):
+                for variable in dataset.variables:
+                    if ds[variable].isnull().any():
+                        if variable not in variable_exceptions:
+                            variable_exceptions[variable] = []
+                        variable_exceptions[variable].append('has null values')
+
+        if file_exceptions or variable_exceptions:
+            e = {'file': file_exceptions, 'variables': variable_exceptions}
+            exceptions['files'][dataset.path] = e
+        else:
+            valid_files.append(dataset.path)
+
+    if not valid_files:
+        exceptions['global'] = ['no valid files found']
+
+    # error
+    if exceptions['global'] or exceptions['files']:
+        nsem_psa.validation_exceptions = exceptions
+    # success
+    else:
+        nsem_psa.validated = True
+    nsem_psa.date_validation = datetime.utcnow().replace(tzinfo=pytz.utc)
+    nsem_psa.save()
 
 
 @app.task(**TASK_ARGS)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
+
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
-    psa_path = named_storm_nsem_psa_version_path(nsem_psa_user_export.nsem)
+    psa_path = named_storm_nsem_version_path(nsem_psa_user_export.nsem)
     tmp_user_export_path = os.path.join(
         root_data_path(),
         settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
@@ -352,15 +499,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # netcdf/csv - extract low level data from netcdf files
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
-        # TODO - this is a proof of concept while we wait on a finalized psa structure
+        for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-        for ds_file in os.listdir(psa_path):
-
-            # only processing netcdf files
-            if not ds_file.endswith('.nc'):
-                continue
-
-            ds_file_path = os.path.join(psa_path, ds_file)
+            ds_file_path = os.path.join(psa_path, psa_dataset.path)
 
             # open dataset
             ds = xr.open_dataset(ds_file_path)
@@ -380,7 +521,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
                 # use xarray to create the netcdf export
-                ds.to_netcdf(os.path.join(tmp_user_export_path, ds_file))
+                ds.to_netcdf(os.path.join(tmp_user_export_path, psa_dataset.path))
 
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
@@ -392,41 +533,33 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # subset by export date filter
                 ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
 
-                # TODO - we're only including the following variables while we're waiting on explicit instruction
-                wind_variables = ['wspd10m', 'wdir10m']
-                water_variables = ['water_level', 'wave_height']
-
-                # test if this is the water product
-                if set(water_variables).intersection(ds.variables.keys()):
-                    variables = water_variables
-                elif set(wind_variables).intersection(ds.variables.keys()):
-                    variables = wind_variables
-                else:  # none found, skip this dataset
-                    logging.warning('No expected data fround in {}'.format(ds_file))
-                    continue
-
-                # create pandas DataFrame which makes a simple csv conversion
+                # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
 
                 # insert a new column for each variable to df_out
-                for i, variable in enumerate(variables):
-                    df = ds[variable].to_dataframe()
+                for i, variable in enumerate(psa_dataset.variables):
 
-                    # initialize df_out DataFrame on first iteration
-                    if i == 0:
-                        df_out = df
-                    # insert df Series as a new column
-                    else:
-                        df_out.insert(len(df_out.columns), variable, df[variable])
+                    # verify this variable exists in the dataset
+                    if variable in list(ds.data_vars):
 
-                # NOTE: I don't understand why, but this is necessary because the above xarray "where" bbox/extent
+                        df = ds[variable].to_dataframe()
+
+                        # initialize df_out DataFrame on first iteration
+                        if i == 0:
+                            df_out = df
+                        # insert df Series as a new column
+                        else:
+                            df_out.insert(len(df_out.columns), variable, df[variable])
+
+                # NOTE: due to the "crooked" shape of the structured grid
+                # this is necessary because the above xarray "where" bbox/extent
                 # filter is including coords _just_ outside the requested extent with no values present,
                 # so this simply guarantees those rows are removed
                 df_out = df_out.dropna()
 
                 # write csv
                 df_out.to_csv(
-                    os.path.join(tmp_user_export_path, '{}.csv'.format(ds_file)), index=False)
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
@@ -484,7 +617,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # only return the export's bbox intersection
             # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
-            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__units'])
+            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
@@ -492,7 +625,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 qs = qs.annotate(kml=AsKML('geom'))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
-                    fh.write(render_to_string('psa-export.kml', context={"results": qs, "psa_variable": psa_variable}))
+                    fh.write(render_to_string('psa_export.kml', context={"results": qs, "psa_variable": psa_variable}))
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_GEOJSON:
                 # write geojson to file
                 with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
@@ -544,13 +677,14 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         aws_access_key_id=settings.CWWED_ARCHIVES_ACCESS_KEY_ID,
         aws_secret_access_key=settings.CWWED_ARCHIVES_SECRET_ACCESS_KEY,
     )
-    s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
-        Key=key_name,
-        Body=open(tar_path, 'rb'),
-    )
+    with open(tar_path, 'rb') as fh:
+        s3_resource.Bucket(settings.AWS_ARCHIVE_BUCKET_NAME).put_object(
+            Key=key_name,
+            Body=fh,
+        )
 
     # remove temporary directory
-    shutil.rmtree(tmp_user_export_path, ignore_errors=True)
+    shutil.rmtree(tmp_user_export_path)
 
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
@@ -603,12 +737,12 @@ def cache_psa_geojson_task(storm_id: int):
 
     qs = NsemPsa.objects.filter(named_storm__id=storm_id)
     if not qs.exists():
-        logging.exception('There is not a PSA for storm id {}'.format(storm_id))
+        logger.exception('There is not a PSA for storm id {}'.format(storm_id))
         raise
 
     nsem = qs.first()  # type: NsemPsa
 
-    logging.info('Caching psa geojson for nsem psa {}'.format(nsem))
+    logger.info('Caching psa geojson for nsem psa {}'.format(nsem))
 
     # loop through every variable
     for psa_variable in nsem.nsempsavariable_set.all():  # type: NsemPsaVariable
@@ -628,12 +762,72 @@ def cache_psa_geojson_task(storm_id: int):
                 # send the raw query string so the date format doesn't get url encoded
                 query = '&'.join(['{}={}'.format(key, value) for key, value in data.items()])
                 r = requests.get('{}?{}'.format(url, query))
-                logging.info('Cached {} with status {}'.format(r.url, r.status_code))
+                logger.info('Cached {} with status {}'.format(r.url, r.status_code))
         # request once for max-values variable
         elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
             data = {
                 'nsem_psa_variable': psa_variable.id
             }
             r = requests.get(url, data)
-            logging.info('Cached {} with status {}'.format(r.url, r.status_code))
-            logging.info(r.status_code)
+            logger.info('Cached {} with status {}'.format(r.url, r.status_code))
+            logger.info(r.status_code)
+
+
+@app.task(**TASK_ARGS)
+def ingest_nsem_psa(nsem_psa_id):
+    """
+    Ingests an NSEM PSA into the CWWED database
+    """
+
+    # TODO
+
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+
+    # only extract if the psa was validated
+    if not nsem_psa.validated:
+        logger.warning('{} was not validated so skipping ingestion'.format(nsem_psa))
+        return None
+
+    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
+        psa_dataset.ingest()
+
+
+@app.task(**TASK_ARGS)
+def email_psa_ingested_task(nsem_psa_id):
+    """
+    Email the "nsem" user indicating the PSA has been ingested
+    """
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
+
+    body = """
+        PSA has been ingested.
+
+        API: {api_url}
+        """.format(
+        api_url=nsem_psa_api_url,
+    )
+
+    html_body = render_to_string(
+        'email_psa_ingested.html',
+        context={
+            "nsem_psa": nsem_psa,
+            "nsem_psa_api_url": nsem_psa_api_url,
+        })
+
+    # include the "nsem" user and all super users
+    recipients = get_superuser_emails()
+    if nsem_user.email:
+        recipients.append(nsem_user.email)
+
+    send_mail(
+        subject='PSA ingested ({psa_id})'.format(psa_id=nsem_psa.id),
+        message=body,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=recipients,
+        html_message=html_body,
+    )
+    return nsem_psa.id

@@ -1,19 +1,23 @@
+!Defaults
+app: !Format "rabbitmq-{deploy_stage}"
+deployment_name: !Format "rabbitmq-deployment-{deploy_stage}"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: rabbitmq-deployment
+  name: !Var deployment_name
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: rabbitmq-container
+      app: !Var app
   template:
     metadata:
       labels:
-        app: rabbitmq-container
+        app: !Var app
     spec:
       containers:
-      - name: rabbitmq-container
+      - name: rabbitmq
         image: rabbitmq:3
         ports:
         - containerPort: 5672

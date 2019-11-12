@@ -18,6 +18,8 @@ from shapely.geometry import Polygon, Point
 from django.core.management import BaseCommand
 from named_storms.tasks import cache_psa_geojson_task
 
+logger = logging.getLogger('cwwed')
+
 
 # TODO - make these values less arbitrary by analyzing the input data density and spatial coverage
 GRID_SIZE = 5000
@@ -61,7 +63,7 @@ LANDFALL_POLY = Polygon([  # mid atlantic coast
     [-78.50830078125, 33.76088200086917],
 ])
 
-WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/anil/'
+WIND_PATH = '/media/bucket/cwwed/OPENDAP/PSA_demo/'
 
 ARG_VARIABLE_WATER_LEVEL_MAX = 'water_level_max'
 ARG_VARIABLE_WATER_LEVEL = 'water_level'
@@ -110,7 +112,7 @@ class Command(BaseCommand):
 
         self.storm = NamedStorm.objects.get(name='Sandy')
         # default to the most recent extracted version
-        self.nsem = self.storm.nsempsa_set.filter(snapshot_extracted=True).order_by('-id').first()
+        self.nsem = self.storm.nsempsa_set.filter(extracted=True, validated=True).order_by('-id').first()
 
         # wind data is a structured dataset
         wind_arg_variables = {ARG_VARIABLE_WIND_SPEED, ARG_VARIABLE_WIND_SPEED_MAX, ARG_VARIABLE_WIND_BARBS}.intersection(options['variable'])
@@ -139,7 +141,7 @@ class Command(BaseCommand):
 
             for dataset_file in wind_dataset_paths:
                 # must be like "wrfout_d01_2012-10-29_14_00.nc", i.e on the hour since we're doing hourly right now, and using "domain 1"
-                if re.match(r'wrfout_d01_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
+                if re.match(r'sandy-wind_2012-10-\d{2}_\d{2}_00.nc', dataset_file):
                     # open dataset and define landfall mask
                     self.dataset_structured = xarray.open_dataset(os.path.join(WIND_PATH, dataset_file))
 
@@ -157,26 +159,21 @@ class Command(BaseCommand):
 
             self.dataset_unstructured = xarray.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy-water.nc')
 
-            # TODO - need an authoritative dataset to define the date range for a hurricane
-            # save the datetime's on our nsem instance
-            #self.nsem.dates = [self.datetime64_to_datetime(d) for d in self.dataset_unstructured.time.values]
-            #self.nsem.save()
-
-            logging.info('creating geo mask')
+            logger.info('creating geo mask')
 
             # create a mask to subset data from the landfall geo's convex hull
             # NOTE: using the geo's convex hull prevents sprawling triangles during triangulation
-            self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.x, self.dataset_unstructured.y))])
+            self.mask_unstructured = np.array([Point(coord).within(LANDFALL_POLY.convex_hull) for coord in np.column_stack((self.dataset_unstructured.lon, self.dataset_unstructured.lat))])
 
-            x = self.dataset_unstructured.x[self.mask_unstructured]
-            y = self.dataset_unstructured.y[self.mask_unstructured]
+            x = self.dataset_unstructured.lon[self.mask_unstructured]
+            y = self.dataset_unstructured.lat[self.mask_unstructured]
 
-            logging.info('building triangulation')
+            logger.info('building triangulation')
 
             # build delaunay triangles
             self.triangulation = tri.Triangulation(x, y)
 
-            logging.info('masking triangulation')
+            logger.info('masking triangulation')
 
             # mask triangles outside geo
             tri_mask = [not LANDFALL_POLY.contains((Polygon(np.column_stack((x[triangle].values, y[triangle].values))))) for triangle in self.triangulation.triangles]
@@ -193,7 +190,10 @@ class Command(BaseCommand):
             if ARG_VARIABLE_WAVE_HEIGHT in water_arg_variables:
                 self.process_wave_height()
 
-        # pre-cache all geojson api endpoints
+        # flag that this psa has been processed
+        self.nsem.date_processed = pytz.utc.localize(datetime.utcnow())
+
+        # create a task to pre-cache all geojson api endpoints
         cache_psa_geojson_task.delay(self.nsem.named_storm.id)
 
     @staticmethod
@@ -235,7 +235,7 @@ class Command(BaseCommand):
         lon_masked = np.ma.masked_array(self.dataset_structured.lon, self.mask_structured)
         zi_masked = np.ma.masked_array(zi, self.mask_structured)
 
-        logging.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
 
         # create the contour
         contourf = plt.contourf(lon_masked, lat_masked, zi_masked, cmap=cmap)
@@ -245,7 +245,7 @@ class Command(BaseCommand):
     def build_contours_unstructured(self, nsem_psa_variable: NsemPsaVariable, z: xarray.DataArray, cmap: matplotlib.colors.Colormap, dt: datetime = None,
                                     mask_contours: Callable = None):
 
-        logging.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('building contours (unstructured) for {} at {}'.format(nsem_psa_variable, dt))
 
         # interpolate values from triangle data and build a mesh of data
         interpolator = tri.LinearTriInterpolator(self.triangulation, z)
@@ -291,7 +291,6 @@ class Command(BaseCommand):
         for result in results:
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
-                # TODO - use UTC
                 date=dt,
                 geo=result['polygon'],
                 bbox=geos.Polygon.from_bbox(result['polygon'].extent),
@@ -305,7 +304,7 @@ class Command(BaseCommand):
         expects structured data
         """
 
-        logging.info('building barbs at {}'.format(dt))
+        logger.info('building barbs at {}'.format(dt))
 
         for i in range(len(wind_directions)):
             for j, direction in enumerate(wind_directions[i]):
@@ -314,7 +313,6 @@ class Command(BaseCommand):
                 point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
                 NsemPsaData(
                     nsem_psa_variable=nsem_psa_variable,
-                    # TODO - use UTC
                     date=dt,
                     geo=point,
                     geo_hash=GeoHash(point),
@@ -332,12 +330,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Wave Height',
+            name=NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT,
             color_bar=self.color_bar_values(self.dataset_unstructured['wave_height'].min(), self.dataset_unstructured['wave_height'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WAVE_HEIGHT, 'units'),
         )
         nsem_psa_variable.save()
 
@@ -356,12 +354,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Water Level',
+            name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL,
             color_bar=self.color_bar_values(self.dataset_unstructured['water_level'].min(), self.dataset_unstructured['water_level'].max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL, 'units'),
         )
         nsem_psa_variable.save()
 
@@ -382,12 +380,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Water Level Maximum',
+            name=NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
-            element_type=NsemPsaVariable.ELEMENT_WATER,
-            units=NsemPsaVariable.UNITS_METERS,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WATER_LEVEL_MAX, 'units'),
             auto_displayed=True,
         )
         nsem_psa_variable.save()
@@ -403,12 +401,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable = NsemPsaVariable(
             nsem=self.nsem,
-            name='Wind Speed Maximum',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX,
             color_bar=self.color_bar_values(z.min(), z.max(), cmap),
-            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            data_type=NsemPsaVariable.DATA_TYPE_MAX_VALUES,
-            element_type=NsemPsaVariable.ELEMENT_WIND,
-            units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+            geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'geo_type'),
+            data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'data_type'),
+            element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'element_type'),
+            units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED_MAX, 'units'),
             auto_displayed=True,
         )
         nsem_psa_variable.save()
@@ -422,12 +420,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_speed, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind Speed',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED,
             defaults=dict(
-                geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                element_type=NsemPsaVariable.ELEMENT_WIND,
-                units=NsemPsaVariable.UNITS_METERS_PER_SECOND,
+                geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'geo_type'),
+                data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'data_type'),
+                element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'element_type'),
+                units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'units'),
             ),
         )
 
@@ -439,7 +437,7 @@ class Command(BaseCommand):
             # capture date and convert to datetime
             dt = self.datetime64_to_datetime(date)
 
-            wind_speeds = self.dataset_structured.sel(time=date)['spduv10max'].values
+            wind_speeds = self.dataset_structured.sel(time=date)['wind_speed_max'].values
 
             wind_speeds_data_array = xarray.DataArray(wind_speeds, name='wind')
 
@@ -456,12 +454,12 @@ class Command(BaseCommand):
         # create psa variable to assign data
         nsem_psa_variable_barbs, _ = NsemPsaVariable.objects.get_or_create(
             nsem=self.nsem,
-            name='Wind Barbs',
+            name=NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
             defaults=dict(
-                geo_type=NsemPsaVariable.GEO_TYPE_WIND_BARB,
-                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-                element_type=NsemPsaVariable.ELEMENT_WIND,
-                units=NsemPsaVariable.UNITS_DEGREES,  # wind barbs actually store two units (speed & direction) in the psa data itself
+                geo_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'geo_type'),
+                data_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'data_type'),
+                element_type=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'element_type'),
+                units=NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'units'),
             ),
         )
 
@@ -473,8 +471,8 @@ class Command(BaseCommand):
 
             # masked values and subset so we're not displaying every single point
             subset = 10
-            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wspd10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
-            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wdir10m'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            wind_speeds = np.ma.masked_array(self.dataset_structured.sel(time=date)['wind_speed'][::subset, ::subset], self.mask_structured[::subset, ::subset])
+            wind_directions = np.ma.masked_array(self.dataset_structured.sel(time=date)['wind_direction'][::subset, ::subset], self.mask_structured[::subset, ::subset])
             xi = np.ma.masked_array(self.dataset_structured['lon'][::subset, ::subset], self.mask_structured[::subset, ::subset])
             yi = np.ma.masked_array(self.dataset_structured['lat'][::subset, ::subset], self.mask_structured[::subset, ::subset])
 

@@ -1,0 +1,15 @@
+!Defaults
+app: !Format "rabbitmq-{deploy_stage}"
+name: !Format "rabbitmq-{deploy_stage}"
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: !Var name
+spec:
+  selector:
+    app: !Var app
+  ports:
+  - protocol: TCP
+    port: 5672
+    targetPort: 5672

@@ -3,7 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
-import { debounceTime, mergeMap, tap } from 'rxjs/operators';
+import { debounceTime, tap } from 'rxjs/operators';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
@@ -18,6 +18,7 @@ import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { DecimalPipe } from "@angular/common";
 import { ChartOptions } from 'chart.js';
+import { ToastrService } from 'ngx-toastr';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
@@ -32,7 +33,6 @@ const randomColor = require('randomcolor');
   providers: [DecimalPipe],
 })
 export class PsaComponent implements OnInit {
-  public DEMO_NAMED_STORM_ID = 1;
   public MAP_LAYER_OSM_STANDARD = 'osm-standard';
   public MAP_LAYER_STAMEN_TONER = 'stamen-toner';
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
@@ -53,7 +53,7 @@ export class PsaComponent implements OnInit {
   public namedStorm: any;
   public nsemPsa: any;
   public psaVariables: any[];
-  public psaDatesFormatted: string[] = [];
+  public psaDatesFormatted: string[];  // ng2-charts has a performance issue with accessing these dynamically
   public form: FormGroup;
   public currentFeature: any;
   public currentConfidence: Number;
@@ -83,17 +83,22 @@ export class PsaComponent implements OnInit {
     private fb: FormBuilder,
     private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
+    private toastr: ToastrService,
   ) {
   }
 
   ngOnInit() {
 
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
-      return storm.id === this.DEMO_NAMED_STORM_ID;
+      return this.route.snapshot.params['id'] == storm.id;
     });
 
     this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
-      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+      return nsemPsa.named_storm === this.namedStorm.id;
+    });
+
+    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
+      return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
     });
 
     // create initial form group
@@ -136,9 +141,9 @@ export class PsaComponent implements OnInit {
 
   public getOpenDapUrl(): string {
     const psa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
-      return nsemPsa.named_storm === this.DEMO_NAMED_STORM_ID;
+      return nsemPsa.named_storm === this.namedStorm.id;
     });
-    return psa ? psa.opendap_url_psa : '';
+    return psa ? psa.opendap_url : '';
   }
 
   public timeSeriesVariables() {
@@ -165,10 +170,6 @@ export class PsaComponent implements OnInit {
 
   public isExtentActive(): boolean {
     return Boolean(this._extentInteraction && this._extentInteraction.getActive());
-  }
-
-  public hasExtentSelection(): boolean {
-    return Boolean(this._extentInteraction && this._extentInteraction.getExtent());
   }
 
   public getExtentCoords() {
@@ -198,14 +199,6 @@ export class PsaComponent implements OnInit {
     return this.psaVariables.filter((variable) => {
       return variable.geo_type === 'polygon';
     });
-  }
-
-  public getPsaVariableNameFormatted(psaVariable) {
-    // remove "maximum" from `max-values` data types
-    if (psaVariable.data_type === 'max-values') {
-      return psaVariable.name.replace(/ maximum/i, '');
-    }
-    return psaVariable.name;
   }
 
   public toggleFullscreen(psaContainer: HTMLElement) {
@@ -326,10 +319,34 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    return new VectorSource({
-      url: CwwedService.getPsaVariableGeoUrl(this.DEMO_NAMED_STORM_ID, psaVariable.id, date),
-      format: new GeoJSON()
+    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.id, date);
+    const format = new GeoJSON();
+
+    const vectorSource = new VectorSource({
+      url: url,
+      format: format,
+      // custom loader to handle errors
+      loader: (extent, resolution, projection) => {
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        let onError = () => {
+          this.toastr.error('An unknown error occurred loading map layer');
+          vectorSource.removeLoadedExtent(extent);
+          this.isLoadingMap = false;
+        };
+        xhr.onerror = onError;
+        xhr.onload = () => {
+          if (xhr.status == 200) {
+            const features = format.readFeatures(xhr.responseText, {featureProjection: projection});
+            vectorSource.addFeatures(features);
+          } else {
+            onError();
+          }
+        };
+        xhr.send();
+      },
     });
+    return vectorSource;
   }
 
   protected _getWindBarbLayerStyle(feature): Style {
@@ -403,7 +420,7 @@ export class PsaComponent implements OnInit {
   protected _fetchDataAndBuildMap() {
 
     // fetch psa variables
-    this.cwwedService.fetchPSAVariables(this.DEMO_NAMED_STORM_ID).pipe(
+    this.cwwedService.fetchPSAVariables(this.namedStorm.id).pipe(
       tap(
         (data: any[]) => {
           this.isLoading = false;
@@ -423,6 +440,7 @@ export class PsaComponent implements OnInit {
         this._listenForInputChanges();
       },
       (error) => {
+        this.toastr.error('An unknown error occurred fetching data variables');
         console.error(error);
         this.isLoading = false;
       });
@@ -477,7 +495,6 @@ export class PsaComponent implements OnInit {
           });
         }
       }
-
       return {
         variable: variable,
         layer: layer,
@@ -639,6 +656,7 @@ export class PsaComponent implements OnInit {
         features.forEach((feature) => {
 
           const variableName = feature.get('name');
+          const variableDisplayName = feature.get('display_name');
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnits = feature.get('units');
           const variableMeta = feature.get('meta') || {};
@@ -656,7 +674,7 @@ export class PsaComponent implements OnInit {
                 currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
               }
             } else {
-              currentFeature[variableName] = `${variableValue} ${variableUnits}`;
+              currentFeature[variableDisplayName] = `${variableValue} ${variableUnits}`;
             }
           }
         });
@@ -691,15 +709,15 @@ export class PsaComponent implements OnInit {
 
     const latLon = toLonLat(event.coordinate);
 
-    this.lineChartExportURL = `${this.cwwedService.getPSATimeSeriesDataURL(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0])}?export=csv`;
+    this.lineChartExportURL = `${this.cwwedService.getPSATimeSeriesDataURL(this.namedStorm.id, latLon[1], latLon[0])}?export=csv`;
 
-    this.cwwedService.fetchPSATimeSeriesData(this.DEMO_NAMED_STORM_ID, latLon[1], latLon[0]).subscribe(
+    this.cwwedService.fetchPSATimeSeriesData(this.namedStorm.id, latLon[1], latLon[0]).subscribe(
       (data: any) => {
         this.isLoadingOverlayPopup = false;
         this._lineChartDataAll = _.map(data, (variableData: any) => {
           const variable = variableData.variable;
           return {
-            label: variable.name,
+            label: variable.display_name,
             data: variableData.values,
             yAxisID: variable.element_type,
             variable: variable,  // include actual variable for later comparison against form variables
@@ -710,6 +728,7 @@ export class PsaComponent implements OnInit {
       },
       (error) => {
         console.error(error);
+        this.toastr.error('An unknown error occurred fetching graph data');
         this.isLoadingOverlayPopup = false;
       }
     );
@@ -767,10 +786,6 @@ export class PsaComponent implements OnInit {
         backgroundColor: color,
         fill: false,
       }
-    });
-
-    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
-      return moment(date).format('YYYY-MM-DD HH:mm');
     });
 
     this.lineChartData = lineChartData;

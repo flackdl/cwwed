@@ -1,0 +1,33 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-alpha
+  annotations:
+    # use the shared ingress-nginx
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: alpha.cwwed-staging.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: cwwed-alpha
+          servicePort: 80
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-dev
+  annotations:
+    # use the shared ingress-nginx
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: dev.cwwed-staging.com
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: cwwed-dev
+              servicePort: 80

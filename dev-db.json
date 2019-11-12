@@ -488,5 +488,35 @@
     "image_url": "inundation-uppertexas-example_sm.png",
     "description": "National Hurricane Center (NHC) storm surge guidance is necessary to better inform the placement of observations, with longer lead times and greater accuracy. This project\u2019s focus is on extending forecast guidance lead time from 48 to 72 hours, improving accuracy, and extending spatial coverage to better enable interagency partners (e.g. USGS) in a timely placement of observations (e.g. storm-tide sensors, gauges) with spatial accuracy."
   }
-}
+},
+{
+	"model": "named_storms.nsempsa",
+        "pk": 1,
+        "fields": {
+            "named_storm": 1,
+            "date_created": "2018-08-28T16:51:35.243Z",
+            "covered_data_snapshot": 1,
+            "manifest": {},
+            "path": "NSEM/Sandy/v10/Post Storm Assessment/v10.tgz",
+            "extracted": true,
+            "date_validation": "2019-09-26T20:19:34Z",
+            "validated": true,
+            "validation_exceptions": {},
+            "processed": true,
+            "date_processed": "2019-09-26T20:20:20Z",
+            "dates": "[\"2012-10-29T13:00:00+00:00\", \"2012-10-29T14:00:00+00:00\", \"2012-10-29T15:00:00+00:00\", \"2012-10-29T16:00:00+00:00\", \"2012-10-29T17:00:00+00:00\", \"2012-10-29T18:00:00+00:00\", \"2012-10-29T19:00:00+00:00\", \"2012-10-29T20:00:00+00:00\", \"2012-10-29T21:00:00+00:00\", \"2012-10-29T22:00:00+00:00\", \"2012-10-29T23:00:00+00:00\", \"2012-10-30T00:00:00+00:00\", \"2012-10-30T01:00:00+00:00\", \"2012-10-30T02:00:00+00:00\", \"2012-10-30T03:00:00+00:00\", \"2012-10-30T04:00:00+00:00\", \"2012-10-30T05:00:00+00:00\", \"2012-10-30T06:00:00+00:00\", \"2012-10-30T07:00:00+00:00\", \"2012-10-30T08:00:00+00:00\", \"2012-10-30T09:00:00+00:00\"]"
+        }
+    },
+    {
+        "model": "named_storms.namedstormcovereddatasnapshot",
+        "pk": 1,
+        "fields": {
+            "named_storm": 1,
+            "date_requested": "2019-10-22T17:50:22.729Z",
+            "date_completed": "2019-10-22T17:50:28.990Z",
+            "path": "NSEM/Sandy/Covered Data Snapshots/8",
+            "covered_data_logs": [
+            ]
+        }
+    }
 ]

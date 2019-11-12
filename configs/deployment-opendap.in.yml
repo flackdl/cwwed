@@ -1,25 +1,30 @@
+!Defaults
+app: !Format "opendap-{deploy_stage}"
+deployment_name: !Format "opendap-deployment-{deploy_stage}"
+volume_claim_name: !Format "efs-{deploy_stage}"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: opendap-deployment
+  name: !Var deployment_name
+  labels:
+    app: !Var app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: opendap-container
+      app: !Var app
   template:
     metadata:
       labels:
-        app: opendap-container
+        app: !Var app
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-        # minikube
-        #claimName: cwwed-volume-claim
-         claimName: efs
+         claimName: !Var volume_claim_name
       containers:
-      - name: opendap-container
+      - name: opendap
         image: opendap/hyrax:1.15.1
         imagePullPolicy: Always
         ports:
@@ -31,4 +36,4 @@ spec:
           readOnly: true
         resources:
           requests:
-            memory: "1000M"
+            memory: "250M"

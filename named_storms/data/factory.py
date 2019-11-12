@@ -661,7 +661,7 @@ class NWMProcessorFactory(ProcessorCoreFactory):
 
     def _processors_data(self) -> List[ProcessorData]:
         processors_data = []
-        ftp = FTP(self._provider_url_parsed.hostname)
+        ftp = FTP(self._provider_url_parsed.hostname, timeout=20)
         ftp.login()
         base_path = self._provider_url_parsed.path
         directory_dates = ftp.nlst(base_path)

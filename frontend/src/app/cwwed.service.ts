@@ -1,14 +1,15 @@
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Injectable } from '@angular/core';
 import { map } from 'rxjs/operators';
+import * as _ from "lodash";
 
 let API_ROOT = '/api';
 let API_USER = `${API_ROOT}/user/`;
 let API_COVERED_DATA = `${API_ROOT}/covered-data/`;
-let API_NAMED_STORMS = `${API_ROOT}/named-storms/`;
+let API_NAMED_STORMS = `${API_ROOT}/named-storm/`;
 let API_NSEM_PSA_USER_EXPORT = `${API_ROOT}/nsem-psa-user-export/`;
 let API_NSEM_PER_STORM = `${API_ROOT}/nsem-psa/per-storm/`;
-let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-projects/`;
+let API_COASTAL_ACT_PROJECTS = `${API_ROOT}/coastal-act-project/`;
 
 @Injectable({
   providedIn: 'root'
@@ -108,13 +109,19 @@ export class CwwedService {
   }
 
   public createPsaUserExport(namedStormId: number, bbox: string, format: string, dateFilter?: string) {
+    // fetch the psa for this storm to to the data
+    const psa = _.find(this.nsemPsaList, (nsemPsa) => {
+      return nsemPsa.named_storm === namedStormId;
+    });
     const data = {
       bbox: bbox,
       format: format,
+      nsem: psa.id,
     };
     if (dateFilter) {
       data['date_filter'] = dateFilter;
     }
+
     return this.http.post(`${API_NAMED_STORMS}${namedStormId}/psa/export/`, data).pipe(
       map((data) => {
         return data;

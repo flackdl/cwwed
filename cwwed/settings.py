@@ -12,8 +12,16 @@ https://docs.djangoproject.com/en/2.0/ref/settings/
 
 import os
 import sys
-import raven
 import dj_database_url
+import sentry_sdk
+from sentry_sdk.integrations.django import DjangoIntegration
+
+# sentry/logging configuration
+sentry_sdk.init(
+    dsn=os.getenv('SENTRY_DSN', ''),
+    integrations=[DjangoIntegration()],
+    send_default_pii=True,
+)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,11 +33,15 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'ssshhh...')
 
+# deploy stages
 DEPLOY_STAGE_LOCAL = 'local'
+DEPLOY_STAGE_ALPHA = 'alpha'
 DEPLOY_STAGE_DEV = 'dev'
 DEPLOY_STAGE_TEST = 'test'
 DEPLOY_STAGE_PROD = 'prod'
+DEPLOY_STAGES = [DEPLOY_STAGE_LOCAL, DEPLOY_STAGE_ALPHA, DEPLOY_STAGE_DEV, DEPLOY_STAGE_TEST, DEPLOY_STAGE_PROD]
 DEPLOY_STAGE = os.environ.get('DEPLOY_STAGE', DEPLOY_STAGE_LOCAL)
+assert DEPLOY_STAGE in DEPLOY_STAGES, 'unknown DEPLOY_STAGE "{}"'.format(DEPLOY_STAGE)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else False
@@ -63,10 +75,10 @@ INSTALLED_APPS = [
     'storages',  # django-storages
     'allauth',
     'allauth.account',
+    # TODO - setup social accounts?
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'crispy_forms',
-    'raven.contrib.django.raven_compat',
 ]
 
 MIDDLEWARE = [
@@ -183,13 +195,6 @@ LOGIN_REDIRECT_URL = 'home'
 # https://django-crispy-forms.readthedocs.io/en/latest/index.html
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
-# sentry/logging configuration
-RAVEN_CONFIG = {
-    'dsn': os.getenv('SENTRY_DSN', ''),
-    # automatically configure the release based on the git info
-    'release': raven.fetch_git_sha(os.path.dirname(os.pardir)),
-}
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
@@ -220,20 +225,11 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'sentry': {
-            'level': 'WARNING',
-            'class': 'raven.contrib.django.raven_compat.handlers.SentryHandler',
-            'tags': {'custom-tag': 'x'},
-        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
-    },
-    'root': {
-        'handlers': ['sentry', 'console'],
-        'level': 'INFO',
     },
     'formatters': {
         'verbose': {
@@ -242,20 +238,15 @@ LOGGING = {
         },
     },
     'loggers': {
-        'django.db.backends': {
-            'level': 'ERROR',
+        'cwwed': {
+            'level': 'INFO',
             'handlers': ['console'],
             'propagate': False,
         },
-        'raven': {
-            'level': 'DEBUG',
+        'django': {
+            'level': 'WARNING',
             'handlers': ['console'],
-            'propagate': False,
-        },
-        'sentry.errors': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            'propagate': False,
+            'propagate': True,
         },
     },
 }
@@ -272,6 +263,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_FILTER_BACKENDS': (
         'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 100,
@@ -302,19 +294,20 @@ DEFAULT_FROM_EMAIL = 'noreply@cwwed-staging.com'
 #
 
 CWWED_HOST = os.environ.get('CWWED_HOST', '127.0.0.1')
-CWWED_SCHEME = 'http' if DEPLOY_STAGE_LOCAL else 'https'
-CWWED_PORT = 8080 if DEPLOY_STAGE_LOCAL else 443
+CWWED_SCHEME = 'http' if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else 'https'
+CWWED_PORT = 8000 if DEPLOY_STAGE == DEPLOY_STAGE_LOCAL else 443
 
 CWWED_ARCHIVE_EXTENSION = 'tgz'
 CWWED_DATA_DIR = MEDIA_ROOT
 CWWED_OPENDAP_DIR = 'OPENDAP'
 
 CWWED_COVERED_DATA_DIR_NAME = 'Covered Data'
+CWWED_COVERED_DATA_CURRENT_DIR_NAME = '.covered-data-current'
+CWWED_COVERED_DATA_SNAPSHOTS_DIR_NAME = 'Covered Data Snapshots'
 CWWED_COVERED_ARCHIVE_DIR_NAME = 'Covered Data Archive'
 CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME = '.incomplete'
 
 CWWED_NSEM_DIR_NAME = 'NSEM'
-CWWED_NSEM_PSA_DIR_NAME = 'Post Storm Assessment'
 CWWED_NSEM_UPLOAD_DIR_NAME = 'upload'
 CWWED_NSEM_ARCHIVE_WRITE_MODE = 'w:gz'
 CWWED_NSEM_ARCHIVE_READ_MODE = 'r:gz'

@@ -1,0 +1,56 @@
+!Defaults
+image: !Format "flackdl/cwwed:{tag}"
+secret_name: !Format "cwwed-secrets-{deploy_stage}"
+app: !Format "cwwed-{deploy_stage}"
+deployment_name: !Format "cwwed-deployment-{deploy_stage}"
+volume_claim_name: !Format "efs-{deploy_stage}"
+rabbitmq_service: !Format "rabbitmq-{deploy_stage}"
+opendap_service: !Format "opendap-{deploy_stage}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: !Var deployment_name
+  labels:
+    app: !Var app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: !Var app
+  template:
+    metadata:
+      labels:
+        app: !Var app
+    spec:
+      volumes:
+      - name: cwwed-volume-storage
+        persistentVolumeClaim:
+         claimName: !Var volume_claim_name
+      containers:
+      - name: cwwed
+        image: !Var image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/media/bucket/cwwed"
+          name: cwwed-volume-storage
+        resources:
+          requests:
+            memory: "750M"
+        env:
+          - name: DJANGO_SETTINGS_MODULE
+            value: cwwed.settings
+          - name: DEPLOY_STAGE
+            value: !Var deploy_stage
+          - name: CELERY_BROKER
+            value: !Var rabbitmq_service
+          - name: CELERY_BACKEND
+            value: !Var rabbitmq_service
+          - name: OPENDAP_HOST
+            value: !Var opendap_service
+        # secrets
+        envFrom:
+          - secretRef:
+              name: !Var secret_name

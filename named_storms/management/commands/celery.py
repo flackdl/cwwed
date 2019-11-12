@@ -25,4 +25,4 @@ def restart_celery():
 class Command(BaseCommand):
 
     def handle(self, *args, **options):
-        autoreload.main(restart_celery)
+        autoreload.run_with_reloader(restart_celery)
