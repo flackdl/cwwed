@@ -66,7 +66,33 @@ provisioner: example.com/aws-efs
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: efs
+  name: efs-alpha
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: efs-dev
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "aws-efs"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: efs-prod
   annotations:
     volume.beta.kubernetes.io/storage-class: "aws-efs"
 spec:

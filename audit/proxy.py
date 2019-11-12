@@ -23,7 +23,7 @@ class OpenDapProxy(ProxyView):
         return headers
 
     def get_encoded_query_params(self):
-        # return the raw query string since opendap supports a wider format, i.e ?time[0:1:1],lat[0:1:1]
+        # override to return the raw query string since opendap supports a wider format, i.e ?time[0:1:1],lat[0:1:1]
         return self.request.META['QUERY_STRING']
 
     def get_quoted_path(self, path):

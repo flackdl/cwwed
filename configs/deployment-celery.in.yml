@@ -1,27 +1,31 @@
 !Defaults
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
+app: !Format "cwwed-{deploy_stage}"
+deployment_name: !Format "celery-deployment-{deploy_stage}"
+volume_claim_name: !Format "efs-{deploy_stage}"
+rabbitmq_service: !Format "rabbitmq-{deploy_stage}"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: celery-deployment
+  name: !Var deployment_name
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: celery-container
+      app: !Var app
   template:
     metadata:
       labels:
-        app: celery-container
+        app: !Var app
     spec:
       volumes:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
-         claimName: efs
+         claimName: !Var volume_claim_name
       containers:
-      - name: celery-container
+      - name: celery
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
@@ -31,16 +35,16 @@ spec:
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "2000M"
+            memory: "1500M"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
           - name: DEPLOY_STAGE
             value: !Var deploy_stage
           - name: CELERY_BROKER
-            value: rabbitmq-service
+            value: !Var rabbitmq_service
           - name: CELERY_BACKEND
-            value: rabbitmq-service
+            value: !Var rabbitmq_service
         # secrets
         envFrom:
           - secretRef:

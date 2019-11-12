@@ -155,34 +155,35 @@ Use that IP and configure DNS via Cloudflare.
 
 ### Install all the services, volumes, deployments etc.
 
-For yaml templates, us `emrichen` to generate yaml and pipe to `kubectl`.
+For yaml templates, us [emrichen](https://github.com/con2/emrichen) to generate yaml and pipe to `kubectl`.
 
 For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
 
     # alpha
-    emrichen --define deploy_stage=alpha --define tag=psa-validation deployment-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=alpha --define tag=psa-validation service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/deployment-celery.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/deployment-opendap.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/service-opendap.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/deployment-rabbitmq.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/service-rabbitmq.in.yml | kubectl apply -f -
 
     # dev
-    emrichen --define deploy_stage=dev --define tag=latest deployment-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=dev --define tag=latest service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=latest configs/deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=latest configs/service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=latest configs/deployment-celery.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/deployment-opendap.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/service-opendap.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/deployment-rabbitmq.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/service-rabbitmq.in.yml | kubectl apply -f -
     
     
-** TODO ** define yaml templates for the following **
+**OPTIONAL** define yaml templates for the following:
 
-    kubectl apply -f configs/deployment-celery.yml
     kubectl apply -f configs/deployment-celery-flower.yml
     kubectl apply -f configs/service-celery-flower.yml
    
 Everything else:
-    
-    # services
-    kubectl apply -f configs/service-opendap.yml
-    kubectl apply -f configs/service-rabbitmq.yml
-    
-    # deployments
-    kubectl apply -f configs/deployment-opendap.yml
-    kubectl apply -f configs/deployment-rabbitmq.yml
 
     # ingress
     kubectl apply -f configs/ingress.yml
@@ -197,20 +198,20 @@ Create the default super user:
 
     kubectl exec -it $CWWED_POD python manage.py createsuperuser
     
-Run initializations like creating the "nsem" user and assignging permissions:
+Run initializations like creating the "nsem" user and assigning permissions:
 
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
     
-Create caches:
+Create cache tables:
 
-    python manage.py createcachetable
+    kubectl exec -it $CWWED_POD python manage.py createcachetable
     
 ### Helpers
     
     # collect covered data via job
     kubectl apply -f configs/job-collect-covered-data.yml
     
-    # patch to force a rolling update (to repull images)
+    # patch to force a rolling update (to re-pull images)
     kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
     # get pod name
@@ -234,17 +235,19 @@ Create caches:
     - Use the user/password saved in the secrets file when prompted via basic authorization
    
 ### Kubernetes Dashboard
+
+[Dashboard UI](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/#deploying-the-dashboard-ui):
     
     # create kubernetes dashboard
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/master/src/deploy/recommended/kubernetes-dashboard.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta4/aio/deploy/recommended.yaml
     
     # apply user/roles
     kubectl apply -f configs/kube-service-account.yml
     kubectl apply -f configs/kube-cluster-role-binding.yml
     
     # get token
-    kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | grep admin | awk '{print $1}')
-    
+    kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep admin-user | awk '{print $1}')
+
     # start proxy
     kubectl proxy
     

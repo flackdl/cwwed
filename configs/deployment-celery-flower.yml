@@ -1,34 +1,35 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: celery-flower-deployment
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: celery-flower-container
-  template:
-    metadata:
-      labels:
-        app: celery-flower-container
-    spec:
-      containers:
-      - name: celery-flower-container
-        image: flackdl/cwwed
-        imagePullPolicy: Always
-        command: ['celery']
-        args: ['flower', '-A', 'cwwed', '--basic_auth=$(CELERY_FLOWER_USER):$(CELERY_FLOWER_PASSWORD)', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']
-        ports:
-        - containerPort: 5555
-        resources:
-          requests:
-            memory: "200M"
-          limits:
-            memory: "250M"
-        env:
-          - name: DJANGO_SETTINGS_MODULE
-            value: cwwed.settings
-        # secrets
-        envFrom:
-          - secretRef:
-              name: cwwed-secrets-alpha
+# TODO - needs yaml templating
+#apiVersion: apps/v1
+#kind: Deployment
+#metadata:
+#  name: celery-flower-deployment
+#spec:
+#  replicas: 1
+#  selector:
+#    matchLabels:
+#      app: celery-flower-container
+#  template:
+#    metadata:
+#      labels:
+#        app: celery-flower-container
+#    spec:
+#      containers:
+#      - name: celery-flower-container
+#        image: flackdl/cwwed
+#        imagePullPolicy: Always
+#        command: ['celery']
+#        args: ['flower', '-A', 'cwwed', '--basic_auth=$(CELERY_FLOWER_USER):$(CELERY_FLOWER_PASSWORD)', '--port=5555', '--broker=amqp://guest:guest@rabbitmq-service:5672']
+#        ports:
+#        - containerPort: 5555
+#        resources:
+#          requests:
+#            memory: "200M"
+#          limits:
+#            memory: "250M"
+#        env:
+#          - name: DJANGO_SETTINGS_MODULE
+#            value: cwwed.settings
+#        # secrets
+#        envFrom:
+#          - secretRef:
+#              name: cwwed-secrets-alpha
