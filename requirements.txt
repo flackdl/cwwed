@@ -8,7 +8,7 @@ django-storages==1.6.5
 git+https://github.com/bpython/bpython.git
 # pydap - this specific commit fixes gzip compression issue currently in pypi
 git+https://github.com/pydap/pydap.git@84e85db948012de7368da610a63376c1e2f273ef
-requests==2.18.4
+requests==2.22.0
 django-allauth==0.40.0
 django-crispy-forms==1.7.0
 # django-revproxy - this commit allows us to define how the url param encoding works

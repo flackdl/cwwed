@@ -10,7 +10,7 @@ import boto3
 import sys
 import requests
 
-API_ROOT_PROD = 'https://dev.cwwed-staging.com/api/'
+API_ROOT_PROD = 'https://alpha.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
 
 if os.environ.get('DEPLOY_STAGE') == 'local':
