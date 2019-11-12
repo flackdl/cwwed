@@ -159,19 +159,19 @@ For yaml templates, us [emrichen](https://github.com/con2/emrichen) to generate 
 
 For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
 
-    # alpha
-    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/deployment-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/service-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=alpha --define tag=psa-validation configs/deployment-celery.in.yml | kubectl apply -f -
+    # alpha => latest
+    emrichen --define deploy_stage=alpha --define tag=latest configs/deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=latest configs/service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=latest configs/deployment-celery.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/service-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/deployment-rabbitmq.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/service-rabbitmq.in.yml | kubectl apply -f -
 
-    # dev
-    emrichen --define deploy_stage=dev --define tag=latest configs/deployment-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=dev --define tag=latest configs/service-cwwed.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=dev --define tag=latest configs/deployment-celery.in.yml | kubectl apply -f -
+    # dev => v1.0
+    emrichen --define deploy_stage=dev --define tag=v1.0 configs/deployment-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=v1.0 configs/service-cwwed.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev --define tag=v1.0 configs/deployment-celery.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/service-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/deployment-rabbitmq.in.yml | kubectl apply -f -
