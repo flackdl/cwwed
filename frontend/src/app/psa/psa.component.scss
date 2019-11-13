@@ -2,6 +2,12 @@
 @import "~bootstrap/scss/mixins";
 @import "~bootstrap/scss/variables";
 
+#psa-container:fullscreen {
+  /* necessary when entering full screen */
+  background: white;
+  overflow: scroll;
+}
+
 #map-container {
   min-height: 100px;
 
