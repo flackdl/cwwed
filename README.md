@@ -121,6 +121,16 @@ https://kubernetes.github.io/ingress-nginx/
     kubectl apply -f configs/nginx-ingress/service-14.yml
     kubectl apply -f configs/nginx-ingress/patch-configmap-14.yml
     
+##### Load Balancing
+
+The nginx ingress will automatically create a AWS Load Balancer.
+Once the nginx ingress service is created,
+monitor the new external Load Balancer and get it's external IP address.
+
+    kubectl get service --namespace ingress-nginx ingress-nginx
+    
+Use that IP and configure DNS via Cloudflare.
+    
 ### Secrets
     
     # create secrets using proper stage
@@ -141,17 +151,6 @@ https://kubernetes.github.io/ingress-nginx/
         --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt) \
         --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
         && true
-    
-### Load Balancing
-
-Using AWS Load Balancer.
-
-Once the `configs/service-cwwed.yml` service is created,
-monitor the new external Load Balancer and get it's external IP address.
-
-    kubectl get service -o wide cwwed-service
-    
-Use that IP and configure DNS via Cloudflare.
 
 ### Install all the services, volumes, deployments etc.
 
@@ -203,6 +202,8 @@ Run initializations like creating the "nsem" user and assigning permissions:
     kubectl exec -it $CWWED_POD python manage.py cwwed-init
     
 Create cache tables:
+
+*This should have already been done via the `docker-entry.sh`*
 
     kubectl exec -it $CWWED_POD python manage.py createcachetable
     
