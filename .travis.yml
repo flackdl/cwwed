@@ -10,8 +10,8 @@ jobs:
         - docker network create tests
         # run postgis in the background
         - docker run --network tests --name postgis --rm -d mdillon/postgis
-        # derive the docker image tag name from the git branch name
-        - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="$TRAVIS_BRANCH"; fi
+        # derive the docker image tag name from the git branch name and sanitize any slashes
+        - if [[ $TRAVIS_BRANCH == 'master' ]]; then tag='latest'; else tag="${TRAVIS_BRANCH////-}"; fi
         # build image
         - docker build -t flackdl/cwwed:$tag .
         # run tests
