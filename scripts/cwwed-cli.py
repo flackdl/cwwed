@@ -6,9 +6,11 @@ import argparse
 from getpass import getpass
 from time import sleep
 from urllib import parse
-import boto3
 import sys
 import requests
+import threading
+import boto3
+from boto3.s3.transfer import TransferConfig
 
 API_ROOT_PROD = 'https://alpha.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
@@ -37,6 +39,46 @@ Utility for interacting with CWWED:
     - upload a Post Storm Assessment for a named storm
     - list all Post Storm Assessments
 """
+
+
+class ProgressPercentage(object):
+    def __init__(self, filename):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename))
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, bytes_amount):
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            sys.stdout.write("\r%s  %s / %s  (%.2f%%)" % (
+                self._filename, self._seen_so_far, self._size,
+                percentage))
+            sys.stdout.flush()
+
+
+def multi_part_upload(path: str):
+    config = TransferConfig(
+        multipart_threshold=1024 * 25,
+        max_concurrency=10,
+        multipart_chunksize=1024 * 25,
+        use_threads=True,
+    )
+    #session = get_aws_session()
+    #s3 = session.client('s3')
+    s3 = boto3.client('s3')
+    s3.upload_file(
+        path,
+        S3_BUCKET,
+        #os.path.join('local', path),
+        os.path.join('local/NSEM/upload/', path),
+        ExtraArgs={
+            #'StorageClass': 'GLACIER'
+        },
+        Config=config,
+        Callback=ProgressPercentage(path)
+    )
 
 
 def create_directory(path):
@@ -91,6 +133,17 @@ def create_psa(args):
         print("The email address associated with this account will be emailed when it's been extracted, validated and ingested.")
 
 
+def get_aws_session():
+    return boto3.Session(profile_name='nsem')
+
+
+def upload_psa_intermediate_data(args):
+    directory = args['directory']
+    session = get_aws_session()
+    s3 = session.client('s3')
+    multi_part_upload('/media/bucket/cwwed/OPENDAP/PSA_demo/psa.tgz')
+
+
 def upload_psa(file: str, path: str):
 
     # verify the "file" is of the correct type
@@ -98,8 +151,9 @@ def upload_psa(file: str, path: str):
     if extension != '.tgz':
         sys.exit('File to upload must be ".tgz" (tar+gzipped)')
 
-    # create the s3 instance
-    s3 = boto3.resource('s3')
+    # create the s3 resource
+    session = get_aws_session()
+    s3 = session.resource('s3')
     s3_bucket = s3.Bucket(S3_BUCKET)
 
     # upload the file to the specified path
@@ -180,7 +234,8 @@ def download_cd(args):
     path = parsed.path.lstrip('/')  # S3 paths are relative so remove leading slash
 
     # create the s3 instance
-    s3 = boto3.resource('s3')
+    session = get_aws_session()
+    s3 = session.resource('s3')
     s3_bucket = s3.Bucket(bucket)
 
     # build a list of all the relevant files to download
@@ -310,6 +365,12 @@ parser_psa_create.set_defaults(func=create_psa)
 parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
 parser_psa_list.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
 parser_psa_list.set_defaults(func=list_psa)
+
+# psa - intermediate data
+parser_psa_intermediate_data_upload = subparsers_psa.add_parser('upload-intermediate-data', help='Upload PSA Intermediate Data')
+parser_psa_intermediate_data_upload.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
+parser_psa_intermediate_data_upload.set_defaults(func=upload_psa_intermediate_data)
+parser_psa_intermediate_data_upload.add_argument("directory", help='The directory with the intermediate data to upload')
 
 
 # process args
