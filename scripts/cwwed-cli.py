@@ -6,9 +6,10 @@ import argparse
 from getpass import getpass
 from time import sleep
 from urllib import parse
-import boto3
 import sys
 import requests
+import threading
+import boto3
 
 API_ROOT_PROD = 'https://alpha.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
@@ -37,6 +38,24 @@ Utility for interacting with CWWED:
     - upload a Post Storm Assessment for a named storm
     - list all Post Storm Assessments
 """
+
+
+class ProgressPercentage:
+
+    def __init__(self, filename, download_size=None):
+        self._filename = filename
+        self._size = float(os.path.getsize(filename)) if download_size is None else download_size
+        self._seen_so_far = 0
+        self._lock = threading.Lock()
+
+    def __call__(self, bytes_amount):
+        with self._lock:
+            self._seen_so_far += bytes_amount
+            percentage = (self._seen_so_far / self._size) * 100
+            sys.stdout.write("\r%s  %s / %s  (%.2f%%)" % (
+                self._filename, self._seen_so_far, self._size,
+                percentage))
+            sys.stdout.flush()
 
 
 def create_directory(path):
@@ -91,6 +110,29 @@ def create_psa(args):
         print("The email address associated with this account will be emailed when it's been extracted, validated and ingested.")
 
 
+def get_aws_session():
+    return boto3.Session(profile_name='nsem')
+
+
+def upload_psa_intermediate_data(args):
+    session = get_aws_session()
+    s3 = session.resource('s3')
+    s3_bucket = s3.Bucket(S3_BUCKET)
+    directory = args['directory']
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            path = os.path.join(root, file)
+            s3_bucket.upload_file(
+                path,
+                os.path.join('NSEM/upload', path.lstrip('/')),
+                ExtraArgs={
+                    # TODO - use cold storage class
+                    # 'StorageClass': 'GLACIER'
+                },
+                Callback=ProgressPercentage(path))
+            print()
+
+
 def upload_psa(file: str, path: str):
 
     # verify the "file" is of the correct type
@@ -98,8 +140,9 @@ def upload_psa(file: str, path: str):
     if extension != '.tgz':
         sys.exit('File to upload must be ".tgz" (tar+gzipped)')
 
-    # create the s3 instance
-    s3 = boto3.resource('s3')
+    # create the s3 resource
+    session = get_aws_session()
+    s3 = session.resource('s3')
     s3_bucket = s3.Bucket(S3_BUCKET)
 
     # upload the file to the specified path
@@ -180,22 +223,23 @@ def download_cd(args):
     path = parsed.path.lstrip('/')  # S3 paths are relative so remove leading slash
 
     # create the s3 instance
-    s3 = boto3.resource('s3')
+    session = get_aws_session()
+    s3 = session.resource('s3')
     s3_bucket = s3.Bucket(bucket)
 
     # build a list of all the relevant files to download
-    files = []
+    objects = []
     for obj in s3_bucket.objects.all():
         if obj.key.startswith(path):
-            files.append(obj.key)
+            objects.append(obj)
 
     # download each file to out "output_dir"
-    for file in files:
-        dest_path = os.path.join(output_dir, file)
-        print('downloading {} to {}'.format(file, dest_path))
+    for obj in objects:
+        dest_path = os.path.join(output_dir, obj.key)
         # create the directory and then download the file to the path
         create_directory(os.path.dirname(dest_path))
-        s3_bucket.download_file(file, dest_path)
+        s3_bucket.download_file(obj.key, dest_path, Callback=ProgressPercentage(dest_path, obj.size))
+        print()
 
     print('Successfully downloaded Covered Data to {}'.format(output_dir))
 
@@ -310,6 +354,12 @@ parser_psa_create.set_defaults(func=create_psa)
 parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
 parser_psa_list.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
 parser_psa_list.set_defaults(func=list_psa)
+
+# psa - intermediate data
+parser_psa_intermediate_data_upload = subparsers_psa.add_parser('upload-intermediate-data', help='Upload PSA Intermediate Data')
+parser_psa_intermediate_data_upload.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
+parser_psa_intermediate_data_upload.set_defaults(func=upload_psa_intermediate_data)
+parser_psa_intermediate_data_upload.add_argument("directory", help='The directory with the intermediate data to upload')
 
 
 # process args
