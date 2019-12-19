@@ -162,7 +162,7 @@ def upload_psa(file: str, path: str):
 
     # upload the file to the specified path
     print('uploading {} to s3://{}/{}'.format(file, S3_BUCKET, path))
-    s3_bucket.upload_file(file, path)
+    s3_bucket.upload_file(file, path, Callback=ProgressPercentage(file))
     print('Successfully uploaded psa')
 
 

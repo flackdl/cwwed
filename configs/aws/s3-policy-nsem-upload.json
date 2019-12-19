@@ -37,7 +37,7 @@
                 "s3:DeleteObject",
                 "s3:GetObjectVersion"
             ],
-            "Resource": "arn:aws:s3:::cwwed-archives/NSEM/upload/*"
+            "Resource": "arn:aws:s3:::cwwed-archives/**/NSEM/upload/*"
         },
         {
             "Sid": "VisualEditor3",
