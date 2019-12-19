@@ -61,6 +61,7 @@ class NamedStormCoveredDataSnapshotViewSet(mixins.CreateModelMixin, mixins.Retri
     queryset = NamedStormCoveredDataSnapshot.objects.all()
     serializer_class = NamedStormCoveredDataSnapshotSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
+    filterset_fields = ('named_storm',)
 
     def perform_create(self, serializer):
         # save the instance first so we can create a task to archive the covered data snapshot

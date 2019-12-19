@@ -73,6 +73,21 @@ def get_auth_headers(token):
     }
 
 
+def list_covered_data_snapshots(args):
+    url = os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT)
+    data = {
+        "named_storm": args['storm-id'],
+    }
+    # request a new post-storm assessment from the api
+    response = requests.get(url, data)
+    snapshot_data = response.json()
+    if not response.ok:
+        print('ERROR')
+        sys.exit(snapshot_data)
+    else:
+        print(json.dumps(snapshot_data, indent=2))
+
+
 def create_covered_data_snapshot(args):
     url = os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT)
     data = {
@@ -322,6 +337,11 @@ parser_storm_list.set_defaults(func=list_storms)
 parser_cd = subparsers.add_parser('cd', help='Manage Covered Data Snapshots')
 parser_cd.set_defaults(func=lambda _: parser_cd.print_help())
 subparsers_cd = parser_cd.add_subparsers(help='Covered Data sub-commands', dest='cd')
+
+# list
+parser_cd_list = subparsers_cd.add_parser('list', help='List covered data snapshots for a storm')
+parser_cd_list.set_defaults(func=list_covered_data_snapshots)
+parser_cd_list.add_argument("storm-id", help='The id for the storm', type=int)
 
 # create
 parser_cd_create = subparsers_cd.add_parser('create', help='Create a new covered data snapshot')
