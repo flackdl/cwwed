@@ -10,7 +10,6 @@ import sys
 import requests
 import threading
 import boto3
-from boto3.s3.transfer import TransferConfig
 
 API_ROOT_PROD = 'https://alpha.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
