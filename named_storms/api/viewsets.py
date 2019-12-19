@@ -23,7 +23,7 @@ from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
-    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa)
+    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa, email_psa_ingested_task)
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport, NamedStormCoveredDataSnapshot
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
@@ -109,7 +109,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             # ingest the psa
             ingest_nsem_psa.si(nsem_psa.id),
             # email psa ingest completion
-            email_psa_validated_task.si(nsem_psa.id),
+            email_psa_ingested_task.si(nsem_psa.id),
         )()
 
 
