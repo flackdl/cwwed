@@ -41,10 +41,11 @@ Utility for interacting with CWWED:
 """
 
 
-class ProgressPercentage(object):
-    def __init__(self, filename):
+class ProgressPercentage:
+
+    def __init__(self, filename, download_size=None):
         self._filename = filename
-        self._size = float(os.path.getsize(filename))
+        self._size = float(os.path.getsize(filename)) if download_size is None else download_size
         self._seen_so_far = 0
         self._lock = threading.Lock()
 
@@ -56,29 +57,6 @@ class ProgressPercentage(object):
                 self._filename, self._seen_so_far, self._size,
                 percentage))
             sys.stdout.flush()
-
-
-def multi_part_upload(path: str):
-    config = TransferConfig(
-        multipart_threshold=1024 * 25,
-        max_concurrency=10,
-        multipart_chunksize=1024 * 25,
-        use_threads=True,
-    )
-    #session = get_aws_session()
-    #s3 = session.client('s3')
-    s3 = boto3.client('s3')
-    s3.upload_file(
-        path,
-        S3_BUCKET,
-        #os.path.join('local', path),
-        os.path.join('local/NSEM/upload/', path),
-        ExtraArgs={
-            #'StorageClass': 'GLACIER'
-        },
-        Config=config,
-        Callback=ProgressPercentage(path)
-    )
 
 
 def create_directory(path):
@@ -138,10 +116,22 @@ def get_aws_session():
 
 
 def upload_psa_intermediate_data(args):
-    directory = args['directory']
     session = get_aws_session()
-    s3 = session.client('s3')
-    multi_part_upload('/media/bucket/cwwed/OPENDAP/PSA_demo/psa.tgz')
+    s3 = session.resource('s3')
+    s3_bucket = s3.Bucket(S3_BUCKET)
+    directory = args['directory']
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            path = os.path.join(root, file)
+            s3_bucket.upload_file(
+                path,
+                os.path.join('NSEM/upload', path.lstrip('/')),
+                ExtraArgs={
+                    # TODO - use cold storage class
+                    # 'StorageClass': 'GLACIER'
+                },
+                Callback=ProgressPercentage(path))
+            print()
 
 
 def upload_psa(file: str, path: str):
@@ -239,18 +229,18 @@ def download_cd(args):
     s3_bucket = s3.Bucket(bucket)
 
     # build a list of all the relevant files to download
-    files = []
+    objects = []
     for obj in s3_bucket.objects.all():
         if obj.key.startswith(path):
-            files.append(obj.key)
+            objects.append(obj)
 
     # download each file to out "output_dir"
-    for file in files:
-        dest_path = os.path.join(output_dir, file)
-        print('downloading {} to {}'.format(file, dest_path))
+    for obj in objects:
+        dest_path = os.path.join(output_dir, obj.key)
         # create the directory and then download the file to the path
         create_directory(os.path.dirname(dest_path))
-        s3_bucket.download_file(file, dest_path)
+        s3_bucket.download_file(obj.key, dest_path, Callback=ProgressPercentage(dest_path, obj.size))
+        print()
 
     print('Successfully downloaded Covered Data to {}'.format(output_dir))
 
