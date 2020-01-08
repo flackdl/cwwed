@@ -17,25 +17,11 @@ services:
     volumes:
       - /media/bucket/cwwed/OPENDAP/:/usr/share/hyrax
 
-  rabbitmq:
-    image: rabbitmq
-    container_name: rabbitmq
+  redis:
+    image: redis:5
+    container_name: redis
     ports:
-      - "5672:5672"
-
-  #cwwed:
-  #  build:
-  #    context: .
-  #  ports:
-  #    - "8888:80"
-  #  env_file: .env  # not in version control
-  #  environment:
-  #    DJANGO_SETTINGS_MODULE: cwwed.settings
-  #    DATABASE_URL: postgis://postgres@postgis:5432/postgres
-  #  depends_on:
-  #    - postgis
-  #    - opendap
-  #    - rabbitmq
+      - "6379:6379"
 
 volumes:
   cwwed-postgresql:

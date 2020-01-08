@@ -19,7 +19,7 @@ https://www.weather.gov/sti/coastalact_cwwed
 
 ### Running via Docker Compose
    
-    # start PostGIS/OPeNDAP/RabbitMQ via Docker
+    # start PostGIS/OPeNDAP/Redis via Docker
     docker-compose up
     
     # start django server
@@ -52,10 +52,6 @@ Collect Covered Data
     npm --prefix frontend run build-prod
     
 ### Helpers
-
-Purge RabbitMQ
-
-    docker-compose exec rabbitmq rabbitmqctl purge_queue celery
     
 Purge Celery
 
@@ -164,8 +160,8 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     emrichen --define deploy_stage=alpha --define tag=latest configs/deployment-celery.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/service-opendap.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=alpha configs/deployment-rabbitmq.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=alpha configs/service-rabbitmq.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/deployment-redis.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha configs/service-redis.in.yml | kubectl apply -f -
 
     # dev => v1.0
     emrichen --define deploy_stage=dev --define tag=v1.0 configs/deployment-cwwed.in.yml | kubectl apply -f -
@@ -173,8 +169,8 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     emrichen --define deploy_stage=dev --define tag=v1.0 configs/deployment-celery.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/service-opendap.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=dev configs/deployment-rabbitmq.in.yml | kubectl apply -f -
-    emrichen --define deploy_stage=dev configs/service-rabbitmq.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/deployment-redis.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=dev configs/service-redis.in.yml | kubectl apply -f -
     
     
 **OPTIONAL** define yaml templates for the following:

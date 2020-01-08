@@ -1,6 +1,6 @@
 !Defaults
-app: !Format "rabbitmq-{deploy_stage}"
-deployment_name: !Format "rabbitmq-deployment-{deploy_stage}"
+app: !Format "redis-{deploy_stage}"
+deployment_name: !Format "redis-deployment-{deploy_stage}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,7 +17,7 @@ spec:
         app: !Var app
     spec:
       containers:
-      - name: rabbitmq
-        image: rabbitmq:3
+      - name: redis
+        image: redis:5
         ports:
-        - containerPort: 5672
+        - containerPort: 6379

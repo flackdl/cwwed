@@ -1,6 +1,6 @@
 !Defaults
-app: !Format "rabbitmq-{deploy_stage}"
-name: !Format "rabbitmq-{deploy_stage}"
+app: !Format "redis-{deploy_stage}"
+name: !Format "redis-{deploy_stage}"
 ---
 kind: Service
 apiVersion: v1
@@ -11,5 +11,5 @@ spec:
     app: !Var app
   ports:
   - protocol: TCP
-    port: 5672
-    targetPort: 5672
+    port: 6379
+    targetPort: 6379

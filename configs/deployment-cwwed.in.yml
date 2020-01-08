@@ -4,7 +4,7 @@ secret_name: !Format "cwwed-secrets-{deploy_stage}"
 app: !Format "cwwed-{deploy_stage}"
 deployment_name: !Format "cwwed-deployment-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
-rabbitmq_service: !Format "rabbitmq-{deploy_stage}"
+redis_service: !Format "redis-{deploy_stage}"
 opendap_service: !Format "opendap-{deploy_stage}"
 ---
 apiVersion: apps/v1
@@ -45,9 +45,7 @@ spec:
           - name: DEPLOY_STAGE
             value: !Var deploy_stage
           - name: CELERY_BROKER
-            value: !Var rabbitmq_service
-          - name: CELERY_BACKEND
-            value: !Var rabbitmq_service
+            value: !Var redis_service
           - name: OPENDAP_HOST
             value: !Var opendap_service
         # secrets

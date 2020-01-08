@@ -5,6 +5,11 @@ from django.core.management.base import BaseCommand
 from django.utils import autoreload
 
 
+"""
+This is used for development only.  It starts celery and flower and hot reloads on file changes
+"""
+
+
 def restart_celery():
     # kill celery/flower
     cmd = 'pkill celery'
