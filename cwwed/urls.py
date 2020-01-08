@@ -19,6 +19,7 @@ from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.conf.urls.static import static
 from rest_framework.schemas import get_schema_view
+from ratelimit.decorators import ratelimit
 
 from cwwed.views import AngularStaticAssetsRedirectView
 from audit.proxy import OpenDapProxy
@@ -26,6 +27,8 @@ from audit.proxy import OpenDapProxy
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='coastal_act/index.html'), name='home'),
+    # rate limit the admin login
+    path('admin/login/', ratelimit(key='ip', rate='5/m', method=['POST'], block=True)(admin.site.login)),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular

@@ -40,3 +40,5 @@ cfchecker==4.0.0
 uritemplate==3.0.0
 redis==3.3.11
 emrichen==0.2.2
+django-ratelimit==2.0.0
+django-redis-cache==2.1.0

@@ -138,8 +138,8 @@ DATABASES = {
 # https://docs.djangoproject.com/en/2.0/topics/cache/
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'cache_default',
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': '{}:6379'.format(os.environ.get('CELERY_BROKER', 'localhost')),
     },
     'psa_geojson': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
@@ -175,6 +175,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # username or email
+ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 60
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
