@@ -10,6 +10,7 @@ import numpy as np
 from django.contrib.gis import geos
 from django.conf import settings
 from django.contrib.gis.db.models.functions import GeoHash
+from django.utils import timezone
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaData
 from named_storms.utils import named_storm_nsem_version_path
@@ -86,7 +87,7 @@ class PsaDataset:
             psa_variable.save()
 
         self.psa_manifest_dataset.nsem.processed = True
-        self.psa_manifest_dataset.nsem.date_processed = datetime.utcnow()
+        self.psa_manifest_dataset.nsem.date_processed = timezone.now()
         self.psa_manifest_dataset.nsem.save()
 
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
