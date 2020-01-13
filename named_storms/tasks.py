@@ -779,8 +779,6 @@ def ingest_nsem_psa(nsem_psa_id):
     Ingests an NSEM PSA into the CWWED database
     """
 
-    # TODO
-
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
 
     # only extract if the psa was validated
