@@ -10,7 +10,8 @@ django-crispy-forms==1.8.1
 django-filter==2.2.0
 django-ratelimit==2.0.0
 django-redis-cache==2.1.0
-django-revproxy==0.9.16
+# django-revproxy - use this django 3 compatible version (9.16) which isn't in pypi yet
+git+https://github.com/TracyWebTech/django-revproxy.git@4cefe4ae4bf4834a2e1229b92289c2b18e60cff8
 django-storages==1.8
 djangorestframework==3.11.0
 emrichen==0.2.2
