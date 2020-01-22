@@ -250,12 +250,7 @@ def extract_nsem_psa_task(nsem_id):
 
     nsem = get_object_or_404(NsemPsa, pk=int(nsem_id))
     uploaded_file_path = nsem.path
-    storage = S3ObjectStoragePrivate()
-
-    # remove any prefixed "location" from the object storage instance (i.e , "local", "dev", "test")
-    location_prefix = '{}/'.format(storage.location)
-    if uploaded_file_path.startswith(location_prefix):
-        uploaded_file_path = uploaded_file_path.replace(location_prefix, '')
+    storage = S3ObjectStoragePrivate(force_root_location=True)
 
     # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.extracted:

@@ -87,7 +87,6 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         ]
 
     dates = serializers.ListField(child=serializers.DateTimeField())
-    model_output_upload_path = serializers.SerializerMethodField()
     covered_data_storage_url = serializers.SerializerMethodField()
     opendap_url = serializers.SerializerMethodField()
     opendap_url_covered_data = serializers.SerializerMethodField()
@@ -137,37 +136,17 @@ class NsemPsaSerializer(serializers.ModelSerializer):
         """
         Check that the path is in the expected format (ie. "NSEM/upload/*.tgz") and exists in storage
         """
-        storage = S3ObjectStoragePrivate()
-
-        # verify the uploaded psa is in the correct path
-        if not s3_path.startswith(self._model_output_upload_path()):
-            raise serializers.ValidationError("should be in '{}'".format(self._model_output_upload_path()))
+        storage = S3ObjectStoragePrivate(force_root_location=True)
 
         # verify the path is in the expected format
         if not s3_path.endswith(settings.CWWED_ARCHIVE_EXTENSION):
             raise serializers.ValidationError("should be of the extension '.{}'".format(settings.CWWED_ARCHIVE_EXTENSION))
-
-        # remove any prefixed "location" from the object storage instance
-        location_prefix = '{}/'.format(storage.location)
-        if s3_path.startswith(location_prefix):
-            s3_path = s3_path.replace(location_prefix, '')
 
         # verify the path exists
         if not storage.exists(s3_path):
             raise serializers.ValidationError("{} does not exist in storage".format(s3_path))
 
         return s3_path
-
-    def get_model_output_upload_path(self, obj):
-        return self._model_output_upload_path()
-
-    @staticmethod
-    def _model_output_upload_path() -> str:
-        storage = S3ObjectStoragePrivate()
-        return storage.path(os.path.join(
-            settings.CWWED_NSEM_DIR_NAME,
-            settings.CWWED_NSEM_UPLOAD_DIR_NAME,
-        ))
 
     def create(self, validated_data):
         nsem_psa = super().create(validated_data)  # type: NsemPsa
