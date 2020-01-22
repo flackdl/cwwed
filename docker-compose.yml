@@ -3,7 +3,7 @@ version: '2'
 services:
 
   postgis:
-    image: mdillon/postgis
+    image: mdillon/postgis:10
     ports:
       - "5432:5432"
     volumes:
