@@ -1,4 +1,4 @@
-FROM python:3.6.4-stretch
+FROM python:3.8.1-buster
 
 ENV PYTHONUNBUFFERED 1
 
@@ -14,7 +14,7 @@ ADD docker-entrypoint.sh /app
 WORKDIR /app
 
 RUN echo "Installing dependencies and building application" \
-    && wget -qO- https://deb.nodesource.com/setup_8.x | bash - \
+    && wget -qO- https://deb.nodesource.com/setup_10.x | bash - \
     && apt-get update && apt-get install -y \
         libgdal-dev \
         gdal-bin \

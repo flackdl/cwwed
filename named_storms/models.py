@@ -353,7 +353,7 @@ class NsemPsaData(models.Model):
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
     geo_hash = models.CharField(max_length=20, null=True, blank=True)  # only populated on Point geometries
-    bbox = models.GeometryField(geography=False, null=True)
+    bbox = models.GeometryField(geography=True, null=True)
     value = models.FloatField()
     meta = fields.JSONField(default=dict, blank=True)
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"

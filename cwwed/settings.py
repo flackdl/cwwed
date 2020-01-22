@@ -215,6 +215,7 @@ STATIC_ANGULAR_ASSETS_URL = "{}cwwed/".format(STATIC_URL)
 DEFAULT_FILE_STORAGE = 'cwwed.storage_backends.S3ObjectStorage'
 AWS_ARCHIVE_BUCKET_NAME = 'cwwed-archives'
 AWS_S3_ARCHIVE_DOMAIN = '%s.s3.amazonaws.com' % AWS_ARCHIVE_BUCKET_NAME
+AWS_DEFAULT_ACL = None
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = '/media/bucket/cwwed'

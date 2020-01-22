@@ -34,9 +34,12 @@ class S3ObjectStorage(S3Boto3Storage):
 
 class S3ObjectStoragePrivate(S3ObjectStorage):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, force_root_location=False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.location = self._get_location()  # ie. "local", "dev" or "" when in production
+        if force_root_location:
+            self.location = ''
+        else:
+            self.location = self._get_location()  # ie. "local", "dev" or "" when in production
         self.default_acl = 'private'
 
     @staticmethod
