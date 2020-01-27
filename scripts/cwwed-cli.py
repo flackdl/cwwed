@@ -10,6 +10,7 @@ import sys
 import requests
 import threading
 import boto3
+from botocore.exceptions import ProfileNotFound
 
 API_ROOT_PROD = 'https://alpha.cwwed-staging.com/api/'
 API_ROOT_LOCAL = 'http://localhost:8000/api/'
@@ -126,7 +127,12 @@ def create_psa(args):
 
 
 def get_aws_session():
-    return boto3.Session(profile_name='nsem')
+    # first try and use the "nsem" credentials profile then fallback to the default configuration
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#configuring-credentials
+    try:
+        return boto3.Session(profile_name='nsem')
+    except ProfileNotFound:
+        return boto3.Session()
 
 
 def upload_psa_intermediate_data(args):
