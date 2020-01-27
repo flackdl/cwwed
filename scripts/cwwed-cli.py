@@ -38,6 +38,7 @@ Utility for interacting with CWWED:
     - download a Covered Data snapshot for a named storm
     - upload a Post Storm Assessment for a named storm
     - list all Post Storm Assessments
+    - upload intermediate PSA data for a named storm
 """
 
 
