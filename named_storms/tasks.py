@@ -15,6 +15,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
 from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML
+from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
 from django.db import connection
 from django.db.models import CharField
@@ -592,7 +593,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
 
             # create GeoDataFrame from query
-            gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+            try:
+                gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+            except EmptyResultSet:
+                logger.info('empty result for {}', psa_geom_variable)
+                continue
 
             # save to temporary user path
             gdf.to_file(os.path.join(tmp_user_export_path, '{}.shp'.format(psa_geom_variable.name)))
