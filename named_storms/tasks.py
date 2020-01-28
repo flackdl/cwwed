@@ -595,6 +595,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # create GeoDataFrame from query
             try:
                 gdf = GeoDataFrame.from_postgis(str(qs.query), connection, geom_col='geom')
+            # https://docs.djangoproject.com/en/3.0/ref/exceptions/#emptyresultset
             except EmptyResultSet:
                 logger.info('empty result for {}', psa_geom_variable)
                 continue
