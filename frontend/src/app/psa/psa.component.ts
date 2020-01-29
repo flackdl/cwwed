@@ -69,9 +69,9 @@ export class PsaComponent implements OnInit {
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
 
-  @ViewChild('popup') popupEl: ElementRef;
-  @ViewChild('tooltip') tooltipEl: ElementRef;
-  @ViewChild('map') mapEl: ElementRef;
+  @ViewChild('popup', {static: false}) popupEl: ElementRef;
+  @ViewChild('tooltip', {static: false}) tooltipEl: ElementRef;
+  @ViewChild('map', {static: false}) mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
   protected _lineChartDataAll: any[] = [];
