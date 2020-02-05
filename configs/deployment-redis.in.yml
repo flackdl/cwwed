@@ -21,3 +21,6 @@ spec:
         image: redis:5
         ports:
         - containerPort: 6379
+        resources:
+          requests:
+            memory: "250M"

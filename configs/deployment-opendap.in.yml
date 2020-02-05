@@ -36,4 +36,4 @@ spec:
           readOnly: true
         resources:
           requests:
-            memory: "250M"
+            memory: "1000M"

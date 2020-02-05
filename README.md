@@ -126,6 +126,21 @@ monitor the new external Load Balancer and get it's external IP address.
     kubectl get service --namespace ingress-nginx ingress-nginx
     
 Use that IP and configure DNS via Cloudflare.
+
+##### Metrics Server
+
+A metrics server is required for the [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
+
+I copied their `deploy/1.8+` folder locally to `configs/metrics-server-1.8+`.
+    
+    kubectl create -f configs/metrics-server-1.8+
+    
+See https://github.com/kubernetes-sigs/metrics-server for details.
+
+##### Horizontal Pod Autoscaler
+**TODO**
+
+See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/.
     
 ### Secrets
     
@@ -248,7 +263,7 @@ Create cache tables:
     # start proxy
     kubectl proxy
     
-Dashboard URL: http://localhost:8001/api/v1/namespaces/kube-system/services/https:kubernetes-dashboard:/proxy/#!/overview?namespace=default
+Dashboard URL: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
     
 ### Celery Flower
 
