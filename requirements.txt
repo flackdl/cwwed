@@ -3,7 +3,7 @@ bpython==0.18
 celery==4.4.0
 cfchecker==4.0.0
 dj-database-url==0.5.0
-Django==3.0.2
+Django==3.0.3
 django-allauth==0.41.0
 django-cors-headers==3.2.1
 django-crispy-forms==1.8.1
