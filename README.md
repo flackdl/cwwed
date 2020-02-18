@@ -127,20 +127,10 @@ monitor the new external Load Balancer and get it's external IP address.
     
 Use that IP and configure DNS via Cloudflare.
 
-##### Metrics Server
-
-A metrics server is required for the [Horizontal Pod Autoscaler](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/).
-
-I copied their `deploy/1.8+` folder locally to `configs/metrics-server-1.8+`.
-    
-    kubectl create -f configs/metrics-server-1.8+
-    
-See https://github.com/kubernetes-sigs/metrics-server for details.
-
-##### Horizontal Pod Autoscaler
+##### Autoscaler
 **TODO**
 
-See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/.
+See https://github.com/kubernetes/autoscaler
     
 ### Secrets
     
