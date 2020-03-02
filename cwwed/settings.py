@@ -240,6 +240,11 @@ LOGGING = {
         },
     },
     'loggers': {
+        '': {
+            'level': 'INFO',
+            'handlers': ['console'],
+            'propagate': True,
+        },
         'cwwed': {
             'level': 'INFO',
             'handlers': ['console'],

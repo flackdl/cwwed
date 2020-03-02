@@ -214,7 +214,7 @@ Create cache tables:
     kubectl apply -f configs/job-collect-covered-data.yml
     
     # patch to force a rolling update (to re-pull images)
-    kubectl patch deployment cwwed-deployment -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
+    kubectl patch deployment cwwed-deployment-alpha -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
     # get pod name
     CWWED_POD=$(kubectl get pods -l app=cwwed --no-headers -o custom-columns=:metadata.name)
