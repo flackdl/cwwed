@@ -111,11 +111,7 @@ Create kubernetes persistent volume & claim with the new efs instance:
 
 User nginx as the kubernetes ingress.
 
-https://kubernetes.github.io/ingress-nginx/
-
-    kubectl apply -f configs/nginx-ingress/mandatory.yml
-    kubectl apply -f configs/nginx-ingress/service-14.yml
-    kubectl apply -f configs/nginx-ingress/patch-configmap-14.yml
+See https://kubernetes.github.io/ingress-nginx/.
     
 ##### Load Balancing
 

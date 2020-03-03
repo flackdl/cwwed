@@ -14,7 +14,7 @@ metadata:
   labels:
     app: !Var app
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: !Var app
@@ -38,7 +38,7 @@ spec:
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "1000M"
+            memory: "500M"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
