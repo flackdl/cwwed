@@ -37,7 +37,7 @@ export class PsaExportComponent implements OnInit {
     // if they're not logged in, redirect to login page and then back here
     if (!this.cwwedService.user) {
       window.location.href = '/accounts/login?next=' +
-        encodeURIComponent(`#${this.router.routerState.snapshot.url}`);
+        encodeURIComponent(`/#${this.router.routerState.snapshot.url}`);
       return;
     }
 
@@ -66,8 +66,7 @@ export class PsaExportComponent implements OnInit {
     }
 
     // create initial form group
-    this.form = this.fb.group({
-    });
+    this.form = this.fb.group({});
   }
 
   public getUser() {
