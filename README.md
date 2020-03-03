@@ -185,16 +185,20 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     kubectl apply -f configs/deployment-celery-flower.yml
     kubectl apply -f configs/service-celery-flower.yml
    
-Everything else:
+#### Everything else:
 
-    # ingress
+##### Ingress
     kubectl apply -f configs/ingress.yml
     
+##### Persistent Volume
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
     
-    # cluster autoscaler
+##### Cluster Autoscaler
+
+*TODO - receiving error 'Unable to build proper template node for k8s-worker-asg-1: unable to get first AvailabilityZone for ASG "k8s-worker-asg-1"'*
+
     kubectl apply -f configs/cluster-autoscaler.yml
     
 ### Initializations
