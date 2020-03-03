@@ -20,3 +20,7 @@ jobs:
         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
         # push to docker hub
         - docker push flackdl/cwwed:$tag
+
+notifications:
+  slack:
+    secure: DdmAzB4Ie4TpSDCi/MFlqseDV6e8xAixBOr6bV5giqGEhqv0HItBcVy44/ZSoK7550aBL+ECV6piPiOGvkDS6KOW0rzR7av7waFZsmxTsLas9YLDjoPiN9a+JmlnkUdvtS9tsIa5yT5hlSMExv9SjA8AkBLreLbVtFlIeINcoi07Uc6j4a1hgyNFzI6Tg+MzMGmZgxr1bEuzy9BG/MN35SM01c0fxODXpc4Zyxt25YXCNZzE6uXbLIb4LBA7kkYyjXLc0D79BHb2e3Y2PpHMqTfJz/lnbz3M42rynU7Mmgeg76iFBNZcY8THjOTsV023X3uD0cbnNADpsNY0sftXmO/nyX5BrJJgaZH81NUunJ1SIQsWPIkPX65EeVFaKBupJxRbm8r/Rx38a6lx5nvHaeN5yuTcZucZTco1r6VT3xUTz5tP4MXA6nprmRNi0a2EbHvxMx2Bh0t3ZqoGwU0kjtsXea6mgYz8KqhNYZ+uX3RoZ9fXSu1weI37uSFUdQlLUd8YcWqyDNmxmFWjuZaHrhAShJLDIR6jWkTAoZGX6Tcht0Z+QHbMFEaSABMe3/1qQxdSjElpbYMPZXQq97th9IlLsfr9QkPp+PR4RW9V/oJJbRkRBRckz0kLYhTG4jE0+sdbueuGNIctjL4iQywQoTpLGTtHyMprVE1M+4l3O6M=
