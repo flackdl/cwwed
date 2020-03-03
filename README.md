@@ -148,10 +148,16 @@ See https://github.com/kubernetes/autoscaler
         --from-literal=EMAIL_HOST_PASSWORD=$(cat ~/Documents/cwwed/secrets/sendgrid-api-key.txt) \
         --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
         && true
+        
+    # create kube-system secret
+    kubectl --namespace kube-system create secret generic cwwed-secrets-kube-system \
+        --from-literal=AUTOSCALER_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/aws_autoscaler_access_key_id.txt) \
+        --from-literal=AUTOSCALER_SECRET_ACCESS_KEY=$(cat ~/Documents/cwwed/secrets/aws_autoscaler_secret_access_key.txt) \
+        && true
 
 ### Install all the services, volumes, deployments etc.
 
-For yaml templates, us [emrichen](https://github.com/con2/emrichen) to generate yaml and pipe to `kubectl`.
+For yaml templates, use [emrichen](https://github.com/con2/emrichen) to generate yaml and pipe to `kubectl`.
 
 For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
 
@@ -187,6 +193,9 @@ Everything else:
     # patch the persistent volume to "retain" rather than delete if the claim is deleted
     # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
     kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
+    
+    # cluster autoscaler
+    kubectl apply -f configs/cluster-autoscaler.yml
     
 ### Initializations
 
