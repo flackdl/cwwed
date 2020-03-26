@@ -7,8 +7,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cwwed.settings')
 
 app = Celery(
     'cwwed',
-    broker='amqp://{}'.format(os.environ.get('CELERY_BROKER', '')),
-    backend='rpc://{}'.format(os.environ.get('CELERY_BACKEND', '')),
+    broker='redis://{}'.format(os.environ.get('CELERY_BROKER', '')),
+    backend='rpc://',
     include=['named_storms.tasks'],
 )
 
