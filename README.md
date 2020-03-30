@@ -197,9 +197,12 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     
 ##### Cluster Autoscaler
 
-*TODO - receiving error 'Unable to build proper template node for k8s-worker-asg-1: unable to get first AvailabilityZone for ASG "k8s-worker-asg-1"'*
+https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md
 
     kubectl apply -f configs/cluster-autoscaler.yml
+    
+**NOTE**: we must define the `YOUR_CLUSTER_NAME` tag when moving to multiple clusters.  See [cluster-autoscaler.yml](configs/cluster-autoscaler.yml) and 
+https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md#auto-discovery-setup
     
 ### Initializations
 
