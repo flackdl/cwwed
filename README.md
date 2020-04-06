@@ -123,7 +123,7 @@ monitor the new external Load Balancer and get it's external IP address.
     
 Use that IP and configure DNS via Cloudflare.
 
-##### Cluster Autoscaler
+### Cluster Autoscaler
 
 See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
