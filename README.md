@@ -129,6 +129,8 @@ See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
 necessary to edit the kops `nodes` instance group and include some tags referenced by [cluster-autoscaler.yml](configs/cluster-autoscaler.yml).
 
+Defining the `<YOUR_CLUSTER_NAME>` tag seems optional at this point, though, since we only have one cluster.
+
 **NOTE**: make sure the CA version matches the k8s version.
     
 ### Secrets
