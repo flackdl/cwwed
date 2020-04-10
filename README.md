@@ -123,7 +123,9 @@ monitor the new external Load Balancer and get it's external IP address.
     
 Use that IP and configure DNS via Cloudflare.
 
-### Cluster Autoscaler
+### Autoscaler
+
+##### Cluster autoscaler
 
 See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
@@ -132,6 +134,24 @@ necessary to edit the kops `nodes` instance group and include some tags referenc
 Defining the `<YOUR_CLUSTER_NAME>` tag seems optional at this point, though, since we only have one cluster.
 
 **NOTE**: make sure the CA version matches the k8s version.
+
+##### Metrics Server
+
+The Metrics Server is required for the HPA (horizontal pod scaler) to work.
+
+It's necessary to follow the [kops specific instructions](https://github.com/kubernetes/kops/blob/master/addons/metrics-server/README.md)
+which requires you to update the cluster, perform a rolling-update and then apply the [metrics-server](configs/metrics-server.yml) which added a couple
+extra command line arguments.
+
+You can test the results with:
+
+    kubectl top node
+
+##### Horizontal Pod Autoscaler
+
+**TODO**
+
+See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/.
     
 ### Secrets
     
