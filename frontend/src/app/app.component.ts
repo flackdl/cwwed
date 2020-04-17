@@ -2,6 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { forkJoin } from "rxjs";
 import { CwwedService } from "./cwwed.service";
 import { ToastrService } from 'ngx-toastr';
+import {NavigationEnd, Router} from "@angular/router";
+import { environment } from '../environments/environment';
+
+declare let gtag: any
 
 
 @Component({
@@ -16,7 +20,22 @@ export class AppComponent implements OnInit {
   constructor(
     private cwwedService: CwwedService,
     private toastr: ToastrService,
+    private router: Router,
   ) {
+
+    this.router.events.subscribe((event) => {
+      if (environment.production) {
+        // google analytics
+        if(event instanceof NavigationEnd){
+          gtag('config', 'UA-163877408-1',
+            {
+              'page_path': event.urlAfterRedirects
+            }
+          );
+        }
+      }
+    });
+
   }
 
   public navCollapse() {
