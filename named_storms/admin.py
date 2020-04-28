@@ -11,7 +11,7 @@ class CoveredDataInline(admin.TabularInline):
     extra = 0
     exclude = ('geo',)  # editing an inline geometry isn't straight forward
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj):
         # disabled since we can't edit geo which is a required field
         return False
 
@@ -28,7 +28,7 @@ class NsemPsaVariableInline(admin.TabularInline):
     extra = 0
     fields = ('nsem', 'name', 'data_type')
 
-    def has_add_permission(self, request):
+    def has_add_permission(self, request, obj):
         # disabled since we can't edit geo which is a required field
         return False
 
