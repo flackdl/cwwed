@@ -23,7 +23,7 @@ spec:
         image: !Var image
         command: ['python']
         args: ['manage.py', 'collect_covered_data']
-        # args: ['manage.py', 'collect_covered_data', '--storm_id', '1', '--covered_data_id', '9']
+        #args: ['manage.py', 'collect_covered_data', '--storm_id', '2']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage

@@ -57,6 +57,10 @@ Purge Celery
 
     celery -A cwwed purge -f
     
+Purge REDIS
+
+    docker-compose exec redis redis-cli FLUSHALL   
+    
 Access OPENDaP behind CWWED's authenticated proxy
 
     import requests
@@ -252,7 +256,7 @@ Create cache tables:
 ### Helpers
     
     # collect covered data via job
-    kubectl apply -f configs/job-collect-covered-data.yml
+    emrichen --define deploy_stage=alpha --define tag=latest configs/job-collect-covered-data.in.yml | kubectl apply -f -
     
     # patch to force a rolling update (to re-pull images)
     kubectl patch deployment cwwed-deployment-alpha -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
