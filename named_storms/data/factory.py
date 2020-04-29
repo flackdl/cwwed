@@ -198,7 +198,7 @@ class USGSProcessorFactory(ProcessorCoreFactory):
 
     def _is_valid_sensor_deployment_type(self, file: dict) -> bool:
         sensor = self._sensor(file['instrument_id'])
-        return sensor['deployment_type_id'] in [dt['deployment_type_id'] for dt in self.deployment_types]
+        return sensor.get('deployment_type_id') in [dt['deployment_type_id'] for dt in self.deployment_types]
 
     def _sensor(self, instrument_id) -> dict:
         for sensor in self.sensors:
