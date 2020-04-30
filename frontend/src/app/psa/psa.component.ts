@@ -19,6 +19,7 @@ import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
 import { DecimalPipe } from "@angular/common";
 import { ChartOptions } from 'chart.js';
 import { ToastrService } from 'ngx-toastr';
+import { GoogleAnalyticsService } from '../google-analytics.service';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
@@ -84,6 +85,7 @@ export class PsaComponent implements OnInit {
     private decimalPipe: DecimalPipe,
     private cwwedService: CwwedService,
     private toastr: ToastrService,
+    private googleAnalyticsService: GoogleAnalyticsService,
   ) {
   }
 
@@ -192,6 +194,8 @@ export class PsaComponent implements OnInit {
   }
 
   public enableBoxSelection() {
+    // track event
+    this.googleAnalyticsService.psaBoxSelection(this.namedStorm.name);
     this._extentInteraction.setActive(true);
   }
 
@@ -206,6 +210,8 @@ export class PsaComponent implements OnInit {
       document.exitFullscreen();
     }
     psaContainer.requestFullscreen();
+    // track event
+    this.googleAnalyticsService.psaFullScreen(this.namedStorm.name);
   }
 
   public isFullscreen(): boolean {
@@ -215,7 +221,12 @@ export class PsaComponent implements OnInit {
   protected _listenForInputChanges() {
 
     // update map data opacity
-    this.form.get('opacity').valueChanges.subscribe(
+    this.form.get('opacity').valueChanges.pipe(
+      tap((value) => {
+        // track event
+        this.googleAnalyticsService.psaOpacity(this.namedStorm.name, value);
+      })
+    ).subscribe(
       (data) => {
 
         // update layers
@@ -237,8 +248,14 @@ export class PsaComponent implements OnInit {
     );
 
     // update map tile layer
-    this.mapLayerInput.valueChanges.subscribe(
+    this.mapLayerInput.valueChanges.pipe(
+      tap((value) => {
+        // track event
+        this.googleAnalyticsService.psaBaseMap(this.namedStorm.name);
+      })
+    ).subscribe(
       (value) => {
+
         this.map.getLayers().getArray().forEach((layer) => {
           const mapName = layer.get('mapName');
           if (mapName) {
@@ -252,6 +269,8 @@ export class PsaComponent implements OnInit {
     this.form.get('variables').valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
+        // track event
+        this.googleAnalyticsService.psaVariableToggle(this.namedStorm.name);
       }),
     ).subscribe(
       (variablesValues) => {
@@ -286,6 +305,8 @@ export class PsaComponent implements OnInit {
     this.form.get('date').valueChanges.pipe(
       tap(() => {
         this.isLoadingMap = true;
+        // track event
+        this.googleAnalyticsService.psaDate(this.namedStorm.name);
       }),
       debounceTime(1000),
     ).subscribe((value) => {

@@ -9,7 +9,7 @@ import { NgxLoadingModule } from 'ngx-loading';
 import { MomentModule } from 'ngx-moment';
 import { ChartsModule } from "ng2-charts";
 import { ToastrModule } from 'ngx-toastr';
-import {GoogleAnalyticsService} from './google-analytics.service';
+import { GoogleAnalyticsService } from './google-analytics.service';
 
 
 import * as Sentry from "@sentry/browser";

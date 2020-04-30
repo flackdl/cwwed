@@ -9,14 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="{% static 'cwwed/assets/favicon.ico' %}">
 	<link rel="stylesheet" href="{% static 'cwwed/styles.css' %}">
-
-	<!-- Global site tag (gtag.js) - Google Analytics -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=UA-163877408-1"></script>
-	<script>
-		window.dataLayer = window.dataLayer || [];
-		function gtag(){dataLayer.push(arguments);}
-	</script>
-
+	{% include 'google-analytics.html' %}
 </head>
 
 <body>
