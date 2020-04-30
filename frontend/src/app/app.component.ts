@@ -5,7 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import {NavigationEnd, Router} from "@angular/router";
 import { environment } from '../environments/environment';
 
-declare let gtag: any
+declare let gtag: Function
 
 
 @Component({

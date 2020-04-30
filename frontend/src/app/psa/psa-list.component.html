@@ -11,7 +11,7 @@
     </thead>
     <tbody>
       <tr *ngFor="let storm of namedStorms">
-        <td><a [routerLink]="['/post-storm-assessment', storm.id]">{{ storm.name }}</a></td>
+        <td><a [routerLink]="['/post-storm-assessment', storm.name.toLowerCase(), storm.id]">{{ storm.name }}</a></td>
         <td>{{ storm.date_start }}</td>
         <td>{{ storm.date_end }}</td>
       </tr>

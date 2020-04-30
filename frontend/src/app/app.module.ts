@@ -9,6 +9,8 @@ import { NgxLoadingModule } from 'ngx-loading';
 import { MomentModule } from 'ngx-moment';
 import { ChartsModule } from "ng2-charts";
 import { ToastrModule } from 'ngx-toastr';
+import {GoogleAnalyticsService} from './google-analytics.service';
+
 
 import * as Sentry from "@sentry/browser";
 
@@ -64,8 +66,8 @@ const appRoutes: Routes = [
     path: 'post-storm-assessment',
     children: [
       { path: '', component: PsaListComponent },
-      { path: ':id', component: PsaComponent },
-      { path: ':id/export', component: PsaExportComponent },
+      { path: ':name/:id', component: PsaComponent },
+      { path: ':name/:id/export', component: PsaExportComponent },
     ],
   },
   { path: 'page-not-found', component: PageNotFoundComponent },
@@ -113,7 +115,10 @@ const appRoutes: Routes = [
     ToastrModule.forRoot(),
   ],
   entryComponents: [],
-  providers: [{ provide: ErrorHandler, useClass: SentryErrorHandler }],
+  providers: [
+    { provide: ErrorHandler, useClass: SentryErrorHandler },
+    GoogleAnalyticsService,
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule {
