@@ -37,7 +37,7 @@ Utility for interacting with CWWED:
     - create a  Covered Data snapshot for a named storm
     - download a Covered Data snapshot for a named storm
     - upload a Post Storm Assessment for a named storm
-    - list all Post Storm Assessments
+    - get a Post Storm Assessment for a named storm
     - upload intermediate PSA data for a named storm
 """
 
@@ -78,7 +78,7 @@ def get_auth_headers(token):
 def list_covered_data_snapshots(args):
     url = os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT)
     data = {
-        "named_storm": args['storm-id'],
+        "named_storm": args['storm_id'],
     }
     # request a new post-storm assessment from the api
     response = requests.get(url, data)
@@ -93,10 +93,10 @@ def list_covered_data_snapshots(args):
 def create_covered_data_snapshot(args):
     url = os.path.join(API_ROOT, ENDPOINT_COVERED_DATA_SNAPSHOT)
     data = {
-        "named_storm": args['storm-id'],
+        "named_storm": args['storm_id'],
     }
     # request a new post-storm assessment from the api
-    response = requests.post(url, data=data, headers=get_auth_headers(args['api-token']))
+    response = requests.post(url, data=data, headers=get_auth_headers(args['api_token']))
     snapshot_data = response.json()
     if not response.ok:
         print('ERROR')
@@ -118,7 +118,7 @@ def create_psa(args):
     upload_psa(file=args['file'], path=data.get('path'))
 
     # request a new post-storm assessment from the api
-    response = requests.post(url, json=data, headers=get_auth_headers(args['api-token']))
+    response = requests.post(url, json=data, headers=get_auth_headers(args['api_token']))
     nsem_data = response.json()
     if not response.ok:
         sys.exit(nsem_data)
@@ -199,12 +199,12 @@ def fetch_cd_snapshot(snapshot_id):
     return response_json
 
 
-def list_psa(args):
-    print(json.dumps(fetch_psa(args['psa-id']), indent=2))
+def get_psa(args):
+    print(json.dumps(fetch_psa(args['psa_id']), indent=2))
 
 
 def download_cd(args):
-    snapshot_id = args['snapshot-id']
+    snapshot_id = args['snapshot_id']
 
     storage_key = 'covered_data_storage_url'
 
@@ -323,13 +323,13 @@ parser_auth.set_defaults(func=authenticate)
 # Named Storm
 #
 
-parser_storm = subparsers.add_parser('storm', help='List and search storms')
+parser_storm = subparsers.add_parser('named-storms', help='List and search storms')
 parser_storm.set_defaults(func=lambda _: parser_storm.print_help())
 subparsers_storm = parser_storm.add_subparsers(help='Storm sub-commands')
 
 # search
 parser_storm_search = subparsers_storm.add_parser('search', help='Search for a storm by name')
-parser_storm_search.add_argument("name", help='The name of the storm')
+parser_storm_search.add_argument("--name", help='The name of the storm', required=True)
 parser_storm_search.set_defaults(func=search_storms)
 
 # list
@@ -341,24 +341,24 @@ parser_storm_list.set_defaults(func=list_storms)
 # Covered Data Snapshot
 #
 
-parser_cd = subparsers.add_parser('cd', help='Manage Covered Data Snapshots')
+parser_cd = subparsers.add_parser('covered-data-snapshots', help='Manage Covered Data Snapshots')
 parser_cd.set_defaults(func=lambda _: parser_cd.print_help())
-subparsers_cd = parser_cd.add_subparsers(help='Covered Data sub-commands', dest='cd')
+subparsers_cd = parser_cd.add_subparsers(help='Covered Data sub-commands')
 
 # list
 parser_cd_list = subparsers_cd.add_parser('list', help='List covered data snapshots for a storm')
 parser_cd_list.set_defaults(func=list_covered_data_snapshots)
-parser_cd_list.add_argument("storm-id", help='The id for the storm', type=int)
+parser_cd_list.add_argument("--storm-id", help='The id for the storm', type=int, required=True)
 
 # create
 parser_cd_create = subparsers_cd.add_parser('create', help='Create a new covered data snapshot')
 parser_cd_create.set_defaults(func=create_covered_data_snapshot)
-parser_cd_create.add_argument("storm-id", help='The id for the storm', type=int)
-parser_cd_create.add_argument("api-token", help='API token')
+parser_cd_create.add_argument("--storm-id", help='The id for the storm', type=int, required=True)
+parser_cd_create.add_argument("--api-token", help='API token', required=True)
 
 # download
 parser_cd_download = subparsers_cd.add_parser('download', help='Download a covered data snapshot')
-parser_cd_download.add_argument("snapshot-id", help='The id of the covered data snapshot', type=int)
+parser_cd_download.add_argument("--snapshot-id", help='The id of the covered data snapshot', type=int, required=True)
 parser_cd_download.add_argument("--output-dir", help='The output directory')
 parser_cd_download.set_defaults(func=download_cd)
 
@@ -366,27 +366,27 @@ parser_cd_download.set_defaults(func=download_cd)
 # Post Storm Assessment
 #
 
-parser_psa = subparsers.add_parser('psa', help='Manage a Post Storm Assessment')
+parser_psa = subparsers.add_parser('post-storm-assessments', help='Manage a Post Storm Assessment')
 parser_psa.set_defaults(func=lambda _: parser_psa.print_help())
-subparsers_psa = parser_psa.add_subparsers(help='PSA sub-commands', dest='psa')
+subparsers_psa = parser_psa.add_subparsers(help='PSA sub-commands')
 
 # psa - create
 parser_psa_create = subparsers_psa.add_parser('create', help='Create a new PSA version')
-parser_psa_create.add_argument("body", help='The body json file describing the post storm assessment')
-parser_psa_create.add_argument("file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload')
-parser_psa_create.add_argument("api-token", help='API token')
+parser_psa_create.add_argument("--body", help='The body json file describing the post storm assessment', required=True)
+parser_psa_create.add_argument("--file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload', required=True)
+parser_psa_create.add_argument("--api-token", help='API token', required=True)
 parser_psa_create.set_defaults(func=create_psa)
 
-# psa - list
-parser_psa_list = subparsers_psa.add_parser('list', help='List a PSA')
-parser_psa_list.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
-parser_psa_list.set_defaults(func=list_psa)
+# psa - get
+parser_psa_get = subparsers_psa.add_parser('get', help='Get a PSA')
+parser_psa_get.add_argument("--psa-id", help='The id of the post-storm assessment', type=int, required=True)
+parser_psa_get.set_defaults(func=get_psa)
 
 # psa - intermediate data
 parser_psa_intermediate_data_upload = subparsers_psa.add_parser('upload-intermediate-data', help='Upload PSA Intermediate Data')
-parser_psa_intermediate_data_upload.add_argument("psa-id", help='The id of the post-storm assessment', type=int)
+parser_psa_intermediate_data_upload.add_argument("--psa-id", help='The id of the post-storm assessment', type=int, required=True)
 parser_psa_intermediate_data_upload.set_defaults(func=upload_psa_intermediate_data)
-parser_psa_intermediate_data_upload.add_argument("directory", help='The directory with the intermediate data to upload')
+parser_psa_intermediate_data_upload.add_argument("--directory", help='The directory with the intermediate data to upload', required=True)
 
 
 # process args
@@ -395,7 +395,6 @@ def process_args(args):
     if 'func' in args:
         args.func(vars(args))
     else:
-        print(args)
         parser.print_help(sys.stderr)
 
 

@@ -82,7 +82,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     queryset = NsemPsa.objects.all()
     serializer_class = NsemPsaSerializer
     permission_classes = (DjangoModelPermissionsOrAnonReadOnly,)
-    filterset_fields = ('named_storm__id', 'extracted', 'validated', 'processed')
+    filterset_fields = ('named_storm', 'extracted', 'validated', 'processed')
 
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):

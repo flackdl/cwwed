@@ -3,7 +3,8 @@ version: '2'
 services:
 
   postgis:
-    image: mdillon/postgis
+    # version should match the server's
+    image: mdillon/postgis:9.6
     ports:
       - "5432:5432"
     volumes:
