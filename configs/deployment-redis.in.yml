@@ -1,6 +1,7 @@
 !Defaults
 app: !Format "redis-{deploy_stage}"
 deployment_name: !Format "redis-deployment-{deploy_stage}"
+volume_claim_name: !Format "efs-{deploy_stage}"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,11 +17,21 @@ spec:
       labels:
         app: !Var app
     spec:
+      volumes:
+      - name: cwwed-volume-storage
+        persistentVolumeClaim:
+          claimName: !Var volume_claim_name
       containers:
       - name: redis
         image: redis:5
+        # persistence - https://hub.docker.com/_/redis/
+        args: ["--appendonly", "yes"]
         ports:
         - containerPort: 6379
         resources:
           requests:
             memory: "250M"
+        volumeMounts:
+        - mountPath: "/data"
+          name: cwwed-volume-storage
+          subPath: redis

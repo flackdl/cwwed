@@ -153,6 +153,7 @@ You can test the results with:
 
 ##### Horizontal Pod Autoscaler
 
+
 See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ and https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/.
 
 Something like:
@@ -275,6 +276,9 @@ Create cache tables:
     
     # connect to pod
     kubectl exec -it $CWWED_POD bash
+    
+    # list all pods and the nodes they're on
+    kubectl get pod -o=custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName --all-namespaces
     
 ### Celery dashboard (Flower)
 
