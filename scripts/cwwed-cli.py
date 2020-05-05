@@ -148,8 +148,7 @@ def upload_psa_intermediate_data(args):
                 path,
                 os.path.join('NSEM/upload', path.lstrip('/')),
                 ExtraArgs={
-                    # TODO - uncomment to use glacier cold storage class
-                    # 'StorageClass': 'GLACIER'
+                    'StorageClass': 'GLACIER'
                 },
                 Callback=ProgressPercentage(path))
             print()
