@@ -32,14 +32,15 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+          - name: http-port
+            containerPort: 80
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
         resources:
           requests:
             memory: "500M"
-            cpu: ".25"
+            cpu: "200m"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
@@ -53,3 +54,24 @@ spec:
         envFrom:
           - secretRef:
               name: !Var secret_name
+        # probes
+        startupProbe:
+          httpGet:
+            path: /api/
+            port: http-port
+          periodSeconds: 10
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /api/
+            port: http-port
+          periodSeconds: 10
+          failureThreshold: 2
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/
+            port: http-port
+          periodSeconds: 10
+          failureThreshold: 3
+          initialDelaySeconds: 10

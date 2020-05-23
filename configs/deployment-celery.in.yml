@@ -47,3 +47,31 @@ spec:
         envFrom:
           - secretRef:
               name: !Var secret_name
+        ## probes
+        # TODO - celery status uses too much cpu for a health check
+        #startupProbe:
+        #  exec:
+        #    command:
+        #      - celery
+        #      - status
+        #      - -A
+        #      - cwwed
+        #  failureThreshold: 30
+        #livenessProbe:
+        #  exec:
+        #    command:
+        #      - celery
+        #      - status
+        #      - -A
+        #      - cwwed
+        #  failureThreshold: 1
+        #  initialDelaySeconds: 10
+        #readinessProbe:
+        #  exec:
+        #    command:
+        #      - celery
+        #      - status
+        #      - -A
+        #      - cwwed
+        #  failureThreshold: 1
+        #  initialDelaySeconds: 10
