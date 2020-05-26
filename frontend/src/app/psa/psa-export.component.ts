@@ -6,6 +6,7 @@ import WKT from 'ol/format/WKT.js';
 import { fromExtent } from 'ol/geom/Polygon.js';
 import { timer } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import { GoogleAnalyticsService } from '../google-analytics.service';
 import * as _ from 'lodash';
 
 @Component({
@@ -30,6 +31,7 @@ export class PsaExportComponent implements OnInit {
     private cwwedService: CwwedService,
     private fb: FormBuilder,
     private toastr: ToastrService,
+    private googleAnalyticsService: GoogleAnalyticsService,
   ) {}
 
   ngOnInit() {
@@ -75,9 +77,16 @@ export class PsaExportComponent implements OnInit {
 
   public submit() {
     this.isLoading = true;
+
+    // track event
+    this.googleAnalyticsService.psaExport(this.storm.name, this.format);
+
+    // build export polygon params
     const wkt = new WKT();
     const bbox_polygon = fromExtent(this.extentCoords);
     const bbox_wkt = wkt.writeGeometry(bbox_polygon);
+
+    // create the export
     this.cwwedService.createPsaUserExport(this.storm.id, bbox_wkt, this.format, this.date).subscribe(
       (data: any) => {
         this._checkExportComplete(0, data.id);

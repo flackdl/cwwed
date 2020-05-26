@@ -158,9 +158,9 @@ See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ a
 
 Something like:
 
-	kubectl autoscale deployment cwwed-deployment-alpha --cpu-percent=25 --min=2 --max=5
+	kubectl autoscale deployment cwwed-deployment-alpha --cpu-percent=50 --min=2 --max=5
 
-would create a horizontal pod scaler with a minimum replicaset of **2** and a maximum of **5**, to maintain an average CPU utilization across all Pods of **25%**.
+would create a horizontal pod scaler with a minimum replicaset of **2** and a maximum of **5**, to maintain an average CPU utilization across all Pods of **50%**.
     
 ### Secrets
     

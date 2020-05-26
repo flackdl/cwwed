@@ -251,7 +251,7 @@ export class PsaComponent implements OnInit {
     this.mapLayerInput.valueChanges.pipe(
       tap((value) => {
         // track event
-        this.googleAnalyticsService.psaBaseMap(this.namedStorm.name);
+        this.googleAnalyticsService.psaBaseMap(this.namedStorm.name, value);
       })
     ).subscribe(
       (value) => {

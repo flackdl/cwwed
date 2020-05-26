@@ -3,9 +3,7 @@ import { forkJoin } from "rxjs";
 import { CwwedService } from "./cwwed.service";
 import { ToastrService } from 'ngx-toastr';
 import {NavigationEnd, Router} from "@angular/router";
-import { environment } from '../environments/environment';
-
-declare let gtag: Function
+import { GoogleAnalyticsService } from './google-analytics.service';
 
 
 @Component({
@@ -21,21 +19,15 @@ export class AppComponent implements OnInit {
     private cwwedService: CwwedService,
     private toastr: ToastrService,
     private router: Router,
+    private googleAnalyticsService: GoogleAnalyticsService,
   ) {
 
     this.router.events.subscribe((event) => {
-      if (environment.production) {
-        // google analytics
-        if(event instanceof NavigationEnd){
-          gtag('config', 'UA-163877408-1',
-            {
-              'page_path': event.urlAfterRedirects
-            }
-          );
-        }
+      // track route change in google analytics
+      if(event instanceof NavigationEnd){
+        this.googleAnalyticsService.url(event.urlAfterRedirects);
       }
     });
-
   }
 
   public navCollapse() {
