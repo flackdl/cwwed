@@ -158,9 +158,9 @@ See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ a
 
 Something like:
 
-	kubectl autoscale deployment cwwed-deployment-alpha --cpu-percent=50 --min=2 --max=5
+	kubectl autoscale deployment cwwed-deployment-alpha --cpu-percent=75 --min=2 --max=5
 
-would create a horizontal pod scaler with a minimum replicaset of **2** and a maximum of **5**, to maintain an average CPU utilization across all Pods of **50%**.
+would create a horizontal pod scaler with a minimum replicaset of **2** and a maximum of **5**, to maintain an average CPU utilization across all Pods of **75%**.
     
 ### Secrets
     
@@ -320,16 +320,28 @@ Configure Django "Sites" (in admin)
     
 ### Monitoring
 
-*NOTE: This takes up a lot of resources and is not in use.*
+#### CloudWatch > Container Insights
 
-Monitoring via Prometheus/Grafana.
-[Install](https://github.com/coreos/prometheus-operator/tree/master/contrib/kube-prometheus) by checking out repository and applying the included manifests.
+See [docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/deploy-container-insights-EKS.html).
 
-User:admin
+Attach the *CloudWatchAgentServerPolicy* policy to all node's IAM roles.  There should be a *nodes* and a *masters* role.
 
-    # port forward grafana to local
-    kubectl port-forward $(kubectl get pods -l app=grafana -n monitoring --output=jsonpath="{.items..metadata.name}") -n monitoring 3000
+Find their IAM roles:
 
+    aws iam list-roles | grep -E RoleName.*\(nodes\|masters\)
+    
+Attach policy to roles (**update role name accordingly**):
+
+    aws iam attach-role-policy --role-name masters.cwwed-dev-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
+    aws iam attach-role-policy --role-name nodes.cwwed-dev-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
+    
+Apply yaml for Cloudwatch agent for cluster metrics and Fluentd to send logs:
+
+**NOTE: update the `cluster name` and `region` accordingly.**
+
+    curl https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/quickstart/cwagent-fluentd-quickstart.yaml | sed "s/{{cluster_name}}/cwwed-dev-ingress-cluster.k8s.local/;s/{{region_name}}/us-east-1/" | kubectl apply -f -
+    
+View metrics at https://console.aws.amazon.com/cloudwatch/.    
     
 ## NSEM process
 
