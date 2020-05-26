@@ -66,6 +66,10 @@ export class GoogleAnalyticsService {
     this.event('psa-export', storm, format);
   }
 
+  public psaTimeSeries(storm: string) {
+    this.event('psa-time-series', storm);
+  }
+
   protected _shouldTrack (): boolean {
     return environment.production;
   }

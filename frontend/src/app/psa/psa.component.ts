@@ -621,6 +621,8 @@ export class PsaComponent implements OnInit {
       if (!this.isExtentActive()) {
         // configure graph overlay
         this._configureGraphOverlay(event);
+        // track event in google analytics
+        this.googleAnalyticsService.psaTimeSeries(this.namedStorm.name);
       }
     });
 
