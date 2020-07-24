@@ -62,11 +62,11 @@ class PsaDataset:
 
                 for date in self.psa_manifest_dataset.nsem.dates:
 
-                    wind_speeds = self.dataset.sel(time=date)[variable].values
+                    values = self.dataset.sel(time=date)[variable].values
 
-                    wind_speeds_data_array = xr.DataArray(wind_speeds, name='wind')
+                    data_array = xr.DataArray(values, name=variable)
 
-                    self.build_contours_structured(psa_variable, wind_speeds_data_array, date)
+                    self.build_contours_structured(psa_variable, data_array, date)
 
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 

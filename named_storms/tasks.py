@@ -782,11 +782,12 @@ def ingest_nsem_psa(nsem_psa_id):
 
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
 
-    # only extract if the psa was validated
+    # only process if the psa was validated
     if not nsem_psa.validated:
         logger.warning('{} was not validated so skipping ingestion'.format(nsem_psa))
         return None
 
+    # process each dataset
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
         psa_dataset.ingest()
