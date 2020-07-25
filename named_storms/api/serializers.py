@@ -14,6 +14,10 @@ logger = logging.getLogger('cwwed')
 
 
 class NamedStormSerializer(serializers.ModelSerializer):
+    center_coords = serializers.SerializerMethodField()
+
+    def get_center_coords(self, named_storm: NamedStorm):
+        return named_storm.geo.centroid.coords
 
     class Meta:
         model = NamedStorm

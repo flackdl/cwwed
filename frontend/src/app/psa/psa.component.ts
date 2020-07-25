@@ -522,8 +522,8 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    let zoom = 9;
-    let center = fromLonLat(<any>[-74.37052594737246, 39.360018072433775]);
+    let zoom = 7;
+    let center = fromLonLat(<any>this.namedStorm.center_coords);
 
     if (this.route.snapshot.queryParams['zoom']) {
       zoom = parseFloat(this.route.snapshot.queryParams['zoom']) || zoom;

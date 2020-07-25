@@ -399,10 +399,10 @@ def validate_nsem_psa_task(nsem_id):
     - netcdf only
     - no NaNs
 
-    TODO - validate the following:
-        all required variables exist
-        psa dates must be satisfied
-        structured
+    TODO
+        validate all required variables exist
+        validate dataset has all dates required by the psa
+        validate the dataset is structured so we can create contours correctly
     """
 
     valid_files = []

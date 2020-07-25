@@ -90,6 +90,8 @@ class PsaDataset:
         self.psa_manifest_dataset.nsem.date_processed = timezone.now()
         self.psa_manifest_dataset.nsem.save()
 
+        logger.info('PSA {} has been successfully ingested'.format(self.psa_manifest_dataset.nsem.id))
+
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
 
         logger.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
