@@ -8,7 +8,7 @@ src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/anil/'
 out_path = os.path.join(os.path.dirname(src_path), 'wind-demo.nc')
 
 # variables to keep from the datasets
-VARIABLES = {'time', 'wspd10m', 'wdir10m', 'wspd10max'}
+VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
 
 # remove any existing path if it exists
 if os.path.exists(out_path):

@@ -784,8 +784,9 @@ def ingest_nsem_psa(nsem_psa_id):
 
     # only process if the psa was validated
     if not nsem_psa.validated:
-        logger.warning('{} was not validated so skipping ingestion'.format(nsem_psa))
-        return None
+        msg = '{} was not validated so skipping ingestion'.format(nsem_psa)
+        logger.warning(msg)
+        raise Exception(msg)
 
     # process each dataset
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
