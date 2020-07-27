@@ -290,7 +290,7 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         # verify the requested variable exists
         nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(id=self.request.query_params['nsem_psa_variable'])
         if not nsem_psa_variable_query.exists():
-            raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['variable']))
+            raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['nsem_psa_variable']))
 
         # verify if the variable requires a date filter
         if nsem_psa_variable_query[0].data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and not self.request.query_params.get('date'):
