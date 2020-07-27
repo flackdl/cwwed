@@ -60,10 +60,23 @@ class PsaDataset:
 
             # contours
             if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
-                for date in self.psa_manifest_dataset.nsem.dates:
-                    values = self.dataset.sel(time=date)[variable].values
+
+                # max values
+                if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+                    # use the first time value if there's a time dimension at all
+                    if 'time' in self.dataset[variable].dims:
+                        values = self.dataset[variable][0].values
+                    else:
+                        values = self.dataset[variable].values
                     data_array = xr.DataArray(values, name=variable)
-                    self.build_contours_structured(psa_variable, data_array, date)
+                    self.build_contours_structured(psa_variable, data_array)
+
+                # time series
+                elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                    for date in self.psa_manifest_dataset.nsem.dates:
+                        values = self.dataset.sel(time=date)[variable].values
+                        data_array = xr.DataArray(values, name=variable)
+                        self.build_contours_structured(psa_variable, data_array, date)
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
             # wind barbs
@@ -90,7 +103,7 @@ class PsaDataset:
 
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
 
-        logger.info('building contours (structured) for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
         # create the contour
         contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap)
