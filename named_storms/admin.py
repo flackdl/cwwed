@@ -33,6 +33,13 @@ class NsemPsaVariableInline(admin.TabularInline):
         return False
 
 
+class NsemPsaManifestDatasetInline(admin.TabularInline):
+    model = NsemPsaManifestDataset
+    show_change_link = True
+    extra = 0
+    fields = ('nsem', 'path', 'variables')
+
+
 @admin.register(NamedStorm)
 class NamedStormInlineAdmin(admin.GeoModelAdmin):
     inlines = (
@@ -67,7 +74,7 @@ class NSEMAdmin(admin.GeoModelAdmin):
     list_display = ('id', 'named_storm', 'date_created', 'path', 'extracted', 'validated', 'processed')
     list_filter = ('named_storm__name', 'date_created', 'extracted', 'validated', 'processed',)
     readonly_fields = ('date_created',)
-    inlines = (NsemPsaVariableInline,)
+    inlines = (NsemPsaVariableInline, NsemPsaManifestDatasetInline,)
 
 
 @admin.register(NsemPsaVariable)

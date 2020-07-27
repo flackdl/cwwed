@@ -41,6 +41,7 @@ class PsaDataset:
     def ingest(self):
         for variable in self.psa_manifest_dataset.variables:
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
+            logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
 
             psa_variable, _ = self.psa_manifest_dataset.nsem.nsempsavariable_set.get_or_create(
                 name=variable,
@@ -59,15 +60,10 @@ class PsaDataset:
 
             # contours
             if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
-
                 for date in self.psa_manifest_dataset.nsem.dates:
-
                     values = self.dataset.sel(time=date)[variable].values
-
                     data_array = xr.DataArray(values, name=variable)
-
                     self.build_contours_structured(psa_variable, data_array, date)
-
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
             # wind barbs

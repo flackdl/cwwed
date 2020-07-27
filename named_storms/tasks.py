@@ -403,7 +403,7 @@ def validate_nsem_psa_task(nsem_id):
         validate all required variables exist
         validate dataset has all dates required by the psa
         validate the dataset is structured so we can create contours correctly
-        validate null values
+        * validate null values (do we want to do this?)
     """
 
     valid_files = []
@@ -444,12 +444,13 @@ def validate_nsem_psa_task(nsem_id):
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # nulls
-            for variable in dataset.variables:
-                if ds[variable].isnull().any():
-                    if variable not in variable_exceptions:
-                        variable_exceptions[variable] = []
-                    variable_exceptions[variable].append('has null values')
+            # TODO - verify if we actually want to validate against this
+            ## nulls
+            #for variable in dataset.variables:
+            #    if ds[variable].isnull().any():
+            #        if variable not in variable_exceptions:
+            #            variable_exceptions[variable] = []
+            #        variable_exceptions[variable].append('has null values')
 
         if file_exceptions or variable_exceptions:
             e = {'file': file_exceptions, 'variables': variable_exceptions}
