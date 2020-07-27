@@ -90,7 +90,7 @@ class PsaDataset:
         self.psa_manifest_dataset.nsem.date_processed = timezone.now()
         self.psa_manifest_dataset.nsem.save()
 
-        logger.info('PSA {} has been successfully ingested'.format(self.psa_manifest_dataset.nsem.id))
+        logger.info('PSA Dataset {} has been successfully ingested'.format(self.psa_manifest_dataset))
 
     def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
 
@@ -117,6 +117,9 @@ class PsaDataset:
                 polygons = path.to_polygons()
 
                 # the first polygon of the path is the exterior ring while the following are interior rings (holes)
+                if len(polygons) == 0:
+                    logger.warning('Invalid polygon contour for {}'.format(nsem_psa_variable))
+                    continue
                 polygon = geos.Polygon(polygons[0], *polygons[1:])
 
                 results.append({

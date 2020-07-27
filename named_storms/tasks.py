@@ -403,6 +403,7 @@ def validate_nsem_psa_task(nsem_id):
         validate all required variables exist
         validate dataset has all dates required by the psa
         validate the dataset is structured so we can create contours correctly
+        validate null values
     """
 
     valid_files = []
@@ -443,14 +444,12 @@ def validate_nsem_psa_task(nsem_id):
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # nans
-            # TODO - only validating wind product because water product isn't structured yet and has NaNs
-            if {NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED}.issubset(dataset.variables):
-                for variable in dataset.variables:
-                    if ds[variable].isnull().any():
-                        if variable not in variable_exceptions:
-                            variable_exceptions[variable] = []
-                        variable_exceptions[variable].append('has null values')
+            # nulls
+            for variable in dataset.variables:
+                if ds[variable].isnull().any():
+                    if variable not in variable_exceptions:
+                        variable_exceptions[variable] = []
+                    variable_exceptions[variable].append('has null values')
 
         if file_exceptions or variable_exceptions:
             e = {'file': file_exceptions, 'variables': variable_exceptions}
@@ -775,7 +774,7 @@ def cache_psa_geojson_task(storm_id: int):
 
 
 @app.task(**TASK_ARGS)
-def ingest_nsem_psa(nsem_psa_id):
+def ingest_nsem_psa_task(nsem_psa_id):
     """
     Ingests an NSEM PSA into the CWWED database
     """
@@ -792,6 +791,7 @@ def ingest_nsem_psa(nsem_psa_id):
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
         psa_dataset.ingest()
+    logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
 
 
 @app.task(**TASK_ARGS)
