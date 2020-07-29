@@ -405,6 +405,7 @@ def validate_nsem_psa_task(nsem_id):
         validate dataset has all dates required by the psa
         validate the dataset is structured so we can create contours correctly
         * validate null values (do we want to do this?)
+        validate wind barb requirements (needs wind speed and wind direction)
     """
 
     valid_files = []
@@ -445,7 +446,7 @@ def validate_nsem_psa_task(nsem_id):
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # TODO - verify if we actually want to validate against this
+            # TODO - verify if we actually want to validate against null values
             ## nulls
             #for variable in dataset.variables:
             #    if ds[variable].isnull().any():
@@ -737,12 +738,10 @@ def cache_psa_geojson_task(storm_id: int):
     Automatically creates cached responses for a storm's PSA geojson results by crawling every api endpoint
     """
 
-    qs = NsemPsa.objects.filter(named_storm__id=storm_id)
-    if not qs.exists():
-        logger.exception('There is not a PSA for storm id {}'.format(storm_id))
+    nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)  # type: NsemPsa
+    if not nsem:
+        logger.exception('There is not a valid PSA for storm id {}'.format(storm_id))
         raise
-
-    nsem = qs.first()  # type: NsemPsa
 
     logger.info('Caching psa geojson for nsem psa {}'.format(nsem))
 

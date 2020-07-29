@@ -220,8 +220,8 @@ def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
 
     features = []
 
-    # NOTE: we're not serializing the geojson from the database because it's expensive. Instead,
-    #       just swap in the raw json string value into the feature string
+    # NOTE: we're not serializing the geojson from the database because it's too expensive.
+    # instead, just swap in the raw json string value into the feature string
     for data in queryset:
         feature = json.dumps({
             "type": "Feature",
