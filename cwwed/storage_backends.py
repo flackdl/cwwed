@@ -39,7 +39,7 @@ class S3ObjectStoragePrivate(S3ObjectStorage):
         if force_root_location:
             self.location = ''
         else:
-            self.location = self._get_location()  # ie. "local", "dev" or "" when in production
+            self.location = self._get_location()  # ie. "local", "dev", "alpha" or "" when in production
         self.default_acl = 'private'
 
     @staticmethod

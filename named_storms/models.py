@@ -233,19 +233,21 @@ class NsemPsaVariable(models.Model):
     VARIABLE_WATER_LEVEL = 'Water Level'
     VARIABLE_WAVE_HEIGHT = 'Wave Height'
     VARIABLE_WIND_SPEED = 'Wind Speed'
+    VARIABLE_WIND_GUST = 'Wind Gust'
     VARIABLE_WIND_BARBS = 'Wind Barbs'
 
     VARIABLE_DATASET_WATER_LEVEL = 'water_level'
     VARIABLE_DATASET_WAVE_HEIGHT = 'wave_height'
     VARIABLE_DATASET_WIND_SPEED = 'wind_speed'
     VARIABLE_DATASET_WIND_DIRECTION = 'wind_direction'
-    VARIABLE_DATASET_WIND_SPEED_MAX = 'wind_speed_max'
+    VARIABLE_DATASET_WIND_GUST = 'wind_gust'
     VARIABLE_DATASET_WATER_LEVEL_MAX = 'water_level_max'
 
     VARIABLE_NAMES = (
         VARIABLE_WATER_LEVEL,
         VARIABLE_WAVE_HEIGHT,
         VARIABLE_WIND_SPEED,
+        VARIABLE_WIND_GUST,
         VARIABLE_WIND_BARBS,
     )
 
@@ -255,7 +257,7 @@ class NsemPsaVariable(models.Model):
         VARIABLE_DATASET_WIND_SPEED,
         VARIABLE_DATASET_WIND_DIRECTION,
         VARIABLE_DATASET_WATER_LEVEL_MAX,
-        VARIABLE_DATASET_WIND_SPEED_MAX,
+        VARIABLE_DATASET_WIND_GUST,
     )
 
     VARIABLES = {
@@ -291,11 +293,11 @@ class NsemPsaVariable(models.Model):
             'element_type': ELEMENT_WIND,
             'auto_displayed': True,
         },
-        VARIABLE_DATASET_WIND_SPEED_MAX: {
-            'display_name': VARIABLE_WIND_SPEED,
+        VARIABLE_DATASET_WIND_GUST: {
+            'display_name': VARIABLE_WIND_GUST,
             'units': UNITS_METERS_PER_SECOND,
             'geo_type': GEO_TYPE_POLYGON,
-            'data_type': DATA_TYPE_MAX_VALUES,
+            'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WIND,
             'auto_displayed': False,
         },

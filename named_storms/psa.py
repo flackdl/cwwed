@@ -18,6 +18,7 @@ from named_storms.utils import named_storm_nsem_version_path
 
 logger = logging.getLogger('cwwed')
 
+CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
 
 
@@ -106,7 +107,7 @@ class PsaDataset:
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
         # create the contour
-        contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap)
+        contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap, levels=CONTOUR_LEVELS)
 
         self.build_contours(nsem_psa_variable, contourf, dt)
 
@@ -129,6 +130,7 @@ class PsaDataset:
                 if len(polygons) == 0:
                     logger.warning('Invalid polygon contour for {}'.format(nsem_psa_variable))
                     continue
+
                 polygon = geos.Polygon(polygons[0], *polygons[1:])
 
                 results.append({
