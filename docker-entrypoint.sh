@@ -4,4 +4,4 @@
 python manage.py migrate
 
 # run application
-gunicorn --worker-class gthread --workers 4 --threads 4 --bind 0.0.0.0:80 cwwed.wsgi
+gunicorn --worker-class gthread --workers 2 --threads 2 --bind 0.0.0.0:80 cwwed.wsgi
