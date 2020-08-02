@@ -30,7 +30,7 @@ spec:
         - containerPort: 6379
         resources:
           requests:
-            memory: "500M"
+            memory: "100M"
         volumeMounts:
         - mountPath: "/data"
           name: cwwed-volume-storage

@@ -36,6 +36,7 @@ spec:
         resources:
           requests:
             memory: "1000M"
+            cpu: "200m"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings

@@ -98,6 +98,7 @@ Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 Do this in the AWS Console.
     
 #### Create EFS
+
 Create EFS (elastic file system) in console and **make sure** it's in the same region, VPC and security group as the cluster.
 
 efs-provisioner: https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
@@ -113,7 +114,7 @@ Create kubernetes persistent volume & claim with the new efs instance:
     
 ### Nginx Ingress
 
-User nginx as the kubernetes ingress.
+Use nginx as the kubernetes ingress.
 
 See https://kubernetes.github.io/ingress-nginx/.
     
@@ -152,7 +153,6 @@ You can test the results with:
     kubectl top node
 
 ##### Horizontal Pod Autoscaler
-
 
 See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ and https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/.
 
@@ -210,7 +210,6 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     emrichen --define deploy_stage=dev configs/service-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/deployment-redis.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=dev configs/service-redis.in.yml | kubectl apply -f -
-    
     
 **OPTIONAL** define yaml templates for the following:
 
@@ -280,8 +279,8 @@ Create cache tables:
     
 ### Celery dashboard (Flower)
 
-    - Go to the configured domain in Cloudflare
-    - Use the user/password saved in the secrets file when prompted via basic authorization
+- Go to the configured domain in Cloudflare
+- Use the user/password saved in the secrets file when prompted via basic authorization
    
 ### Kubernetes Dashboard
 
@@ -312,9 +311,11 @@ Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-fo
 
 **TODO**
 
-Configure Django "Sites" (in admin)
+### Django Site
 
-    For example, log into the admin and create a site as `dev.cwwed-staging.com`.
+Configure a Django "Site" in admin so all messages refer to the appropriate server name and domain.
+
+For example, log into the admin and create a site as `dev.cwwed-staging.com`.
     
 ### Monitoring
 
