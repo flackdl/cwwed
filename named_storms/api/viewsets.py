@@ -1,6 +1,7 @@
 import csv
 import logging
 from celery import chain
+from django.contrib.gis.db.models.functions import Intersection
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
@@ -249,28 +250,37 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
 
     def get_queryset(self):
         """
-        group all geometries together by same variable & value which reduces total features
+        - group all geometries together (st_collect) by same variable & value
+        - clip psa to storm's geo (st_intersection)
         """
         qs = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
-        qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
-        qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
+        qs = qs.values(*[
+            'value', 'meta', 'color', 'date', 'nsem_psa_variable__name',
+            'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
+        ])
+        qs = qs.annotate(geom=Intersection(Collect(Cast('geo', GeometryField())), self.storm.geo))
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
 
     def list(self, request, *args, **kwargs):
 
-        # return an empty list if no variable filter is supplied because we can benefit from the DRF filter being presented in the API view
+        # return an empty list if no variable filter is supplied because
+        # we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
 
         # return cached data if it exists
         cache = caches['psa_geojson']  # type: BaseCache
-        cache_key = get_cache_key(request, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, method='GET', cache=cache)
+        cache_key = get_cache_key(request, method='GET', cache=cache)
         if cache_key:
             cached_response = cache.get(cache_key)
             if cached_response:
-                logger.info('returning cached response for {}'.format(cache_key))
+                logger.info('returning cached response for {}'.format(request.query_params))
                 return HttpResponse(cached_response, content_type='application/json')
+            else:
+                logger.warning('No data for cache key {}'.format(cache_key))
+        else:
+            logger.warning('Missing cache key for {}'.format(request.query_params))
 
         self._validate()
 
@@ -280,7 +290,7 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
 
         # cache result
         cache_key = learn_cache_key(
-            request, response, cache_timeout=self.CACHE_TIMEOUT, key_prefix=settings.CACHE_MIDDLEWARE_KEY_PREFIX, cache=cache)
+            request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
         cache.set(cache_key, geojson, self.CACHE_TIMEOUT)
 
         return response

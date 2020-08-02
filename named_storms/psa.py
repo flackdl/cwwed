@@ -126,11 +126,11 @@ class PsaDataset:
 
                 polygons = path.to_polygons()
 
-                # the first polygon of the path is the exterior ring while the following are interior rings (holes)
                 if len(polygons) == 0:
                     logger.warning('Invalid polygon contour for {}'.format(nsem_psa_variable))
                     continue
 
+                # the first polygon of the path is the exterior ring while the following are interior rings (holes)
                 polygon = geos.Polygon(polygons[0], *polygons[1:])
 
                 results.append({
