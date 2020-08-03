@@ -1,7 +1,7 @@
 !Defaults
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
-app: !Format "cwwed-{deploy_stage}"
+app: !Format "celery-{deploy_stage}"
 deployment_name: !Format "celery-deployment-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
