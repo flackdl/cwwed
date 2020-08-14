@@ -18,7 +18,7 @@ from named_storms.utils import named_storm_nsem_version_path
 
 logger = logging.getLogger('cwwed')
 
-CONTOUR_LEVELS = 25
+CONTOUR_LEVELS = 50
 COLOR_STEPS = 10  # color bar range
 
 
@@ -113,7 +113,8 @@ class PsaDataset:
 
     def build_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None):
 
-        results = []
+        # grouped by value
+        result = {}
 
         # process matplotlib contourf results
         for collection_idx, collection in enumerate(contourf.collections):
@@ -133,21 +134,25 @@ class PsaDataset:
                 # the first polygon of the path is the exterior ring while the following are interior rings (holes)
                 polygon = geos.Polygon(polygons[0], *polygons[1:])
 
-                results.append({
+                if value not in result:
+                    result[value] = []
+
+                result[value].append({
                     'polygon': polygon,
-                    'value': value,
                     'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                 })
 
         # build new psa results from contour results
-        for result in results:
+        for value, items in result.items():
+            # combine all polygons of the same value
+            multi_polygon = geos.MultiPolygon(*(item['polygon'] for item in items))
             NsemPsaData(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
-                geo=result['polygon'],
-                bbox=geos.Polygon.from_bbox(result['polygon'].extent),
-                value=result['value'],
-                color=result['color'],
+                geo=multi_polygon,
+                bbox=geos.Polygon.from_bbox(multi_polygon.extent),
+                value=value,
+                color=items[0]['color'],  # just select first since they're grouped by value
             ).save()
 
     def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray, dt: datetime):
