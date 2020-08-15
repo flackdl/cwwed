@@ -116,10 +116,10 @@ class PsaDataset:
         results = []
 
         # process matplotlib contourf results
-        for collection_idx, collection in enumerate(contourf.collections):
+        for i, collection in enumerate(contourf.collections):
 
-            # contour level's value
-            value = contourf.levels[collection_idx]
+            # contour level value
+            value = contourf.levels[i]
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
