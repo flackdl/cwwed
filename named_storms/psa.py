@@ -9,7 +9,8 @@ import xarray as xr
 import numpy as np
 from django.contrib.gis import geos
 from django.conf import settings
-from django.contrib.gis.db.models.functions import GeoHash
+from django.contrib.gis.db.models import GeometryField, Subquery, Collect
+from django.db.models.functions import Cast
 from django.utils import timezone
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaData
@@ -113,7 +114,7 @@ class PsaDataset:
 
     def build_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None):
 
-        results = []
+        results = {}
 
         # process matplotlib contourf results
         for i, collection in enumerate(contourf.collections):
@@ -131,28 +132,54 @@ class PsaDataset:
                     continue
 
                 # the first polygon of the path is the exterior ring while the following are interior rings (holes)
-                polygon = geos.Polygon(polygons[0], *polygons[1:])
+                polygon = geos.Polygon(polygons[0], *polygons[1:], srid=4326)
 
-                results.append({
+                # initialize value
+                if value not in results:
+                    results[value] = []
+
+                results[value].append({
                     'polygon': polygon,
-                    'value': value,
                     'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                 })
 
         # build new psa results from contour results
-        for result in results:
-            NsemPsaData(
+        for value, items in results.items():
+
+            # combine polygons for this value
+            polygons = geos.MultiPolygon(*(item['polygon'] for item in items))
+
+            psa_data, was_created = NsemPsaData.objects.get_or_create(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
-                geo=result['polygon'],
-                bbox=geos.Polygon.from_bbox(result['polygon'].extent),
-                value=result['value'],
-                color=result['color'],
-            ).save()
+                value=value,
+                defaults=dict(
+                    geo=polygons,
+                    bbox=geos.Polygon.from_bbox(polygons.extent),
+                    color=items[0]['color'],  # pick first since they're all the same
+                ),
+            )
+
+            # append this new polygon to the existing nsem psa data
+            if not was_created:
+                logger.info('Updating {} with value {}'.format(psa_data, value))
+                # combine the result's geo to the existing data's geo
+                qs_combined = NsemPsaData.objects.filter(id=psa_data.id).annotate(combined=Collect(Cast('geo', GeometryField()), polygons))
+                # TODO - update with combined bbox
+                NsemPsaData.objects.filter(id=psa_data.id).update(
+                    geo=Subquery(
+                        qs_combined.values('combined')[:1]
+                    ),
+                    #bbox=Subquery(
+                    #    qs_combined.annotate(extent=Extent('combined')).values('extent')[:1]
+                    #)
+                )
 
     def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray, dt: datetime):
 
         logger.info('building barbs at {}'.format(dt))
+
+        # TODO - store all points in one record?
 
         for i in range(len(wind_directions)):
             for j, direction in enumerate(wind_directions[i]):
@@ -163,11 +190,16 @@ class PsaDataset:
                     nsem_psa_variable=nsem_psa_variable,
                     date=dt,
                     geo=point,
-                    geo_hash=GeoHash(point),
                     value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
                     meta={
-                        'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
-                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREES},
+                        'speed': {
+                            'value': wind_speeds[i][j].astype('float'),
+                            'units': NsemPsaVariable.UNITS_METERS_PER_SECOND,
+                        },
+                        'direction': {
+                            'value': direction.astype('float'),
+                            'units': NsemPsaVariable.UNITS_DEGREES,
+                        },
                     }
                 ).save()
 

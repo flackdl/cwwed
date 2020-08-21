@@ -198,6 +198,8 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
         point = geos.Point(x=lon, y=lat)
 
+        # TODO - does grouping NsemPsaData break this logic here?
+
         # find contour data covering bounding boxes
         bbox_query = NsemPsaData.objects.filter(
             nsem_psa_variable__nsem=self.nsem,
@@ -211,6 +213,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
         # find contours covering point from the bbox results
         time_series_query = NsemPsaData.objects.filter(
+            # TODO - use Subquery here to avoid two queries
             id__in=bbox_query,
             geo__covers=point,
             nsem_psa_variable__nsem=self.nsem,
