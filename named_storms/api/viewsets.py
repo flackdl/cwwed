@@ -240,7 +240,10 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
 
 @method_decorator(gzip_page, name='dispatch')
-@method_decorator(cache_control(max_age=3600), name='dispatch')
+@method_decorator(cache_control(
+    public=True,
+    max_age=60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS,
+), name='dispatch')
 class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
     # Named Storm Event Model PSA Geo ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
