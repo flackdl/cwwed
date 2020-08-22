@@ -35,8 +35,8 @@ spec:
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "500M"
-            cpu: "150m"
+            memory: "750M"
+            cpu: "200m"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
