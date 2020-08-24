@@ -11,7 +11,7 @@ kind: Deployment
 metadata:
   name: !Var deployment_name
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: !Var app
@@ -35,7 +35,7 @@ spec:
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "750M"
+            memory: "1000M"
             cpu: "200m"
         env:
           - name: DJANGO_SETTINGS_MODULE

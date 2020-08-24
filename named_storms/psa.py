@@ -24,12 +24,20 @@ COLOR_STEPS = 10  # color bar range
 
 class PsaDataset:
     cmap = matplotlib.cm.get_cmap('jet')
+    dataset: xr.Dataset = None
 
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
-        self.dataset: xr.Dataset = xr.open_dataset(os.path.join(
+
+    def _open_dataset(self):
+        # close if already open
+        if self.dataset:
+            self.dataset.close()
+
+        # open dataset
+        self.dataset = xr.open_dataset(os.path.join(
             named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
-            psa_manifest_dataset.path)
+            self.psa_manifest_dataset.path)
         )
 
     @staticmethod
@@ -41,6 +49,10 @@ class PsaDataset:
 
     def ingest(self):
         for variable in self.psa_manifest_dataset.variables:
+
+            # close and reopen dataset
+            self._open_dataset()
+
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
             logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
 
