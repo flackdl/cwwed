@@ -146,7 +146,7 @@ CACHES = {
         'LOCATION': 'cache_psa_geojson',
         'TIMEOUT': None,  # never expire, but this only applies to low level cache operations whereas cache_page() requires a timeout
         'OPTIONS': {
-            'MAX_ENTRIES': 1000,
+            'MAX_ENTRIES': 5000,
         }
     }
 }

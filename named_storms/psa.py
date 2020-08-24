@@ -9,7 +9,6 @@ import xarray as xr
 import numpy as np
 from django.contrib.gis import geos
 from django.conf import settings
-from django.contrib.gis.db.models.functions import GeoHash
 from django.utils import timezone
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaData
@@ -157,7 +156,6 @@ class PsaDataset:
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=result['polygon'],
-                bbox=geos.Polygon.from_bbox(result['polygon'].extent),
                 value=result['value'],
                 color=result['color'],
             ).save()
@@ -175,7 +173,6 @@ class PsaDataset:
                     nsem_psa_variable=nsem_psa_variable,
                     date=dt,
                     geo=point,
-                    geo_hash=GeoHash(point),
                     value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
                     meta={
                         'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},

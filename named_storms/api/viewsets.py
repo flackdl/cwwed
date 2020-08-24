@@ -198,20 +198,13 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
         point = geos.Point(x=lon, y=lat)
 
-        # find contour data covering bounding boxes
-        bbox_query = NsemPsaData.objects.filter(
-            nsem_psa_variable__nsem=self.nsem,
-            bbox__covers=point,
-            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-        ).only('id')
-
         fields_order = ('nsem_psa_variable__name', 'date')
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
-        # find contours covering point from the bbox results
+        # time-series contours covering supplied point
         time_series_query = NsemPsaData.objects.filter(
-            id__in=bbox_query,
+            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
             geo__covers=point,
             nsem_psa_variable__nsem=self.nsem,
         ).order_by(*fields_order).only(*fields_values).values(*fields_values)
@@ -219,7 +212,10 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         results = []
 
         # time-series variables
-        variables = self.nsem.nsempsavariable_set.filter(data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES, geo_type=NsemPsaVariable.GEO_TYPE_POLYGON)
+        variables = self.nsem.nsempsavariable_set.filter(
+            data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+            geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
+        )
 
         # include data grouped by variable
         for variable in variables:
@@ -233,6 +229,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
                 result['values'].append(value)
             results.append(result)
 
+        # csv export
         if request.query_params.get('export') == 'csv':
             return self._as_csv(results, lat, lon)
 
