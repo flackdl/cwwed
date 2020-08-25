@@ -9,7 +9,6 @@ ds = xr.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/fort
 ds = ds.zeta[0].to_dataset()
 
 # y, x
-# large
 bottom_left = (33.215177641346756, -79.20178761268342)
 top_right = (35.24061087693086, -76.23547901893342)
 
@@ -34,6 +33,3 @@ for triangles in tri.triangles:
 
 multiple_polygon = geojson.MultiPolygon([tri_coords])
 json.dump(multiple_polygon, open('/home/danny/Downloads/a.json', 'w'))
-#feature = geojson.Feature(geometry=multiple_polygon)
-#feature_collection = geojson.FeatureCollection(features=[feature])
-#json.dump(feature_collection, open('/home/danny/Downloads/a.json', 'w'))

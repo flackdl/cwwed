@@ -352,6 +352,25 @@ class NsemPsaVariable(models.Model):
 
 class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
+    point = models.PointField(geography=True)
+    geo_hash = models.CharField(max_length=100)
+    date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
+    value = models.FloatField()
+
+    def __str__(self):
+        return '{} <data>'.format(self.nsem_psa_variable)
+
+    class Meta:
+        # TODO - consider brin index?
+        # https://www.postgresql.org/docs/current/brin-intro.html
+        # TODO - multicolumn index with point?
+        indexes = [
+            Index(fields=['nsem_psa_variable', 'geo_hash', 'date', 'value']),
+        ]
+
+
+class NsemPsaContour(models.Model):
+    nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
     value = models.FloatField()
@@ -359,7 +378,7 @@ class NsemPsaData(models.Model):
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
     def __str__(self):
-        return str(self.nsem_psa_variable)
+        return '{} <contour>'.format(self.nsem_psa_variable)
 
     class Meta:
         indexes = [

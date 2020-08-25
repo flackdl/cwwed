@@ -9,9 +9,10 @@ import xarray as xr
 import numpy as np
 from django.contrib.gis import geos
 from django.conf import settings
+from django.contrib.gis.db.models.functions import GeoHash
 from django.utils import timezone
 
-from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaData
+from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaContour, NsemPsaData
 from named_storms.utils import named_storm_nsem_version_path
 
 
@@ -28,7 +29,9 @@ class PsaDataset:
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
 
-    def _open_dataset(self):
+    def _toggle_dataset(self):
+        # close and reopen for memory saving purposes
+
         # close if already open
         if self.dataset:
             self.dataset.close()
@@ -38,6 +41,24 @@ class PsaDataset:
             named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
             self.psa_manifest_dataset.path)
         )
+
+    def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
+        data = []
+        for lat_idx in range(len(da.lat)):
+            for lon_idx in range(len(da.lon)):
+                if lat_idx % 100 == 0 and lon_idx == 0:
+                    logger.info('save psa data:  lat index {} ...'.format(lat_idx))
+                point = geos.Point(da.lon[lon_idx].item(), da.lat[lat_idx].item(), srid=4326)
+                kwargs = dict(
+                    nsem_psa_variable=psa_variable,
+                    value=da[lat_idx][lon_idx],
+                    point=point,
+                    geo_hash=GeoHash(point),
+                )
+                if date is not None:
+                    kwargs['date'] = date
+                data.append(NsemPsaData(**kwargs))
+        psa_variable.nsempsadata_set.bulk_create(data)
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -50,7 +71,7 @@ class PsaDataset:
         for variable in self.psa_manifest_dataset.variables:
 
             # close and reopen dataset
-            self._open_dataset()
+            self._toggle_dataset()
 
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
             logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
@@ -68,6 +89,7 @@ class PsaDataset:
 
             # deleting any existing psa data in debug/development only
             if settings.DEBUG:
+                psa_variable.nsempsacontour_set.all().delete()
                 psa_variable.nsempsadata_set.all().delete()
 
             # contours
@@ -77,33 +99,48 @@ class PsaDataset:
                 if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
                     # use the first time value if there's a time dimension at all
                     if 'time' in self.dataset[variable].dims:
-                        values = self.dataset[variable][0].values
+                        data_array = self.dataset[variable][0]
                     else:
-                        values = self.dataset[variable].values
-                    data_array = xr.DataArray(values, name=variable)
+                        data_array = self.dataset[variable]
+
+                    # save contours
                     self.build_contours_structured(psa_variable, data_array)
+
+                    # save raw data
+                    self._save_psa_data(psa_variable, data_array)
 
                 # time series
                 elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
                     for date in self.psa_manifest_dataset.nsem.dates:
-                        values = self.dataset.sel(time=date)[variable].values
-                        data_array = xr.DataArray(values, name=variable)
+                        data_array = self.dataset.sel(time=date)[variable]
+
+                        # save contours
                         self.build_contours_structured(psa_variable, data_array, date)
+
+                        # save raw data
+                        self._save_psa_data(psa_variable, data_array, date)
+
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
+            # TODO - saving barbs like this isn't necessary anymore
             # wind barbs
-            elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
+            #elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
 
-                for date in self.psa_manifest_dataset.nsem.dates:
+            #    for date in self.psa_manifest_dataset.nsem.dates:
 
-                    # masked values and subset so we're not displaying every single point
-                    subset = 10
-                    wind_speeds = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED][::subset, ::subset])
-                    wind_directions = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION][::subset, ::subset])
-                    xi = np.array(self.dataset['lon'][::subset, ::subset])
-                    yi = np.array(self.dataset['lat'][::subset, ::subset])
+            #        # masked values and subset so we're not displaying every single point
+            #        subset = 10
+            #        wind_speeds = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED][::subset, ::subset])
+            #        wind_directions = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION][::subset, ::subset])
+            #        xi = np.array(self.dataset['lon'][::subset, ::subset])
+            #        yi = np.array(self.dataset['lat'][::subset, ::subset])
 
-                    self.build_wind_barbs(psa_variable, wind_directions, wind_speeds, xi, yi, date)
+            #        # save barbs
+            #        self.build_wind_barbs(psa_variable, wind_directions, wind_speeds, xi, yi, date)
+
+            #        # save raw data
+            #        data_array = self.dataset.sel(time=date)[variable]
+            #        self._save_psa_data(psa_variable, data_array, date)
 
             psa_variable.save()
 
@@ -152,7 +189,7 @@ class PsaDataset:
 
         # build new psa results from contour results
         for result in results:
-            NsemPsaData(
+            NsemPsaContour(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=result['polygon'],
@@ -169,7 +206,7 @@ class PsaDataset:
                 if np.ma.is_masked(direction):
                     continue
                 point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
-                NsemPsaData(
+                NsemPsaContour(
                     nsem_psa_variable=nsem_psa_variable,
                     date=dt,
                     geo=point,
