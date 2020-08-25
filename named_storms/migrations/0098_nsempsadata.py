@@ -12,6 +12,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # Renaming a model and creating an identical one requires removing it's index
+        # https://code.djangoproject.com/ticket/23577
+        migrations.RunSQL("DROP INDEX IF EXISTS named_storms_nsempsadata_nsem_psa_variable_id_bb03d195"),
         migrations.CreateModel(
             name='NsemPsaData',
             fields=[

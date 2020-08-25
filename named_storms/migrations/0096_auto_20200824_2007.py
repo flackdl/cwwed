@@ -16,10 +16,6 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveIndex(
             model_name='nsempsacontour',
-            name='named_storms_nsempsadata_nsem_psa_variable_id_bb03d195',
-        ),
-        migrations.RemoveIndex(
-            model_name='nsempsacontour',
             name='named_storm_nsem_ps_ba5d2d_idx',
         ),
         migrations.AddIndex(

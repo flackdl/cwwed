@@ -3,14 +3,14 @@
 from django.db import migrations
 
 
+# NOTE:  Created this migration but then made the working change (removing index) in 0098_nsempsadata.py
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
         ('named_storms', '0096_auto_20200824_2007'),
     ]
 
-    # Renaming a model and creating an identical one requires removing it's index
-    # https://code.djangoproject.com/ticket/23577
     operations = [
-        migrations.RunSQL("DROP INDEX IF EXISTS named_storms_nsempsadata_nsem_psa_variable_id_bb03d195")
     ]
