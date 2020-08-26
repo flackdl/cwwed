@@ -77,7 +77,7 @@ class PsaDataset:
                 for j, data in enumerate(row):
 
                     # handle differing shapes of data
-                    if da.dims.index('lat') < da.dims.index('lon'):
+                    if list(da.coords).index('lat') < list(da.coords).index('lon'):
                         lat = latitudes[i].item()
                         lon = longitudes[j].item()
                     else:
