@@ -52,7 +52,7 @@ class PsaDataset:
         # https://www.postgresql.org/docs/9.4/sql-copy.html
         # https://www.psycopg.org/docs/cursor.html#cursor.copy_from
 
-        logger.info('Saving psa data for {} at {}'.format(psa_variable, date))
+        logger.info('saving psa data for {} at {}'.format(psa_variable, date))
 
         # define database columns to copy to
         columns = [
@@ -74,8 +74,6 @@ class PsaDataset:
             results = []
             for i, row in enumerate(da):
 
-                start_time = time.time()
-
                 for j, data in enumerate(row):
 
                     # handle differing shapes of data
@@ -95,16 +93,11 @@ class PsaDataset:
                     else:
                         results.append("{}\t{}\t{}\t{}\n".format(
                             psa_variable.id, point, point_geo_hash, data.item()))
-                logger.info("row %s: %s seconds" % (i, time.time() - start_time))
-
-            logger.info('writing lines...')
 
             # write results to file-like object
             f = StringIO()
             f.writelines(results)
             f.seek(0)  # read back to start of file
-
-            logger.info('copying...')
 
             # copy data into table using postgres COPY feature
             cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns)
@@ -177,25 +170,12 @@ class PsaDataset:
 
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
-            # TODO - saving barbs like this isn't necessary anymore
-            # wind barbs
-            #elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
-
-            #    for date in self.psa_manifest_dataset.nsem.dates:
-
-            #        # masked values and subset so we're not displaying every single point
-            #        subset = 10
-            #        wind_speeds = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED][::subset, ::subset])
-            #        wind_directions = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION][::subset, ::subset])
-            #        xi = np.array(self.dataset['lon'][::subset, ::subset])
-            #        yi = np.array(self.dataset['lat'][::subset, ::subset])
-
-            #        # save barbs
-            #        self.build_wind_barbs(psa_variable, wind_directions, wind_speeds, xi, yi, date)
-
-            #        # save raw data
-            #        data_array = self.dataset.sel(time=date)[variable]
-            #        self._save_psa_data(psa_variable, data_array, date)
+            # wind barbs - only saving point data
+            elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
+                for date in self.psa_manifest_dataset.nsem.dates:
+                    data_array = self.dataset.sel(time=date)[variable]
+                    # save raw data
+                    self._save_psa_data(psa_variable, data_array, date)
 
             psa_variable.save()
 
