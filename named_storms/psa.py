@@ -1,15 +1,19 @@
 import os
+import time
 import logging
 from datetime import datetime
+from io import StringIO
+
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import matplotlib.cm
 import pytz
 import xarray as xr
 import numpy as np
+import geohash
 from django.contrib.gis import geos
+from django.db import connections
 from django.conf import settings
-from django.contrib.gis.db.models.functions import GeoHash
 from django.utils import timezone
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaContour, NsemPsaData
@@ -43,22 +47,73 @@ class PsaDataset:
         )
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
-        data = []
-        for lat_idx in range(len(da.lat)):
-            for lon_idx in range(len(da.lon)):
-                if lat_idx % 100 == 0 and lon_idx == 0:
-                    logger.info('save psa data:  lat index {} ...'.format(lat_idx))
-                point = geos.Point(da.lon[lon_idx].item(), da.lat[lat_idx].item(), srid=4326)
-                kwargs = dict(
-                    nsem_psa_variable=psa_variable,
-                    value=da[lat_idx][lon_idx],
-                    point=point,
-                    geo_hash=GeoHash(point),
-                )
-                if date is not None:
-                    kwargs['date'] = date
-                data.append(NsemPsaData(**kwargs))
-        psa_variable.nsempsadata_set.bulk_create(data)
+        # manually copy data into postgres via it's COPY mechanism which is much more efficient
+        # than using django's orm (even bulk_create) since it has to serialize every object
+        # https://www.postgresql.org/docs/9.4/sql-copy.html
+        # https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+
+        logger.info('Saving psa data for {} at {}'.format(psa_variable, date))
+
+        # define database columns to copy to
+        columns = [
+            NsemPsaData.nsem_psa_variable.field.attname,
+            NsemPsaData.point.field.attname,
+            NsemPsaData.geo_hash.field.attname,
+            NsemPsaData.value.field.attname,
+        ]
+        if date is not None:
+            columns.append(NsemPsaData.date.field.attname)
+
+        # use default database connection
+        with connections['default'].cursor() as cursor:
+
+            latitudes = da.lat.values
+            longitudes = da.lon.values
+
+            # build rows of csv values to copy
+            results = []
+            for i, row in enumerate(da):
+
+                start_time = time.time()
+
+                for j, data in enumerate(row):
+
+                    # handle differing shapes of data
+                    if da.dims.index('lat') < da.dims.index('lon'):
+                        lat = latitudes[i].item()
+                        lon = longitudes[j].item()
+                    else:
+                        lat = latitudes[j].item()
+                        lon = longitudes[i].item()
+
+                    point = geos.Point(lon, lat, srid=4326)
+                    point_geo_hash = geohash.encode(lat, lon, precision=20)  # postgres defaults to precision of 20
+
+                    if date is not None:
+                        results.append("{}\t{}\t{}\t{}\t{}\n".format(
+                            psa_variable.id, point, point_geo_hash, data.item(), date))
+                    else:
+                        results.append("{}\t{}\t{}\t{}\n".format(
+                            psa_variable.id, point, point_geo_hash, data.item()))
+                logger.info("row %s: %s seconds" % (i, time.time() - start_time))
+
+            logger.info('writing lines...')
+
+            # write results to file-like object
+            f = StringIO()
+            f.writelines(results)
+            f.seek(0)  # read back to start of file
+
+            logger.info('copying...')
+
+            # copy data into table using postgres COPY feature
+            cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns)
+
+            # run ANALYZE for query planning
+            cursor.execute('ANALYZE {}'.format(NsemPsaData._meta.db_table))
+
+            # close file string
+            f.close()
 
     @staticmethod
     def datetime64_to_datetime(dt64):

@@ -363,7 +363,7 @@ class NsemPsaData(models.Model):
     class Meta:
         # TODO - consider brin index?
         # https://www.postgresql.org/docs/current/brin-intro.html
-        # TODO - multicolumn index with point?
+        # TODO - additional index with point? is that possible with a gist index?
         indexes = [
             Index(fields=['nsem_psa_variable', 'geo_hash', 'date', 'value']),
         ]

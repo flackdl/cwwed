@@ -195,13 +195,14 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
             lat = float(lat)
             lon = float(lon)
         except ValueError:
-            raise exceptions.NotFound('lat & lon should be floats')
+            raise exceptions.ValidationError('lat & lon should be floats')
 
         point = geos.Point(x=lon, y=lat, srid=4326)
 
         fields_order = ('nsem_psa_variable__name', 'date')
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
+        # TODO - this assumes there's a unified grid all variables adhere to; need to confirm that's the case
         # find nearest point in data
         point_query = NsemPsaData.objects.annotate(distance=Distance('point', point))
         point_query = point_query.filter(distance__lte=self.POINT_DISTANCE).order_by('-distance')[:1]
