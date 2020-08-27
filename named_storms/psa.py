@@ -67,22 +67,14 @@ class PsaDataset:
         # use default database connection
         with connections['default'].cursor() as cursor:
 
-            latitudes = da.lat.values
-            longitudes = da.lon.values
-
             # build rows of csv values to copy
             results = []
             for i, row in enumerate(da):
 
                 for j, data in enumerate(row):
 
-                    # handle differing shapes of data
-                    if list(da.coords).index('lat') < list(da.coords).index('lon'):
-                        lat = latitudes[i].item()
-                        lon = longitudes[j].item()
-                    else:
-                        lat = latitudes[j].item()
-                        lon = longitudes[i].item()
+                    lat = data.lat.item()
+                    lon = data.lon.item()
 
                     point = geos.Point(lon, lat, srid=4326)
                     point_geo_hash = geohash.encode(lat, lon, precision=20)  # postgres defaults to precision of 20
