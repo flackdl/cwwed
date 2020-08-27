@@ -353,7 +353,6 @@ class NsemPsaVariable(models.Model):
 class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     point = models.PointField(geography=True)
-    geo_hash = models.CharField(max_length=100)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     value = models.FloatField()
 
@@ -361,11 +360,8 @@ class NsemPsaData(models.Model):
         return '{} <data>'.format(self.nsem_psa_variable)
 
     class Meta:
-        # TODO - consider brin index?
-        # https://www.postgresql.org/docs/current/brin-intro.html
-        # TODO - additional index with point? is that possible with a gist index?
         indexes = [
-            Index(fields=['nsem_psa_variable', 'geo_hash', 'date', 'value']),
+            Index(fields=['nsem_psa_variable', 'point', 'date', 'value']),
         ]
 
 

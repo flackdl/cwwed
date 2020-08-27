@@ -162,7 +162,7 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaContour.objects.all()  # defined in list()
     pagination_class = None
-    POINT_DISTANCE = 250
+    POINT_DISTANCE = 500
 
     def get_serializer_class(self):
         # required placeholder because this class isn't using a serializer
@@ -199,22 +199,25 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
         point = geos.Point(x=lon, y=lat, srid=4326)
 
-        fields_order = ('nsem_psa_variable__name', 'date')
+        fields_order = ['nsem_psa_variable__name', 'date']
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
-        # TODO - this assumes there's a unified grid all variables adhere to; need to confirm that's the case
-        # find nearest point in data
-        point_query = NsemPsaData.objects.annotate(distance=Distance('point', point))
-        point_query = point_query.filter(distance__lte=self.POINT_DISTANCE).order_by('-distance')[:1]
-        point_nearest = point_query.first()
-        if not point_nearest:
-            raise exceptions.NotFound('No nearest point found within {} meters'.format(self.POINT_DISTANCE))
-
-        # time-series contours covering supplied point
-        time_series_query = NsemPsaData.objects.filter(
+        # time-series data nearest supplied point per variable/date
+        time_series_query = NsemPsaData.objects.annotate(
+            distance=Distance('point', point),
+        ).distinct(
+            *fields_order
+        ).filter(
+            point__dwithin=(point, self.POINT_DISTANCE),
             nsem_psa_variable__nsem=self.nsem,
-            geo_hash=GeoHash(point_nearest.point),
-        ).order_by(*fields_order).only(*fields_values).values(*fields_values)
+        ).order_by(
+            # sort by ascending distance to get the first result in each group (i.e the nearest to supplied point)
+            *fields_order + ['distance']
+        ).only(
+            *fields_values
+        ).values(
+            *fields_values
+        )
 
         results = []
 

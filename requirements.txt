@@ -42,4 +42,3 @@ slacker==0.13.0
 uritemplate==3.0.1
 whitenoise==5.0.1
 xarray==0.14.1
-python-geohash==0.8.5

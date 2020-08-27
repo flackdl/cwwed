@@ -1,5 +1,4 @@
 import os
-import time
 import logging
 from datetime import datetime
 from io import StringIO
@@ -10,7 +9,6 @@ import matplotlib.cm
 import pytz
 import xarray as xr
 import numpy as np
-import geohash
 from django.contrib.gis import geos
 from django.db import connections
 from django.conf import settings
@@ -58,7 +56,6 @@ class PsaDataset:
         columns = [
             NsemPsaData.nsem_psa_variable.field.attname,
             NsemPsaData.point.field.attname,
-            NsemPsaData.geo_hash.field.attname,
             NsemPsaData.value.field.attname,
         ]
         if date is not None:
@@ -69,22 +66,19 @@ class PsaDataset:
 
             # build rows of csv values to copy
             results = []
-            for i, row in enumerate(da):
-
-                for j, data in enumerate(row):
-
+            for row in da:
+                # filter out null values
+                row = row[~row.isnull()]
+                for data in row:
                     lat = data.lat.item()
                     lon = data.lon.item()
-
                     point = geos.Point(lon, lat, srid=4326)
-                    point_geo_hash = geohash.encode(lat, lon, precision=20)  # postgres defaults to precision of 20
-
                     if date is not None:
-                        results.append("{}\t{}\t{}\t{}\t{}\n".format(
-                            psa_variable.id, point, point_geo_hash, data.item(), date))
-                    else:
                         results.append("{}\t{}\t{}\t{}\n".format(
-                            psa_variable.id, point, point_geo_hash, data.item()))
+                            psa_variable.id, point, data.item(), date))
+                    else:
+                        results.append("{}\t{}\t{}\n".format(
+                            psa_variable.id, point, data.item()))
 
             # write results to file-like object
             f = StringIO()
