@@ -1,3 +1,5 @@
+from django.contrib.gis.db.models import GeometryField
+from django.db.models.functions import Cast
 from django_filters import rest_framework as filters
 from named_storms.models import NsemPsaContour, NsemPsaVariable, NsemPsaData
 
@@ -28,6 +30,15 @@ class NsemPsaContourFilter(NsemPsaDataFilterBase):
 
 
 class NsemPsaDataFilter(NsemPsaDataFilterBase):
+    point = filters.CharFilter(method='filter_point')
+
+    def filter_point(self, queryset, name, value):
+        # cast point to geometry then test equality
+        return queryset.annotate(
+            point_geom=Cast('point', GeometryField()),
+        ).filter(
+            point_geom__equals=value,
+        )
 
     class Meta:
         model = NsemPsaData
