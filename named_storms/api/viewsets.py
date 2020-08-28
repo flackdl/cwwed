@@ -322,28 +322,16 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
 
 
 @method_decorator(gzip_page, name='dispatch')
-@method_decorator(cache_control(
-    public=True,
-    max_age=3600,
-), name='dispatch')
 class NsemPsaDataViewSet(NsemPsaBaseViewSet):
     # Named Storm Event Model PSA Data ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
 
-    # TODO - determine best way to include all points or a subset of points (step)
-
     filterset_class = NsemPsaDataFilter
     serializer_class = NsemPsaDataSerializer
-    CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_queryset(self):
-        qs = NsemPsaData.objects.filter(
-            nsem_psa_variable__nsem=self.nsem,
-        ).only(*[
-            'value', 'date', 'nsem_psa_variable__name',
-            'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
-        ]).order_by('nsem_psa_variable__name')
-        return qs
+        # filter by nested nsem
+        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
 
 
 class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet):
