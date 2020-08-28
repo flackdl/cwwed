@@ -1,13 +1,34 @@
 from django_filters import rest_framework as filters
-from named_storms.models import NsemPsaContour, NsemPsaVariable
+from named_storms.models import NsemPsaContour, NsemPsaVariable, NsemPsaData
 
 
-class NsemPsaContourFilter(filters.FilterSet):
-    nsem_psa_variable = filters.ModelChoiceFilter(queryset=NsemPsaVariable.objects.all(), label='Variable')
+class NsemPsaDataFilterBase(filters.FilterSet):
+    """
+    base filter for psa data and contours
+    """
+    nsem_psa_variable = filters.ChoiceFilter(
+        choices=zip(NsemPsaVariable.VARIABLE_DATASETS, NsemPsaVariable.VARIABLE_DATASETS),
+        method='filter_psa_variable',
+    )
+
+    def filter_psa_variable(self, queryset, name, value):
+        return queryset.filter(nsem_psa_variable__name=value)
 
     class Meta:
-        model = NsemPsaContour
         fields = {
             'value': ['exact', 'gt', 'gte', 'lt', 'lte'],
-            'date': ['exact']
+            'date': ['exact', 'gt', 'gte', 'lt', 'lte']
         }
+
+
+class NsemPsaContourFilter(NsemPsaDataFilterBase):
+    class Meta:
+        model = NsemPsaContour
+        fields = NsemPsaDataFilterBase.Meta.fields
+
+
+class NsemPsaDataFilter(NsemPsaDataFilterBase):
+
+    class Meta:
+        model = NsemPsaData
+        fields = NsemPsaDataFilterBase.Meta.fields

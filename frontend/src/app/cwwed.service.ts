@@ -133,14 +133,14 @@ export class CwwedService {
   // static methods
   //
 
-  public static getPsaVariableGeoUrl(named_storm_id: number, variableId: string, date?: string) {
+  public static getPsaVariableGeoUrl(namedStormId: number, variableName: string, date?: string) {
     const params = {
-      nsem_psa_variable: variableId,
+      nsem_psa_variable: variableName,
     };
     if (date) {
       params['date'] = date;
     }
     const httpParams = new HttpParams({fromObject: params});
-    return `${API_NAMED_STORMS}${named_storm_id}/psa/geojson/?${httpParams}`;
+    return `${API_NAMED_STORMS}${namedStormId}/psa/geojson/?${httpParams}`;
   }
 }

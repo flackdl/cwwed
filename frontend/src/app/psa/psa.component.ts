@@ -340,7 +340,7 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.id, date);
+    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.name, date);
     const format = new GeoJSON();
 
     const vectorSource = new VectorSource({

@@ -156,8 +156,8 @@ class PsaDataset:
 
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
-            # wind barbs - only saving point data
-            elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
+            # wind barbs - only saving point data with wind directions
+            elif psa_variable.name == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION:
                 for date in self.psa_manifest_dataset.nsem.dates:
                     data_array = self.dataset.sel(time=date)[variable]
                     # save raw data

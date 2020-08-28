@@ -1,7 +1,7 @@
 import csv
 import logging
 from celery import chain, group
-from django.contrib.gis.db.models.functions import Intersection, Distance, GeoHash
+from django.contrib.gis.db.models.functions import Intersection, Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
@@ -19,7 +19,7 @@ from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from named_storms.api.filters import NsemPsaContourFilter
+from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
@@ -30,7 +30,7 @@ from named_storms.tasks import (
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -160,14 +160,11 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 
 
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
-    queryset = NsemPsaContour.objects.all()  # defined in list()
+    queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
-    POINT_DISTANCE = 500
+    serializer_class = None
 
-    def get_serializer_class(self):
-        # required placeholder because this class isn't using a serializer
-        from rest_framework.serializers import BaseSerializer
-        return BaseSerializer
+    POINT_DISTANCE = 500
 
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
@@ -315,13 +312,38 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
     def _validate(self):
 
         # verify the requested variable exists
-        nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(id=self.request.query_params['nsem_psa_variable'])
+        nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['nsem_psa_variable'])
         if not nsem_psa_variable_query.exists():
             raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['nsem_psa_variable']))
 
         # verify if the variable requires a date filter
         if nsem_psa_variable_query[0].data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and not self.request.query_params.get('date'):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
+
+
+@method_decorator(gzip_page, name='dispatch')
+@method_decorator(cache_control(
+    public=True,
+    max_age=3600,
+), name='dispatch')
+class NsemPsaDataViewSet(NsemPsaBaseViewSet):
+    # Named Storm Event Model PSA Data ViewSet
+    #   - expects to be nested under a NamedStormViewSet detail
+
+    # TODO - determine best way to include all points or a subset of points (step)
+
+    filterset_class = NsemPsaDataFilter
+    serializer_class = NsemPsaDataSerializer
+    CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
+
+    def get_queryset(self):
+        qs = NsemPsaData.objects.filter(
+            nsem_psa_variable__nsem=self.nsem,
+        ).only(*[
+            'value', 'date', 'nsem_psa_variable__name',
+            'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
+        ]).order_by('nsem_psa_variable__name')
+        return qs
 
 
 class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet):
