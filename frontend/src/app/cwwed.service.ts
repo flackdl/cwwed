@@ -137,10 +137,15 @@ export class CwwedService {
     const params = {
       nsem_psa_variable: variableName,
     };
+    let url = `${API_NAMED_STORMS}${namedStormId}/psa/geojson/`;
+    if (variableName == 'wind_direction') {
+      url = `${API_NAMED_STORMS}${namedStormId}/psa/data/wind-barbs/`;
+    }
     if (date) {
       params['date'] = date;
     }
+    // TODO - don't send unnecessary params
     const httpParams = new HttpParams({fromObject: params});
-    return `${API_NAMED_STORMS}${namedStormId}/psa/geojson/?${httpParams}`;
+    return `${url}?${httpParams}`;
   }
 }

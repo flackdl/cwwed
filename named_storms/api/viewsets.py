@@ -1,11 +1,13 @@
 import csv
 import logging
+import geojson
 from celery import chain, group
 from django.contrib.gis.db.models.functions import Intersection, Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
 from django.utils.cache import get_cache_key, learn_cache_key
+from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.contrib.gis import geos
@@ -21,6 +23,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
+from named_storms.sql import wind_barbs_query
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
@@ -241,6 +244,33 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
             return self._as_csv(results, lat, lon)
 
         return Response(results)
+
+
+class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
+    # Named Storm Event Model PSA Wind Barbs ViewSet
+    #   - expects to be nested under a NamedStormViewSet detail
+    #   - returns geojson results
+    queryset = NsemPsaData.objects.all()  # defined in list()
+    serializer_class = None
+
+    def list(self, request, *args, **kwargs):
+
+        date = parse_datetime(request.query_params.get('date') or '')
+        if not date:
+            raise exceptions.ValidationError({'date': ['date is required']})
+
+        results = wind_barbs_query(self.nsem.id, date, step=10)
+
+        features = []
+
+        # create geojson features
+        for result in results:
+            point = geos.fromstr(result[0])  # type: geos.Point
+            features.append(
+                geojson.Feature(geometry=geojson.Point((point.x, point.y)), properties={'direction': result[1], 'speed': result[2]}))
+        response = geojson.FeatureCollection(features=features)
+
+        return Response(response)
 
 
 @method_decorator(gzip_page, name='dispatch')

@@ -371,14 +371,9 @@ export class PsaComponent implements OnInit {
   }
 
   protected _getWindBarbLayerStyle(feature): Style {
-    const zoom = this.map.getView().getZoom();
-
     let icon;
-
-    // the speed is stored in the feature's "meta" key
-    const meta = feature.get('meta') || {};
-    const speedData = meta['speed'] || {};
-    const knots = (speedData['value'] || 0) * 1.94384;
+    const zoom = this.map.getView().getZoom();
+    const knots = (feature.get('speed') || 0) * 1.94384;
 
     // https://commons.wikimedia.org/wiki/Wind_speed
     if (_.inRange(knots, 0, 2)) {
@@ -415,7 +410,7 @@ export class PsaComponent implements OnInit {
       icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
     }
 
-    const directionData = meta.direction || {};
+    const direction = feature.get('direction') || {};
 
     let scale = 1;
     if (zoom === 10) {
@@ -430,7 +425,7 @@ export class PsaComponent implements OnInit {
 
     return new Style({
       image: new Icon({
-        rotation: -(directionData.value * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
+        rotation: -(direction * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
         scale: scale,

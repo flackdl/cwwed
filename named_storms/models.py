@@ -352,6 +352,7 @@ class NsemPsaVariable(models.Model):
 
 class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
+    # TODO - consider using a unified grid with NsemPsaData having a ManyToManyField here
     point = models.PointField(geography=True)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     value = models.FloatField()
