@@ -246,6 +246,10 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         return Response(results)
 
 
+@method_decorator(cache_control(
+    public=True,
+    max_age=3600,
+), name='dispatch')
 class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     # Named Storm Event Model PSA Wind Barbs ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
@@ -253,24 +257,45 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
     serializer_class = None
 
-    def list(self, request, *args, **kwargs):
+    def list(self, request, *args, date=None, **kwargs):
 
-        date = parse_datetime(request.query_params.get('date') or '')
+        date = parse_datetime(date or '')
         if not date:
-            raise exceptions.ValidationError({'date': ['date is required']})
+            raise exceptions.ValidationError({'date': ['date is required (format: 2018-09-14T01:00:00Z)']})
 
-        results = wind_barbs_query(self.nsem.id, date, step=10)
+        # TODO - should this be enforced on the front or back end?
+        try:
+            step = int(request.query_params.get('step') or 1)
+        except ValueError:
+            raise exceptions.ValidationError({'step': ['step must be an integer']})
 
+        # TODO - should this not exist in favor of steps?
+        try:
+            center = geos.fromstr(request.query_params.get('center'))
+        except Exception:
+            logger.warning('Invalid center {}'.format(request.query_params.get('center')))
+            raise exceptions.ValidationError({'center': ['center point must be WKT']})
+
+        results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step)
+
+        # build geojson features
         features = []
-
-        # create geojson features
         for result in results:
             point = geos.fromstr(result[0])  # type: geos.Point
             features.append(
-                geojson.Feature(geometry=geojson.Point((point.x, point.y)), properties={'direction': result[1], 'speed': result[2]}))
-        response = geojson.FeatureCollection(features=features)
+                geojson.Feature(
+                    geometry=geojson.Point((point.x, point.y)),
+                    properties={
+                        'name': 'wind_direction',
+                        'wind_direction_value': result[1],
+                        'wind_direction_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'units'),
+                        'wind_speed_value': result[2],
+                        'wind_speed_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'units'),
+                    }
+                ),
+            )
 
-        return Response(response)
+        return Response(geojson.FeatureCollection(features=features))
 
 
 @method_decorator(gzip_page, name='dispatch')

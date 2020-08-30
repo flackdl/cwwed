@@ -4,6 +4,8 @@ import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
+import Point from 'ol/geom/Point';
+import WKT from 'ol/format/WKT';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
@@ -39,6 +41,8 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
   public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
+
+  public DEFAULT_ZOOM_LEVEL = 7;
 
   public mapLayerOptions = [
     {name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD},
@@ -340,7 +344,28 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.name, date);
+    let url;
+
+    if (psaVariable.name == 'wind_direction') {
+      // query the density of wind barb points depending on zoom level
+      const centerCoords = this.map ? toLonLat(this.map.getView().getCenter()) : this._getDefaultCenter()
+      const center = new Point(centerCoords);
+      const centerWKT = new WKT().writeGeometry(center);
+      // TODO - do we want/need to step the barb points?
+      //const zoom = this.map ? this.map.getView().getZoom() : this._getDefaultZoom();
+      //let step;
+      //if (zoom <= 9) {
+      //  step = 100;
+      //} else if (zoom === 10) {
+      //  step = 10;
+      //} else if (zoom >= 11) {
+      //  step = 1;
+      //}
+      url = CwwedService.getPsaVariableWindBarbsUrl(this.namedStorm.id, psaVariable.name, date, centerWKT);
+    } else {
+      url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.name, date);
+    }
+
     const format = new GeoJSON();
 
     const vectorSource = new VectorSource({
@@ -373,7 +398,7 @@ export class PsaComponent implements OnInit {
   protected _getWindBarbLayerStyle(feature): Style {
     let icon;
     const zoom = this.map.getView().getZoom();
-    const knots = (feature.get('speed') || 0) * 1.94384;
+    const knots = (feature.get('wind_speed_value') || 0) * 1.94384;
 
     // https://commons.wikimedia.org/wiki/Wind_speed
     if (_.inRange(knots, 0, 2)) {
@@ -410,22 +435,22 @@ export class PsaComponent implements OnInit {
       icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
     }
 
-    const direction = feature.get('direction') || {};
+    const direction = feature.get('wind_direction_value') || {};
 
     let scale = 1;
     if (zoom === 10) {
       scale = .7;
     } else if (zoom === 9) {
-      scale = .5;
+      scale = .4;
     } else if (zoom === 8) {
-      scale = .3;
+      scale = .2;
     } else if (zoom <= 7) {
-      scale = .15;
+      scale = .1;
     }
 
     return new Style({
       image: new Icon({
-        rotation: -(direction * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
+        rotation: -(direction * Math.PI / 180),  // unit is degrees but expects radians; rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
         scale: scale,
@@ -517,8 +542,8 @@ export class PsaComponent implements OnInit {
       }
     });
 
-    let zoom = 7;
-    let center = fromLonLat(<any>this.namedStorm.center_coords);
+    let zoom = this._getDefaultZoom();
+    let center = this._getDefaultCenter();
 
     if (this.route.snapshot.queryParams['zoom']) {
       zoom = parseFloat(this.route.snapshot.queryParams['zoom']) || zoom;
@@ -677,7 +702,6 @@ export class PsaComponent implements OnInit {
           const variableDisplayName = feature.get('display_name');
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnits = feature.get('units');
-          const variableMeta = feature.get('meta') || {};
 
           // find feature's matching psa variable
           const psaVariable = _.find(this.psaVariables, (variable) => {
@@ -687,9 +711,13 @@ export class PsaComponent implements OnInit {
           if (psaVariable) {
             // special handling for wind barbs
             if (psaVariable.geo_type === 'wind-barb') {
-              if (variableMeta['speed'] && variableMeta['direction']) {
-                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
-                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
+              const variableWindSpeed = feature.get('wind_speed_value');
+              const variableWindSpeedUnits = feature.get('wind_speed_units');
+              const variableWindDirection = feature.get('wind_direction_value');
+              const variableWindDirectionUnits = feature.get('wind_direction_units');
+              if (variableWindSpeed && variableWindDirection) {
+                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableWindSpeed, '1.0-2')} ${variableWindSpeedUnits}`;
+                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableWindDirection, '1.0-2')} ${variableWindDirectionUnits}`;
               }
             } else {
               currentFeature[variableDisplayName] = `${variableValue} ${variableUnits}`;
@@ -817,5 +845,12 @@ export class PsaComponent implements OnInit {
 
     // add to map
     this.map.addInteraction(this._extentInteraction);
+  }
+
+  protected _getDefaultZoom() {
+    return this.DEFAULT_ZOOM_LEVEL;
+  }
+  protected _getDefaultCenter() {
+    return fromLonLat(<any>this.namedStorm.center_coords);
   }
 }

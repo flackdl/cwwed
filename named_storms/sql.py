@@ -1,9 +1,10 @@
+from django.contrib.gis import geos
 from django.db import connection
 from datetime import datetime
 from named_storms.models import NsemPsaVariable
 
 
-def wind_barbs_query(psa_id: int, date: datetime, step=100):
+def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
     with connection.cursor() as cursor:
         sql = '''
             SELECT
@@ -30,6 +31,7 @@ def wind_barbs_query(psa_id: int, date: datetime, step=100):
                 INNER JOIN named_storms_namedstorm n on n.id = nsn.named_storm_id
             WHERE
                   ST_Within(d1.point::geometry, n.geo::geometry) AND
+                  ST_Within(d1.point::geometry, ST_Expand(ST_GeomFromText(%(center)s, 4326), .075)) AND
                   d1.id %% %(step)s = 0
         '''
 
@@ -39,5 +41,6 @@ def wind_barbs_query(psa_id: int, date: datetime, step=100):
             'wind_direction': NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
             'wind_speed': NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED,
             'step': step,
+            'center': center.wkt,
         })
         return cursor.fetchall()

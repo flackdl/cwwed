@@ -138,14 +138,17 @@ export class CwwedService {
       nsem_psa_variable: variableName,
     };
     let url = `${API_NAMED_STORMS}${namedStormId}/psa/geojson/`;
-    if (variableName == 'wind_direction') {
-      url = `${API_NAMED_STORMS}${namedStormId}/psa/data/wind-barbs/`;
-    }
     if (date) {
       params['date'] = date;
     }
-    // TODO - don't send unnecessary params
     const httpParams = new HttpParams({fromObject: params});
     return `${url}?${httpParams}`;
+  }
+
+  public static getPsaVariableWindBarbsUrl(namedStormId: number, variableName: string, date: string, center: string) {
+    const httpParams = new HttpParams({fromObject: {
+      'center': center,
+    }});
+    return `${API_NAMED_STORMS}${namedStormId}/psa/data/wind-barbs/${date}/?${httpParams}`;
   }
 }
