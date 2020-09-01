@@ -246,10 +246,6 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         return Response(results)
 
 
-@method_decorator(cache_control(
-    public=True,
-    max_age=3600,
-), name='dispatch')
 class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     # Named Storm Event Model PSA Wind Barbs ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
@@ -263,13 +259,11 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
         if not date:
             raise exceptions.ValidationError({'date': ['date is required (format: 2018-09-14T01:00:00Z)']})
 
-        # TODO - should this be enforced on the front or back end?
         try:
             step = int(request.query_params.get('step') or 1)
         except ValueError:
             raise exceptions.ValidationError({'step': ['step must be an integer']})
 
-        # TODO - should this not exist in favor of steps?
         try:
             center = geos.fromstr(request.query_params.get('center'))
         except Exception:

@@ -145,9 +145,10 @@ export class CwwedService {
     return `${url}?${httpParams}`;
   }
 
-  public static getPsaVariableWindBarbsUrl(namedStormId: number, variableName: string, date: string, center: string) {
+  public static getPsaVariableWindBarbsUrl(namedStormId: number, variableName: string, date: string, center: string, step: number) {
     const httpParams = new HttpParams({fromObject: {
       'center': center,
+      'step': String(step),
     }});
     return `${API_NAMED_STORMS}${namedStormId}/psa/data/wind-barbs/${date}/?${httpParams}`;
   }
