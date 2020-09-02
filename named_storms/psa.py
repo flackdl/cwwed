@@ -64,35 +64,34 @@ class PsaDataset:
         # use default database connection
         with connections['default'].cursor() as cursor:
 
-            # build rows of csv values to copy
-            results = []
-            for row in da:
-                # filter out null values
-                row = row[~row.isnull()]
-                for data in row:
-                    lat = data.lat.item()
-                    lon = data.lon.item()
-                    point = geos.Point(lon, lat, srid=4326)
-                    if date is not None:
-                        results.append("{}\t{}\t{}\t{}\n".format(
-                            psa_variable.id, point, data.item(), date))
-                    else:
-                        results.append("{}\t{}\t{}\n".format(
-                            psa_variable.id, point, data.item()))
+            # create pandas dataframe for csv output
+            df = da.to_dataframe()
 
-            # write results to file-like object
+            # include empty date column placeholder if it doesn't exist
+            if 'time' not in df:
+                df['time'] = None
+
+            # add psa variable column
+            df['psa_variable_id'] = psa_variable.id
+
+            # add point column in WKT format
+            df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
+
+            # reorder columns
+            df = df[['psa_variable_id', 'point', psa_variable.name, 'time']]
+
+            # write csv results to file-like object
             f = StringIO()
-            f.writelines(results)
-            f.seek(0)  # read back to start of file
+            df.to_csv(f, header=False, index=False)
 
             # copy data into table using postgres COPY feature
             cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns)
 
-            # run ANALYZE for query planning
-            cursor.execute('ANALYZE {}'.format(NsemPsaData._meta.db_table))
-
             # close file string
             f.close()
+
+            # run ANALYZE for query planning
+            cursor.execute('ANALYZE {}'.format(NsemPsaData._meta.db_table))
 
     @staticmethod
     def datetime64_to_datetime(dt64):
