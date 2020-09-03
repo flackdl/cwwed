@@ -12,7 +12,6 @@ import numpy as np
 from django.contrib.gis import geos
 from django.db import connections
 from django.conf import settings
-from django.utils import timezone
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaContour, NsemPsaData
 from named_storms.utils import named_storm_nsem_version_path
@@ -45,10 +44,12 @@ class PsaDataset:
         )
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
-        # manually copy data into postgres via it's COPY mechanism which is much more efficient
-        # than using django's orm (even bulk_create) since it has to serialize every object
-        # https://www.postgresql.org/docs/9.4/sql-copy.html
-        # https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+        """
+        manually copy data into postgres via it's COPY mechanism which is much more efficient
+        than using django's orm (even bulk_create) since it has to serialize every object
+        https://www.postgresql.org/docs/9.4/sql-copy.html
+        https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+        """
 
         logger.info('saving psa data for {} at {}'.format(psa_variable, date))
 
@@ -74,7 +75,7 @@ class PsaDataset:
             # add psa variable column
             df['psa_variable_id'] = psa_variable.id
 
-            # add point column in WKT format
+            # add point column in wkt format using the lat/lon coordinates
             df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
 
             # reorder columns
@@ -103,7 +104,7 @@ class PsaDataset:
     def ingest(self):
         for variable in self.psa_manifest_dataset.variables:
 
-            # close and reopen dataset
+            # close and reopen dataset for memory cleanup
             self._toggle_dataset()
 
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
@@ -163,10 +164,6 @@ class PsaDataset:
                     self._save_psa_data(psa_variable, data_array, date)
 
             psa_variable.save()
-
-        self.psa_manifest_dataset.nsem.processed = True
-        self.psa_manifest_dataset.nsem.date_processed = timezone.now()
-        self.psa_manifest_dataset.nsem.save()
 
         logger.info('PSA Dataset {} has been successfully ingested'.format(self.psa_manifest_dataset))
 

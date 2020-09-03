@@ -24,6 +24,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
@@ -792,6 +793,12 @@ def ingest_nsem_psa_task(nsem_psa_id):
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
         psa_dataset.ingest()
+
+    # save psa as processed
+    nsem_psa.processed = True
+    nsem_psa.date_processed = timezone.now()
+    nsem_psa.save()
+
     logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
 
 
