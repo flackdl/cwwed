@@ -167,7 +167,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     pagination_class = None
     serializer_class = None
 
-    POINT_DISTANCE = 500
+    POINT_DISTANCE = 500  # meters
 
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
@@ -348,13 +348,13 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
-        geojson = get_geojson_feature_collection_from_psa_qs(queryset)
-        response = HttpResponse(geojson, content_type='application/json')
+        geo_json = get_geojson_feature_collection_from_psa_qs(queryset)
+        response = HttpResponse(geo_json, content_type='application/json')
 
         # cache result
         cache_key = learn_cache_key(
             request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
-        cache.set(cache_key, geojson, self.CACHE_TIMEOUT)
+        cache.set(cache_key, geo_json, self.CACHE_TIMEOUT)
 
         return response
 

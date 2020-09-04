@@ -68,6 +68,9 @@ class PsaDataset:
             # create pandas dataframe for csv output
             df = da.to_dataframe()
 
+            # drop nulls
+            df = df.dropna()
+
             # include empty date column placeholder if it doesn't exist
             if 'time' not in df:
                 df['time'] = None
@@ -75,24 +78,29 @@ class PsaDataset:
             # add psa variable column
             df['psa_variable_id'] = psa_variable.id
 
-            # add point column in wkt format using the lat/lon coordinates
-            df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
+            # add point column in wkt format using the lat/lon coordinates and handle
+            # cases where the lat/lon are either indexes or column values
 
-            # reorder columns
+            # coordinates are individual columns so zip them together
+            if set(df.columns).issuperset(['lat', 'lon']):
+                df['point'] = list(map(lambda p: f'POINT ({p[1]} {p[0]})', list(zip(df['lat'], df['lon']))))
+            # coordinates are a pandas MultiIndex so we can directly map them to points
+            elif set(df.index.names).issuperset(['lat', 'lon']):
+                df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
+            else:
+                raise Exception('Expected lat and lon coordinates either as index or columns')
+
+            # reorder df columns
             df = df[['psa_variable_id', 'point', psa_variable.name, 'time']]
 
-            # write csv results to file-like object
-            f = StringIO()
-            df.to_csv(f, header=False, index=False)
+            with StringIO() as f:
 
-            # copy data into table using postgres COPY feature
-            cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns)
+                # write csv results to file-like object
+                df.to_csv(f, header=False, index=False)
+                f.seek(0)  # set file read position back to beginning
 
-            # close file string
-            f.close()
-
-            # run ANALYZE for query planning
-            cursor.execute('ANALYZE {}'.format(NsemPsaData._meta.db_table))
+                # copy data into table using postgres COPY feature
+                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',')
 
     @staticmethod
     def datetime64_to_datetime(dt64):
