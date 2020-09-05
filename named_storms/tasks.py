@@ -1,5 +1,7 @@
 import os
 import shutil
+import tempfile
+
 import pytz
 import tarfile
 import requests
@@ -789,10 +791,22 @@ def ingest_nsem_psa_task(nsem_psa_id):
         logger.warning(msg)
         raise Exception(msg)
 
+    # create temporary csv to write intermediate data to before copying to postgres
+    csv_fd, csv_path = tempfile.mkstemp()
+    os.close(csv_fd)
+
+    # TODO - refactor PsaDataset to process all datasets at once so it can copy the data at the end
+
     # process each dataset
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
-        psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
+        psa_dataset = PsaDataset(psa_manifest_dataset=dataset, csv_path=csv_path)
         psa_dataset.ingest()
+
+    # copy data to postgres
+    PsaDataset.copy_psa_data(csv_path)
+
+    # remove csv since it's been copied
+    os.remove(csv_path)
 
     # save psa as processed
     nsem_psa.processed = True
