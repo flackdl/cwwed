@@ -26,11 +26,9 @@ COLOR_STEPS = 10  # color bar range
 class PsaDataset:
     cmap = matplotlib.cm.get_cmap('jet')
     dataset: xr.Dataset = None
-    csv_path: str = None
 
-    def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset, csv_path):
+    def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
-        self.csv_path = csv_path
 
     def _toggle_dataset(self):
         # close and reopen for memory saving purposes
@@ -45,65 +43,64 @@ class PsaDataset:
             self.psa_manifest_dataset.path)
         )
 
-    def _write_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
+    def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """
-        write data as csv and append to cumulative file so we can eventually copy it using postgres COPY feature
-        """
-
-        logger.info('writing psa data for {} at {} to {}'.format(psa_variable, date, self.csv_path))
-
-        # create pandas dataframe for csv output
-        df = da.to_dataframe()
-
-        # drop nulls
-        df = df.dropna()
-
-        # add psa variable column
-        df['psa_variable_id'] = psa_variable.id
-
-        # add point column in wkt format using the lat/lon coordinates and handle
-        # cases where the lat/lon are either indexes or column values
-
-        # coordinates are individual columns so zip them together
-        if set(df.columns).issuperset(['lat', 'lon']):
-            df['point'] = list(map(lambda p: f'POINT ({p[1]} {p[0]})', list(zip(df['lat'], df['lon']))))
-        # coordinates are a pandas MultiIndex so we can directly map them to points
-        elif set(df.index.names).issuperset(['lat', 'lon']):
-            df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
-        else:
-            raise Exception('Expected lat and lon coordinates either as multi index or columns')
-
-        # include time placeholder column if there's not a date for this data
-        if not date:
-            df['time'] = None
-
-        # reorder df columns
-        df = df[['psa_variable_id', 'point', psa_variable.name, 'time']]
-
-        # append csv results
-        df.to_csv(self.csv_path, mode='a', na_rep=r'\N', header=False, index=False)
-
-    @classmethod
-    def copy_psa_data(cls, csv_path: str):
-        """
-         copy data into postgres via it's COPY mechanism which is much more efficient
-         than using django's orm (even bulk_create) since it has to serialize every object
-         https://www.postgresql.org/docs/9.4/sql-copy.html
-         https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+        manually copy data into postgres via it's COPY mechanism which is much more efficient
+        than using django's orm (even bulk_create) since it has to serialize every object
+        https://www.postgresql.org/docs/9.4/sql-copy.html
+        https://www.psycopg.org/docs/cursor.html#cursor.copy_from
         """
 
-        # database columns to copy
+        logger.info('saving psa data for {} at {}'.format(psa_variable, date))
+
+        # define database columns to copy to
         columns = [
             NsemPsaData.nsem_psa_variable.field.attname,
             NsemPsaData.point.field.attname,
             NsemPsaData.value.field.attname,
-            NsemPsaData.date.field.attname,
         ]
+        if date is not None:
+            columns.append(NsemPsaData.date.field.attname)
 
         # use default database connection
         with connections['default'].cursor() as cursor:
-            # copy csv results into table using postgres COPY
-            cursor.copy_from(open(csv_path, 'r'), NsemPsaData._meta.db_table, columns=columns, sep=',', null=r'\N')
+
+            # create pandas dataframe for csv output
+            df = da.to_dataframe()
+
+            # drop nulls
+            df = df.dropna()
+
+            # include empty date column placeholder if it doesn't exist
+            if 'time' not in df:
+                df['time'] = None
+
+            # add psa variable column
+            df['psa_variable_id'] = psa_variable.id
+
+            # add point column in wkt format using the lat/lon coordinates and handle
+            # cases where the lat/lon are either indexes or column values
+
+            # coordinates are individual columns so zip them together
+            if set(df.columns).issuperset(['lat', 'lon']):
+                df['point'] = list(map(lambda p: f'POINT ({p[1]} {p[0]})', list(zip(df['lat'], df['lon']))))
+            # coordinates are a pandas MultiIndex so we can directly map them to points
+            elif set(df.index.names).issuperset(['lat', 'lon']):
+                df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
+            else:
+                raise Exception('Expected lat and lon coordinates either as index or columns')
+
+            # reorder df columns
+            df = df[['psa_variable_id', 'point', psa_variable.name, 'time']]
+
+            with StringIO() as f:
+
+                # write csv results to file-like object
+                df.to_csv(f, header=False, index=False)
+                f.seek(0)  # set file read position back to beginning
+
+                # copy data into table using postgres COPY feature
+                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',')
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -152,7 +149,7 @@ class PsaDataset:
                     self.build_contours_structured(psa_variable, data_array)
 
                     # save raw data
-                    self._write_psa_data(psa_variable, data_array)
+                    self._save_psa_data(psa_variable, data_array)
 
                 # time series
                 elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
@@ -163,7 +160,7 @@ class PsaDataset:
                         self.build_contours_structured(psa_variable, data_array, date)
 
                         # save raw data
-                        self._write_psa_data(psa_variable, data_array, date)
+                        self._save_psa_data(psa_variable, data_array, date)
 
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
@@ -172,7 +169,7 @@ class PsaDataset:
                 for date in self.psa_manifest_dataset.nsem.dates:
                     data_array = self.dataset.sel(time=date)[variable]
                     # save raw data
-                    self._write_psa_data(psa_variable, data_array, date)
+                    self._save_psa_data(psa_variable, data_array, date)
 
             psa_variable.save()
 
