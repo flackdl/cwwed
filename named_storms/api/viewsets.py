@@ -19,6 +19,7 @@ from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter
@@ -33,7 +34,7 @@ from named_storms.tasks import (
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -165,7 +166,7 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
-    serializer_class = None
+    serializer_class = NsemPsaTimeSeriesSerializer
 
     POINT_DISTANCE = 500  # meters
 
@@ -230,7 +231,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         # include data grouped by variable
         for variable in variables:
             result = {
-                'variable': NsemPsaVariableSerializer(variable).data,
+                'variable': variable,
                 'values': [],
             }
             for date in self.nsem.dates:
@@ -243,7 +244,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         if request.query_params.get('export') == 'csv':
             return self._as_csv(results, lat, lon)
 
-        return Response(results)
+        return Response(self.serializer_class(results, many=True).data)
 
 
 class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
@@ -251,7 +252,10 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     #   - expects to be nested under a NamedStormViewSet detail
     #   - returns geojson results
     queryset = NsemPsaData.objects.all()  # defined in list()
-    serializer_class = None
+
+    def get_serializer_class(self):
+        # TODO - define serializer for api docs
+        return BaseSerializer
 
     def list(self, request, *args, date=None, **kwargs):
 
@@ -307,8 +311,7 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_serializer_class(self):
-        # required placeholder because this class isn't using a serializer
-        from rest_framework.serializers import BaseSerializer
+        # TODO - define serializer for api docs
         return BaseSerializer
 
     def get_queryset(self):

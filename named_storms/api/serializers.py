@@ -224,3 +224,8 @@ class NsemPsaDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsaData
         fields = '__all__'
+
+
+class NsemPsaTimeSeriesSerializer(serializers.Serializer):
+    variable = NsemPsaVariableSerializer()
+    values = serializers.ListField(child=serializers.FloatField())
