@@ -19,7 +19,7 @@ from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
-from rest_framework.serializers import BaseSerializer
+from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter
@@ -255,7 +255,7 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
 
     def get_serializer_class(self):
         # TODO - define serializer for api docs
-        return BaseSerializer
+        return Serializer
 
     def list(self, request, *args, date=None, **kwargs):
 
@@ -301,7 +301,7 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     public=True,
     max_age=3600,
 ), name='dispatch')
-class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
+class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     # Named Storm Event Model PSA Geo ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
     #   - returns geojson results
@@ -312,7 +312,7 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
 
     def get_serializer_class(self):
         # TODO - define serializer for api docs
-        return BaseSerializer
+        return Serializer
 
     def get_queryset(self):
         """

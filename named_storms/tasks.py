@@ -752,7 +752,7 @@ def cache_psa_geojson_task(storm_id: int):
             scheme=settings.CWWED_SCHEME,
             host=settings.CWWED_HOST,
             port=settings.CWWED_PORT,
-            path=reverse('psa-geojson', args=[storm_id]),
+            path=reverse('psa-contour', args=[storm_id]),
         )
         # request every date of the PSA for time-series variables
         if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:

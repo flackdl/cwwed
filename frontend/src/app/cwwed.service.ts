@@ -134,7 +134,7 @@ export class CwwedService {
   //
 
   public static getPsaVariableGeoUrl(namedStormId: number, variableName: string, date?: string) {
-    const url = `${API_NAMED_STORMS}${namedStormId}/psa/geojson/`;
+    const url = `${API_NAMED_STORMS}${namedStormId}/psa/contour/`;
     const params = {
       nsem_psa_variable: variableName,
     };
