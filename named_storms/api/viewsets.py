@@ -182,8 +182,8 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
                     self.nsem.dates[i],
                     lat,
                     lon,
-                    result['variable']['name'],
-                    result['variable']['units'],
+                    result['variable'].name,
+                    result['variable'].units,
                     value,
                 ])
 
