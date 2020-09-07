@@ -164,6 +164,9 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 
 
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Time Series
+    """
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
     serializer_class = NsemPsaTimeSeriesSerializer
@@ -248,9 +251,12 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
 
 class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Wind Barbs
+    """
     # Named Storm Event Model PSA Wind Barbs ViewSet
-    #   - expects to be nested under a NamedStormViewSet detail
-    #   - returns geojson results
+    # - expects to be nested under a NamedStormViewSet detail
+    # - returns geojson results
     queryset = NsemPsaData.objects.all()  # defined in list()
 
     def get_serializer_class(self):
@@ -302,10 +308,14 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     max_age=3600,
 ), name='dispatch')
 class NsemPsaContourViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Contours
+    """
     # Named Storm Event Model PSA Geo ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
     #   - returns geojson results
 
+    queryset = NsemPsaContour.objects.all()
     filterset_class = NsemPsaContourFilter
     pagination_class = None
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
