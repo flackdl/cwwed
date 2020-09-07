@@ -3,6 +3,9 @@ import logging
 from datetime import datetime
 from io import StringIO
 
+import geopandas
+from shapely import wkt
+from shapely.geometry import Point
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import matplotlib.cm
@@ -21,6 +24,8 @@ logger = logging.getLogger('cwwed')
 
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
+
+NULL_REPRESENT = r'\N'
 
 
 class PsaDataset:
@@ -58,9 +63,8 @@ class PsaDataset:
             NsemPsaData.nsem_psa_variable.field.attname,
             NsemPsaData.point.field.attname,
             NsemPsaData.value.field.attname,
+            NsemPsaData.date.field.attname,
         ]
-        if date is not None:
-            columns.append(NsemPsaData.date.field.attname)
 
         # use default database connection
         with connections['default'].cursor() as cursor:
@@ -72,7 +76,7 @@ class PsaDataset:
             df = df.dropna()
 
             # include empty date column placeholder if it doesn't exist
-            if 'time' not in df:
+            if date is None:
                 df['time'] = None
 
             # add psa variable column
@@ -83,24 +87,29 @@ class PsaDataset:
 
             # coordinates are individual columns so zip them together
             if set(df.columns).issuperset(['lat', 'lon']):
-                df['point'] = list(map(lambda p: f'POINT ({p[1]} {p[0]})', list(zip(df['lat'], df['lon']))))
+                df['point'] = list(map(lambda p: Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
             # coordinates are a pandas MultiIndex so we can directly map them to points
             elif set(df.index.names).issuperset(['lat', 'lon']):
-                df['point'] = df.index.map(lambda p: f'POINT ({p[1]} {p[0]})')
+                df['point'] = df.index.map(lambda p: Point(p[1], p[0]))
             else:
                 raise Exception('Expected lat and lon coordinates either as index or columns')
 
-            # reorder df columns
-            df = df[['psa_variable_id', 'point', psa_variable.name, 'time']]
+            # create geopandas dataframe and filter to storm's geo
+            gdf = geopandas.GeoDataFrame(df)
+            gdf = gdf.set_geometry('point')
+            gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
+
+            # reorder gdf columns
+            gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
 
             with StringIO() as f:
 
                 # write csv results to file-like object
-                df.to_csv(f, header=False, index=False)
+                gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
                 f.seek(0)  # set file read position back to beginning
 
                 # copy data into table using postgres COPY feature
-                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',')
+                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',', null=NULL_REPRESENT)
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -221,26 +230,6 @@ class PsaDataset:
                 value=result['value'],
                 color=result['color'],
             ).save()
-
-    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray, dt: datetime):
-
-        logger.info('building barbs at {}'.format(dt))
-
-        for i in range(len(wind_directions)):
-            for j, direction in enumerate(wind_directions[i]):
-                if np.ma.is_masked(direction):
-                    continue
-                point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
-                NsemPsaContour(
-                    nsem_psa_variable=nsem_psa_variable,
-                    date=dt,
-                    geo=point,
-                    value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
-                    meta={
-                        'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
-                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREES},
-                    }
-                ).save()
 
     def color_bar_values(self, z_min: float, z_max: float):
         # build color bar values

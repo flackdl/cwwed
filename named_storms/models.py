@@ -371,7 +371,6 @@ class NsemPsaContour(models.Model):
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
     value = models.FloatField()
-    meta = fields.JSONField(default=dict, blank=True)
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
     def __str__(self):
