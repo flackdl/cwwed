@@ -749,13 +749,13 @@ export class PsaComponent implements OnInit {
           const variableName = feature.get('name');
           const variableDataType = feature.get('data_type');
           // append 'Max' if it's a max-values type
-          const variableDisplayName = `${feature.get('display_name')} ${variableDataType === 'max-values' ? ' Max' : ''}`;
+          const variableDisplayName = `${feature.get('display_name')} ${variableDataType === 'max-values' ? ' (Max)' : ''}`;
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnits = feature.get('units');
 
           // find feature's matching psa variable
           const psaVariable = _.find(this.psaVariables, (variable) => {
-            return variable.name === variableName && variable.data_type === variableDataType;
+            return variable.name === variableName;
           });
 
           if (psaVariable) {
