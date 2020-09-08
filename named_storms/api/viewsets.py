@@ -29,7 +29,7 @@ from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
     email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa_task,
-    email_psa_ingested_task, cache_psa_geojson_task,
+    email_psa_ingested_task, cache_psa_contour_task,
 )
 from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
 from named_storms.api.serializers import (
@@ -118,7 +118,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             # execute these final tasks in parallel
             group(
                 # cache geo json for this psa
-                cache_psa_geojson_task.si(nsem_psa.named_storm_id),
+                cache_psa_contour_task.si(nsem_psa.named_storm_id),
                 # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
                 extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
             ),

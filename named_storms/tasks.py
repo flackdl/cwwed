@@ -734,9 +734,9 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
 
 
 @app.task(**TASK_ARGS)
-def cache_psa_geojson_task(storm_id: int):
+def cache_psa_contour_task(storm_id: int):
     """
-    Automatically creates cached responses for a storm's PSA geojson results by crawling every api endpoint
+    Automatically creates cached responses for a storm's PSA contour results by crawling every api endpoint
     """
 
     nsem = NsemPsa.get_last_valid_psa(storm_id=storm_id)  # type: NsemPsa
@@ -757,7 +757,7 @@ def cache_psa_geojson_task(storm_id: int):
         # request every date of the PSA for time-series variables
         if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
             data = {
-                'nsem_psa_variable': psa_variable.id
+                'nsem_psa_variable': psa_variable.name,
             }
             for nsem_date in nsem.dates:  # type: datetime
                 data['date'] = nsem_date.strftime('%Y-%m-%dT%H:%M:%SZ')  # uses "Z" for zulu/UTC
@@ -768,7 +768,7 @@ def cache_psa_geojson_task(storm_id: int):
         # request once for max-values variable
         elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
             data = {
-                'nsem_psa_variable': psa_variable.id
+                'nsem_psa_variable': psa_variable.name,
             }
             r = requests.get(url, data)
             logger.info('Cached {} with status {}'.format(r.url, r.status_code))
