@@ -496,6 +496,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     create_directory(tmp_user_export_path)
 
     # netcdf/csv - extract low level data from netcdf files
+    # TODO - extract data from NsemPsaData now that we're storing every data point
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
@@ -621,7 +622,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # only return the export's bbox intersection
             # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsacontour_set.filter(**data_kwargs)
-            qs = qs.values(*['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
+            qs = qs.values(*[
+                'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name',
+                'nsem_psa_variable__units', 'nsem_psa_variable__data_type',
+            ])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
