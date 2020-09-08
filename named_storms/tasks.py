@@ -24,6 +24,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
@@ -31,7 +32,7 @@ from named_storms.data.processors import ProcessorData
 from named_storms.psa import PsaDataset
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
-    NsemPsaData, NsemPsaVariable, NamedStormCoveredDataSnapshot)
+    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot)
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -583,13 +584,13 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             if psa_geom_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
                 kwargs['date'] = nsem_psa_user_export.date_filter
 
-            qs = NsemPsaData.objects.filter(**kwargs)
+            qs = NsemPsaContour.objects.filter(**kwargs)
             data_ids = [r['id'] for r in qs.values('id')]
 
             # group all intersecting geometries together by value and clip the result using the export's bbox intersection
             # also, it's necessary to finally cast to CharField for GeoPandas
             # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
-            qs = NsemPsaData.objects.filter(id__in=data_ids)
+            qs = NsemPsaContour.objects.filter(id__in=data_ids)
             qs = qs.values('value')
             qs = qs.annotate(
                 geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
@@ -619,8 +620,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # group all intersecting geometries together by variable & value and
             # only return the export's bbox intersection
             # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
-            qs = psa_variable.nsempsadata_set.filter(**data_kwargs)
-            qs = qs.values(*['value', 'meta', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
+            qs = psa_variable.nsempsacontour_set.filter(**data_kwargs)
+            qs = qs.values(*['value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name', 'nsem_psa_variable__units'])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
@@ -751,7 +752,7 @@ def cache_psa_geojson_task(storm_id: int):
             scheme=settings.CWWED_SCHEME,
             host=settings.CWWED_HOST,
             port=settings.CWWED_PORT,
-            path=reverse('psa-geojson', args=[storm_id]),
+            path=reverse('psa-contour', args=[storm_id]),
         )
         # request every date of the PSA for time-series variables
         if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
@@ -792,6 +793,12 @@ def ingest_nsem_psa_task(nsem_psa_id):
     for dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
         psa_dataset.ingest()
+
+    # save psa as processed
+    nsem_psa.processed = True
+    nsem_psa.date_processed = timezone.now()
+    nsem_psa.save()
+
     logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
 
 

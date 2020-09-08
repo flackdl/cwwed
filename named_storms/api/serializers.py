@@ -1,4 +1,3 @@
-import os
 import logging
 from django.conf import settings
 from django.contrib.auth.models import User
@@ -7,7 +6,7 @@ from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import (
     NamedStorm, NamedStormCoveredData, CoveredData, NsemPsa, CoveredDataProvider,
-    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
+    NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot, NsemPsaData)
 from named_storms.utils import get_opendap_url_nsem, get_opendap_url_covered_data_snapshot
 
 logger = logging.getLogger('cwwed')
@@ -215,3 +214,18 @@ class NsemPsaUserExportSerializer(serializers.ModelSerializer):
     class Meta:
         model = NsemPsaUserExport
         fields = '__all__'
+
+
+class NsemPsaDataSerializer(serializers.ModelSerializer):
+    """
+    Named Storm Event Model PSA Data Serializer
+    """
+
+    class Meta:
+        model = NsemPsaData
+        fields = '__all__'
+
+
+class NsemPsaTimeSeriesSerializer(serializers.Serializer):
+    variable = NsemPsaVariableSerializer()
+    values = serializers.ListField(child=serializers.FloatField())

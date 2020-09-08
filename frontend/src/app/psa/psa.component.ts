@@ -4,6 +4,8 @@ import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
+import Point from 'ol/geom/Point';
+import WKT from 'ol/format/WKT';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
 import {defaults as defaultControls, FullScreen} from 'ol/control.js';
@@ -40,6 +42,8 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
 
+  public DEFAULT_ZOOM_LEVEL = 7;
+
   public mapLayerOptions = [
     {name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD},
     {name: 'MapBox Streets', value: this.MAP_LAYER_MAPBOX_STREETS},
@@ -62,6 +66,7 @@ export class PsaComponent implements OnInit {
   public availableMapLayers: {
     variable: any,
     layer: VectorLayer,
+    isLoading: boolean,
   }[];
   public popupOverlay: Overlay;
   public tooltipOverlay: Overlay;
@@ -218,6 +223,14 @@ export class PsaComponent implements OnInit {
     return Boolean(document['fullscreenElement']);
   }
 
+  public isLoadingVariable(psaVariable) {
+    const variableLayer = this.availableMapLayers.find((variableLayer) => {
+      return variableLayer['variable'].name === psaVariable.name;
+    });
+    // return if it's enabled and still loading
+    return (this.form.get('variables').value[psaVariable.name] && variableLayer) ? variableLayer.isLoading : false;
+  }
+
   protected _listenForInputChanges() {
 
     // update map data opacity
@@ -232,6 +245,7 @@ export class PsaComponent implements OnInit {
         // update layers
         this.availableMapLayers.forEach((availableLayer) => {
           if (availableLayer['layer']) {
+            availableLayer['isLoading'] = true;
             // wind barbs
             if (availableLayer['variable']['geo_type'] === 'wind-barb') {
               availableLayer['layer'].setStyle((feature) => {
@@ -280,21 +294,14 @@ export class PsaComponent implements OnInit {
         this.availableMapLayers.forEach((availableLayer) => {
           // variable toggled off so remove layer from map & available layers
           if (!variablesValues[availableLayer['variable']['name']]) {
-            // verify it's populated
+            // verify it's populated before trying to remove it
             if (availableLayer['layer']) {
-              this.map.removeLayer(availableLayer['layer']);
-              delete availableLayer['layer'];
+              this._removeVariableVectorLayer(availableLayer)
             }
           } else {  // variable toggled on
             // layer isn't present so add it
             if (!availableLayer['layer']) {
-              availableLayer['layer'] = new VectorLayer({
-                style: (feature) => {
-                  return availableLayer['variable']['geo_type'] === 'wind-barb' ? this._getWindBarbLayerStyle(feature) : this._getContourLayerStyle(feature);
-                },
-                source: this._getVariableVectorSource(availableLayer['variable']),
-              });
-              this.map.addLayer(availableLayer['layer']);
+              this._addVariableVectorLayer(availableLayer)
             }
           }
         })
@@ -324,9 +331,10 @@ export class PsaComponent implements OnInit {
 
       this.availableMapLayers.forEach((mapLayer) => {
         if (mapLayer.layer && this.form.get('variables').get(mapLayer.variable.name).value) {
+          updated = true;
+          mapLayer.isLoading = true;
           mapLayer.layer.setSource(this._getVariableVectorSource(mapLayer.variable));
           this.map.addLayer(mapLayer.layer);
-          updated = true;
         }
       });
 
@@ -337,10 +345,53 @@ export class PsaComponent implements OnInit {
     });
   }
 
+  protected _addVariableVectorLayer(availableLayer) {
+    availableLayer['layer'] = new VectorLayer({
+      style: (feature) => {
+        return availableLayer['variable']['geo_type'] === 'wind-barb' ? this._getWindBarbLayerStyle(feature) : this._getContourLayerStyle(feature);
+      },
+      source: this._getVariableVectorSource(availableLayer['variable']),
+    });
+    this.map.addLayer(availableLayer['layer']);
+  }
+
+  protected _removeVariableVectorLayer(availableLayer) {
+    this.map.removeLayer(availableLayer['layer']);
+    delete availableLayer['layer'];
+  }
+
+  protected _refreshWindBarbs() {
+    const variableLayer = this.availableMapLayers.find((variableLayer) => {
+      return variableLayer['variable'].geo_type == 'wind-barb';
+    });
+    if (variableLayer && this.form.get('variables').value['wind_direction']) {
+      variableLayer.isLoading = true;
+      this._removeVariableVectorLayer(variableLayer);
+      this._addVariableVectorLayer(variableLayer);
+    }
+  }
+
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
-    const url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.id, date);
+    let url;
+
+    // special handling for wind barbs
+    if (psaVariable.geo_type === 'wind-barb') {
+      // query the density of wind barb points depending on zoom level
+      const centerCoords = this.map ? toLonLat(this.map.getView().getCenter()) : this._getDefaultCenter()
+      const center = new Point(centerCoords);
+      const centerWKT = new WKT().writeGeometry(center);
+      const zoom = this.map ? this.map.getView().getZoom() : this._getDefaultZoom();
+      let step = 1;
+      if (zoom <= 11) {
+        step = 10;
+      }
+      url = CwwedService.getPsaVariableWindBarbsUrl(this.namedStorm.id, psaVariable.name, date, centerWKT, step);
+    } else {
+      url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.name, date);
+    }
+
     const format = new GeoJSON();
 
     const vectorSource = new VectorSource({
@@ -367,18 +418,27 @@ export class PsaComponent implements OnInit {
         xhr.send();
       },
     });
+
+    // listen for layer ready
+    let sourceListener = vectorSource.on('change', () => {
+      if (vectorSource.getState() == 'ready') {
+        const variableLayer = this.availableMapLayers.find((variableLayer) => {
+          return variableLayer['variable'].name === psaVariable.name;
+        });
+        if (variableLayer) {
+          variableLayer.isLoading = false;
+        }
+        vectorSource.un('change', sourceListener);
+      }
+    });
+
     return vectorSource;
   }
 
   protected _getWindBarbLayerStyle(feature): Style {
-    const zoom = this.map.getView().getZoom();
-
     let icon;
-
-    // the speed is stored in the feature's "meta" key
-    const meta = feature.get('meta') || {};
-    const speedData = meta['speed'] || {};
-    const knots = (speedData['value'] || 0) * 1.94384;
+    const zoom = this.map.getView().getZoom();
+    const knots = (feature.get('wind_speed_value') || 0) * 1.94384;
 
     // https://commons.wikimedia.org/wiki/Wind_speed
     if (_.inRange(knots, 0, 2)) {
@@ -415,22 +475,28 @@ export class PsaComponent implements OnInit {
       icon = '/assets/psa/50px-Symbol_wind_speed_15.svg.png';
     }
 
-    const directionData = meta.direction || {};
+    const direction = feature.get('wind_direction_value') || {};
 
     let scale = 1;
-    if (zoom === 10) {
+    if (zoom >= 13) {
+      scale = 1;
+    } else if (zoom >= 12 && zoom < 13) {
       scale = .7;
-    } else if (zoom === 9) {
+    } else if (zoom >= 11 && zoom < 12) {
+      scale = .6;
+    } else if (zoom >= 10 && zoom < 11) {
       scale = .5;
-    } else if (zoom === 8) {
-      scale = .3;
-    } else if (zoom <= 7) {
-      scale = .15;
+    } else if (zoom >= 9 && zoom < 10) {
+      scale = .4;
+    } else if (zoom >= 8 && zoom < 9) {
+      scale = .2;
+    } else if (zoom < 8) {
+      scale = .1;
     }
 
     return new Style({
       image: new Icon({
-        rotation: -(directionData.value * Math.PI / 180),  // unit is degrees but expects radians, rotates clockwise
+        rotation: -(direction * Math.PI / 180),  // unit is degrees but expects radians; rotates clockwise
         src: icon,
         opacity: this.form.get('opacity').value,
         scale: scale,
@@ -519,11 +585,12 @@ export class PsaComponent implements OnInit {
       return {
         variable: variable,
         layer: layer,
+        isLoading: true,
       }
     });
 
-    let zoom = 7;
-    let center = fromLonLat(<any>this.namedStorm.center_coords);
+    let zoom = this._getDefaultZoom();
+    let center = this._getDefaultCenter();
 
     if (this.route.snapshot.queryParams['zoom']) {
       zoom = parseFloat(this.route.snapshot.queryParams['zoom']) || zoom;
@@ -609,12 +676,13 @@ export class PsaComponent implements OnInit {
     this.map.addControl(geocoder);
 
     // flag we're finished loading the map
-    this.map.on('rendercomplete', () => {
+    this.map.on('rendercomplete', (x) => {
       this.isLoadingMap = false;
     });
 
     this.map.on('moveend', (event: any) => {
       this._updateNavigationURL();
+      this._refreshWindBarbs();
     });
 
     this.map.on('singleclick', (event) => {
@@ -679,10 +747,11 @@ export class PsaComponent implements OnInit {
         features.forEach((feature) => {
 
           const variableName = feature.get('name');
-          const variableDisplayName = feature.get('display_name');
+          const variableDataType = feature.get('data_type');
+          // append 'Max' if it's a max-values type
+          const variableDisplayName = `${feature.get('display_name')} ${variableDataType === 'max-values' ? ' (Max)' : ''}`;
           const variableValue = this.decimalPipe.transform(feature.get('value'), '1.0-2');
           const variableUnits = feature.get('units');
-          const variableMeta = feature.get('meta') || {};
 
           // find feature's matching psa variable
           const psaVariable = _.find(this.psaVariables, (variable) => {
@@ -692,9 +761,13 @@ export class PsaComponent implements OnInit {
           if (psaVariable) {
             // special handling for wind barbs
             if (psaVariable.geo_type === 'wind-barb') {
-              if (variableMeta['speed'] && variableMeta['direction']) {
-                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableMeta['speed']['value'], '1.0-2')} ${variableMeta['speed']['units']}`;
-                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableMeta['direction']['value'], '1.0-2')} ${variableMeta['direction']['units']}`;
+              const variableWindSpeed = feature.get('wind_speed_value');
+              const variableWindSpeedUnits = feature.get('wind_speed_units');
+              const variableWindDirection = feature.get('wind_direction_value');
+              const variableWindDirectionUnits = feature.get('wind_direction_units');
+              if (variableWindSpeed && variableWindDirection) {
+                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableWindSpeed, '1.0-2')} ${variableWindSpeedUnits}`;
+                currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableWindDirection, '1.0-2')} ${variableWindDirectionUnits}`;
               }
             } else {
               currentFeature[variableDisplayName] = `${variableValue} ${variableUnits}`;
@@ -822,5 +895,12 @@ export class PsaComponent implements OnInit {
 
     // add to map
     this.map.addInteraction(this._extentInteraction);
+  }
+
+  protected _getDefaultZoom() {
+    return this.DEFAULT_ZOOM_LEVEL;
+  }
+  protected _getDefaultCenter() {
+    return fromLonLat(<any>this.namedStorm.center_coords);
   }
 }

@@ -1,11 +1,13 @@
 import csv
 import logging
+import geojson
 from celery import chain, group
-from django.contrib.gis.db.models.functions import Intersection
+from django.contrib.gis.db.models.functions import Intersection, Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
 from django.utils.cache import get_cache_key, learn_cache_key
+from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.contrib.gis import geos
@@ -17,20 +19,22 @@ from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
+from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 
-from named_storms.api.filters import NsemPsaDataFilter
+from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter
 from named_storms.api.mixins import UserReferenceViewSetMixin
+from named_storms.sql import wind_barbs_query
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
     email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa_task,
     email_psa_ingested_task, cache_psa_geojson_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaData, NsemPsaUserExport, NamedStormCoveredDataSnapshot
+from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -160,13 +164,14 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 
 
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Time Series
+    """
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
+    serializer_class = NsemPsaTimeSeriesSerializer
 
-    def get_serializer_class(self):
-        # required placeholder because this class isn't using a serializer
-        from rest_framework.serializers import BaseSerializer
-        return BaseSerializer
+    POINT_DISTANCE = 500  # meters
 
     def _as_csv(self, results, lat, lon):
         response = HttpResponse(content_type='text/csv')
@@ -180,8 +185,8 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
                     self.nsem.dates[i],
                     lat,
                     lon,
-                    result['variable']['name'],
-                    result['variable']['units'],
+                    result['variable'].name,
+                    result['variable'].units,
                     value,
                 ])
 
@@ -194,20 +199,29 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
             lat = float(lat)
             lon = float(lon)
         except ValueError:
-            raise exceptions.NotFound('lat & lon should be floats')
+            raise exceptions.ValidationError('lat & lon should be floats')
 
-        point = geos.Point(x=lon, y=lat)
+        point = geos.Point(x=lon, y=lat, srid=4326)
 
-        fields_order = ('nsem_psa_variable__name', 'date')
+        fields_order = ['nsem_psa_variable__name', 'date']
         fields_values = ('nsem_psa_variable__name', 'value', 'date')
 
-        # time-series contours covering supplied point
-        time_series_query = NsemPsaData.objects.filter(
-            nsem_psa_variable__data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
-            nsem_psa_variable__geo_type=NsemPsaVariable.GEO_TYPE_POLYGON,
-            geo__covers=point,
+        # time-series data nearest supplied point per variable/date
+        time_series_query = NsemPsaData.objects.annotate(
+            distance=Distance('point', point),
+        ).distinct(
+            *fields_order
+        ).filter(
+            point__dwithin=(point, self.POINT_DISTANCE),
             nsem_psa_variable__nsem=self.nsem,
-        ).order_by(*fields_order).only(*fields_values).values(*fields_values)
+        ).order_by(
+            # sort by ascending distance to get the first result in each group (i.e the nearest to supplied point)
+            *fields_order + ['distance']
+        ).only(
+            *fields_values
+        ).values(
+            *fields_values
+        )
 
         results = []
 
@@ -220,7 +234,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         # include data grouped by variable
         for variable in variables:
             result = {
-                'variable': NsemPsaVariableSerializer(variable).data,
+                'variable': variable,
                 'values': [],
             }
             for date in self.nsem.dates:
@@ -233,7 +247,59 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         if request.query_params.get('export') == 'csv':
             return self._as_csv(results, lat, lon)
 
-        return Response(results)
+        return Response(self.serializer_class(results, many=True).data)
+
+
+class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Wind Barbs
+    """
+    # Named Storm Event Model PSA Wind Barbs ViewSet
+    # - expects to be nested under a NamedStormViewSet detail
+    # - returns geojson results
+    queryset = NsemPsaData.objects.all()  # defined in list()
+
+    def get_serializer_class(self):
+        # TODO - define serializer for api docs
+        return Serializer
+
+    def list(self, request, *args, date=None, **kwargs):
+
+        date = parse_datetime(date or '')
+        if not date:
+            raise exceptions.ValidationError({'date': ['date is required (format: 2018-09-14T01:00:00Z)']})
+
+        try:
+            step = int(request.query_params.get('step') or 1)
+        except ValueError:
+            raise exceptions.ValidationError({'step': ['step must be an integer']})
+
+        try:
+            center = geos.fromstr(request.query_params.get('center'))
+        except Exception:
+            logger.warning('Invalid center {}'.format(request.query_params.get('center')))
+            raise exceptions.ValidationError({'center': ['center point must be WKT']})
+
+        results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step)
+
+        # build geojson features
+        features = []
+        for result in results:
+            point = geos.fromstr(result[0])  # type: geos.Point
+            features.append(
+                geojson.Feature(
+                    geometry=geojson.Point((point.x, point.y)),
+                    properties={
+                        'name': 'wind_direction',
+                        'wind_direction_value': result[1],
+                        'wind_direction_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'units'),
+                        'wind_speed_value': result[2],
+                        'wind_speed_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'units'),
+                    }
+                ),
+            )
+
+        return Response(geojson.FeatureCollection(features=features))
 
 
 @method_decorator(gzip_page, name='dispatch')
@@ -241,28 +307,31 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     public=True,
     max_age=3600,
 ), name='dispatch')
-class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
+class NsemPsaContourViewSet(NsemPsaBaseViewSet):
+    """
+    PSA Contours
+    """
     # Named Storm Event Model PSA Geo ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
     #   - returns geojson results
 
-    filterset_class = NsemPsaDataFilter
+    queryset = NsemPsaContour.objects.all()
+    filterset_class = NsemPsaContourFilter
     pagination_class = None
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_serializer_class(self):
-        # required placeholder because this class isn't using a serializer
-        from rest_framework.serializers import BaseSerializer
-        return BaseSerializer
+        # TODO - define serializer for api docs
+        return Serializer
 
     def get_queryset(self):
         """
         - group all geometries together (st_collect) by same variable & value
         - clip psa to storm's geo (st_intersection)
         """
-        qs = NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+        qs = NsemPsaContour.objects.filter(nsem_psa_variable__nsem=self.nsem)
         qs = qs.values(*[
-            'value', 'meta', 'color', 'date', 'nsem_psa_variable__name',
+            'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__data_type',
             'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
         ])
         qs = qs.annotate(geom=Intersection(Collect(Cast('geo', GeometryField())), self.storm.geo))
@@ -292,26 +361,39 @@ class NsemPsaGeoViewSet(NsemPsaBaseViewSet):
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
-        geojson = get_geojson_feature_collection_from_psa_qs(queryset)
-        response = HttpResponse(geojson, content_type='application/json')
+        geo_json = get_geojson_feature_collection_from_psa_qs(queryset)
+        response = HttpResponse(geo_json, content_type='application/json')
 
         # cache result
         cache_key = learn_cache_key(
             request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
-        cache.set(cache_key, geojson, self.CACHE_TIMEOUT)
+        cache.set(cache_key, geo_json, self.CACHE_TIMEOUT)
 
         return response
 
     def _validate(self):
 
         # verify the requested variable exists
-        nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(id=self.request.query_params['nsem_psa_variable'])
+        nsem_psa_variable_query = self.nsem.nsempsavariable_set.filter(name=self.request.query_params['nsem_psa_variable'])
         if not nsem_psa_variable_query.exists():
             raise exceptions.ValidationError('No data exists for variable "{}"'.format(self.request.query_params['nsem_psa_variable']))
 
         # verify if the variable requires a date filter
         if nsem_psa_variable_query[0].data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES and not self.request.query_params.get('date'):
             raise exceptions.ValidationError({'date': ['required for this type of variable']})
+
+
+@method_decorator(gzip_page, name='dispatch')
+class NsemPsaDataViewSet(NsemPsaBaseViewSet):
+    # Named Storm Event Model PSA Data ViewSet
+    #   - expects to be nested under a NamedStormViewSet detail
+
+    filterset_class = NsemPsaDataFilter
+    serializer_class = NsemPsaDataSerializer
+
+    def get_queryset(self):
+        # filter by nested nsem
+        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
 
 
 class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet):

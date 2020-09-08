@@ -230,7 +230,7 @@ def get_geojson_feature_collection_from_psa_qs(queryset: QuerySet) -> str:
                 "display_name": data['nsem_psa_variable__display_name'],
                 "units": data['nsem_psa_variable__units'],
                 "value": data['value'],
-                "meta": data['meta'],
+                "data_type": data['nsem_psa_variable__data_type'],
                 "date": data['date'].isoformat() if data['date'] else None,
                 "fill": data['color'],
                 "stroke": data['color'],

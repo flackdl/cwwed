@@ -352,14 +352,29 @@ class NsemPsaVariable(models.Model):
 
 class NsemPsaData(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
+    # TODO - consider using a unified grid with NsemPsaData having a ManyToManyField here
+    point = models.PointField(geography=True)
+    date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
+    value = models.FloatField()
+
+    def __str__(self):
+        return '{} <data>'.format(self.nsem_psa_variable)
+
+    class Meta:
+        indexes = [
+            Index(fields=['nsem_psa_variable', 'date', 'point']),
+        ]
+
+
+class NsemPsaContour(models.Model):
+    nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
     geo = models.GeometryField(geography=True)
     value = models.FloatField()
-    meta = fields.JSONField(default=dict, blank=True)
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
     def __str__(self):
-        return str(self.nsem_psa_variable)
+        return '{} <contour>'.format(self.nsem_psa_variable)
 
     class Meta:
         indexes = [

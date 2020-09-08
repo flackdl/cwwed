@@ -1,6 +1,11 @@
 import os
 import logging
 from datetime import datetime
+from io import StringIO
+
+import geopandas
+from shapely import wkt
+from shapely.geometry import Point
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import matplotlib.cm
@@ -8,10 +13,10 @@ import pytz
 import xarray as xr
 import numpy as np
 from django.contrib.gis import geos
+from django.db import connections
 from django.conf import settings
-from django.utils import timezone
 
-from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaData
+from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaContour, NsemPsaData
 from named_storms.utils import named_storm_nsem_version_path
 
 
@@ -19,6 +24,8 @@ logger = logging.getLogger('cwwed')
 
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
+
+NULL_REPRESENT = r'\N'
 
 
 class PsaDataset:
@@ -28,7 +35,9 @@ class PsaDataset:
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
 
-    def _open_dataset(self):
+    def _toggle_dataset(self):
+        # close and reopen for memory saving purposes
+
         # close if already open
         if self.dataset:
             self.dataset.close()
@@ -38,6 +47,69 @@ class PsaDataset:
             named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
             self.psa_manifest_dataset.path)
         )
+
+    def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
+        """
+        manually copy data into postgres via it's COPY mechanism which is much more efficient
+        than using django's orm (even bulk_create) since it has to serialize every object
+        https://www.postgresql.org/docs/9.4/sql-copy.html
+        https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+        """
+
+        logger.info('saving psa data for {} at {}'.format(psa_variable, date))
+
+        # define database columns to copy to
+        columns = [
+            NsemPsaData.nsem_psa_variable.field.attname,
+            NsemPsaData.point.field.attname,
+            NsemPsaData.value.field.attname,
+            NsemPsaData.date.field.attname,
+        ]
+
+        # use default database connection
+        with connections['default'].cursor() as cursor:
+
+            # create pandas dataframe for csv output
+            df = da.to_dataframe()
+
+            # drop nulls
+            df = df.dropna()
+
+            # include empty date column placeholder if it doesn't exist
+            if date is None:
+                df['time'] = None
+
+            # add psa variable column
+            df['psa_variable_id'] = psa_variable.id
+
+            # add point column in wkt format using the lat/lon coordinates and handle
+            # cases where the lat/lon are either indexes or column values
+
+            # coordinates are individual columns so zip them together
+            if set(df.columns).issuperset(['lat', 'lon']):
+                df['point'] = list(map(lambda p: Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
+            # coordinates are a pandas MultiIndex so we can directly map them to points
+            elif set(df.index.names).issuperset(['lat', 'lon']):
+                df['point'] = df.index.map(lambda p: Point(p[1], p[0]))
+            else:
+                raise Exception('Expected lat and lon coordinates either as index or columns')
+
+            # create geopandas dataframe and filter to storm's geo
+            gdf = geopandas.GeoDataFrame(df)
+            gdf = gdf.set_geometry('point')
+            gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
+
+            # reorder gdf columns
+            gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
+
+            with StringIO() as f:
+
+                # write csv results to file-like object
+                gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
+                f.seek(0)  # set file read position back to beginning
+
+                # copy data into table using postgres COPY feature
+                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',', null=NULL_REPRESENT)
 
     @staticmethod
     def datetime64_to_datetime(dt64):
@@ -49,8 +121,8 @@ class PsaDataset:
     def ingest(self):
         for variable in self.psa_manifest_dataset.variables:
 
-            # close and reopen dataset
-            self._open_dataset()
+            # close and reopen dataset for memory cleanup
+            self._toggle_dataset()
 
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
             logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
@@ -68,6 +140,7 @@ class PsaDataset:
 
             # deleting any existing psa data in debug/development only
             if settings.DEBUG:
+                psa_variable.nsempsacontour_set.all().delete()
                 psa_variable.nsempsadata_set.all().delete()
 
             # contours
@@ -77,39 +150,37 @@ class PsaDataset:
                 if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
                     # use the first time value if there's a time dimension at all
                     if 'time' in self.dataset[variable].dims:
-                        values = self.dataset[variable][0].values
+                        data_array = self.dataset[variable][0]
                     else:
-                        values = self.dataset[variable].values
-                    data_array = xr.DataArray(values, name=variable)
+                        data_array = self.dataset[variable]
+
+                    # save contours
                     self.build_contours_structured(psa_variable, data_array)
+
+                    # save raw data
+                    self._save_psa_data(psa_variable, data_array)
 
                 # time series
                 elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
                     for date in self.psa_manifest_dataset.nsem.dates:
-                        values = self.dataset.sel(time=date)[variable].values
-                        data_array = xr.DataArray(values, name=variable)
+                        data_array = self.dataset.sel(time=date)[variable]
+
+                        # save contours
                         self.build_contours_structured(psa_variable, data_array, date)
+
+                        # save raw data
+                        self._save_psa_data(psa_variable, data_array, date)
+
                 psa_variable.color_bar = self.color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
-            # wind barbs
-            elif variable == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION and psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_WIND_BARB:
-
+            # wind barbs - only saving point data with wind directions
+            elif psa_variable.name == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION:
                 for date in self.psa_manifest_dataset.nsem.dates:
-
-                    # masked values and subset so we're not displaying every single point
-                    subset = 10
-                    wind_speeds = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED][::subset, ::subset])
-                    wind_directions = np.array(self.dataset.sel(time=date)[NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION][::subset, ::subset])
-                    xi = np.array(self.dataset['lon'][::subset, ::subset])
-                    yi = np.array(self.dataset['lat'][::subset, ::subset])
-
-                    self.build_wind_barbs(psa_variable, wind_directions, wind_speeds, xi, yi, date)
+                    data_array = self.dataset.sel(time=date)[variable]
+                    # save raw data
+                    self._save_psa_data(psa_variable, data_array, date)
 
             psa_variable.save()
-
-        self.psa_manifest_dataset.nsem.processed = True
-        self.psa_manifest_dataset.nsem.date_processed = timezone.now()
-        self.psa_manifest_dataset.nsem.save()
 
         logger.info('PSA Dataset {} has been successfully ingested'.format(self.psa_manifest_dataset))
 
@@ -152,33 +223,13 @@ class PsaDataset:
 
         # build new psa results from contour results
         for result in results:
-            NsemPsaData(
+            NsemPsaContour(
                 nsem_psa_variable=nsem_psa_variable,
                 date=dt,
                 geo=result['polygon'],
                 value=result['value'],
                 color=result['color'],
             ).save()
-
-    def build_wind_barbs(self, nsem_psa_variable: NsemPsaVariable, wind_directions: np.ndarray, wind_speeds: np.ndarray, xi: np.ndarray, yi: np.ndarray, dt: datetime):
-
-        logger.info('building barbs at {}'.format(dt))
-
-        for i in range(len(wind_directions)):
-            for j, direction in enumerate(wind_directions[i]):
-                if np.ma.is_masked(direction):
-                    continue
-                point = geos.Point(float(xi[i][j]), float(yi[i][j]), srid=4326)
-                NsemPsaData(
-                    nsem_psa_variable=nsem_psa_variable,
-                    date=dt,
-                    geo=point,
-                    value=wind_speeds[i][j].astype('float'),  # storing speed here for simpler time-series queries
-                    meta={
-                        'speed': {'value': wind_speeds[i][j].astype('float'), 'units': NsemPsaVariable.UNITS_METERS_PER_SECOND},
-                        'direction': {'value': direction.astype('float'), 'units': NsemPsaVariable.UNITS_DEGREES},
-                    }
-                ).save()
 
     def color_bar_values(self, z_min: float, z_max: float):
         # build color bar values

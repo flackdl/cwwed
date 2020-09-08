@@ -1,7 +1,7 @@
 from django.contrib.gis import admin
 from named_storms.models import (
     NamedStorm, CoveredData, CoveredDataProvider, NamedStormCoveredData, NsemPsa,
-    NamedStormCoveredDataLog, NsemPsaData,
+    NamedStormCoveredDataLog, NsemPsaContour,
     NsemPsaVariable, NsemPsaUserExport, NsemPsaManifestDataset, NamedStormCoveredDataSnapshot)
 
 
@@ -91,8 +91,8 @@ class NsemPsaVariableAdmin(admin.GeoModelAdmin):
         return tuple(filters)
 
 
-@admin.register(NsemPsaData)
-class NsemPsaDataAdmin(admin.GeoModelAdmin):
+@admin.register(NsemPsaContour)
+class NsemPsaContourAdmin(admin.GeoModelAdmin):
     list_display = ('nsem_psa_variable', 'value', 'date')
     list_filter = ('nsem_psa_variable__nsem__named_storm',)
 
