@@ -4,6 +4,7 @@ import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from "../cwwed.service";
 import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
 import { debounceTime, tap } from 'rxjs/operators';
+import { ajax } from 'rxjs/ajax';
 import Point from 'ol/geom/Point';
 import WKT from 'ol/format/WKT';
 import Map from 'ol/Map.js';
@@ -22,6 +23,7 @@ import { DecimalPipe } from "@angular/common";
 import { ChartOptions } from 'chart.js';
 import { ToastrService } from 'ngx-toastr';
 import { GoogleAnalyticsService } from '../google-analytics.service';
+import { Subscription } from "rxjs";
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
@@ -81,6 +83,7 @@ export class PsaComponent implements OnInit {
 
   protected _extentInteraction: ExtentInteraction;
   protected _lineChartDataAll: any[] = [];
+  protected _windBarbRequest: Subscription;
 
   constructor(
     private http: HttpClient,
@@ -227,8 +230,15 @@ export class PsaComponent implements OnInit {
     const variableLayer = this.availableMapLayers.find((variableLayer) => {
       return variableLayer['variable'].name === psaVariable.name;
     });
+    if (!variableLayer) {
+      return false;
+    }
     // return if it's enabled and still loading
-    return (this.form.get('variables').value[psaVariable.name] && variableLayer) ? variableLayer.isLoading : false;
+    return this.isVariableDisplayed(psaVariable.name) ? variableLayer.isLoading : false;
+  }
+
+  public isVariableDisplayed(variableName: string): boolean {
+    return this.form.get('variables').value[variableName];
   }
 
   protected _listenForInputChanges() {
@@ -364,8 +374,14 @@ export class PsaComponent implements OnInit {
     const variableLayer = this.availableMapLayers.find((variableLayer) => {
       return variableLayer['variable'].geo_type == 'wind-barb';
     });
+    // wind barbs are enabled
     if (variableLayer && this.form.get('variables').value['wind_direction']) {
+      // cancel any existing wind barb request
+      if (this._windBarbRequest) {
+        this._windBarbRequest.unsubscribe();
+      }
       variableLayer.isLoading = true;
+      // remove and add the layer
       this._removeVariableVectorLayer(variableLayer);
       this._addVariableVectorLayer(variableLayer);
     }
@@ -374,12 +390,13 @@ export class PsaComponent implements OnInit {
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
     let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
+    const isWindBarbSource = psaVariable.geo_type === 'wind-barb';
     let url;
 
     // special handling for wind barbs
-    if (psaVariable.geo_type === 'wind-barb') {
+    if (isWindBarbSource) {
       // query the density of wind barb points depending on zoom level
-      const centerCoords = this.map ? toLonLat(this.map.getView().getCenter()) : this._getDefaultCenter()
+      const centerCoords = this.map ? toLonLat(this.map.getView().getCenter()) : this._getDefaultCenter();
       const center = new Point(centerCoords);
       const centerWKT = new WKT().writeGeometry(center);
       const zoom = this.map ? this.map.getView().getZoom() : this._getDefaultZoom();
@@ -399,23 +416,22 @@ export class PsaComponent implements OnInit {
       format: format,
       // custom loader to handle errors
       loader: (extent, resolution, projection) => {
-        let xhr = new XMLHttpRequest();
-        xhr.open('GET', url);
-        let onError = () => {
-          this.toastr.error('An unknown error occurred loading map layer');
-          vectorSource.removeLoadedExtent(extent);
-          this.isLoadingMap = false;
-        };
-        xhr.onerror = onError;
-        xhr.onload = () => {
-          if (xhr.status == 200) {
-            const features = format.readFeatures(xhr.responseText, {featureProjection: projection});
+        const request: Subscription = ajax.getJSON(url).subscribe(
+          (data) => {
+            const features = format.readFeatures(data, {featureProjection: projection});
             vectorSource.addFeatures(features);
-          } else {
-            onError();
+          },
+          (error) => {
+            console.error(error);
+            this.toastr.error('An unknown error occurred loading map layer');
+            vectorSource.removeLoadedExtent(extent);
+            this.isLoadingMap = false;
           }
-        };
-        xhr.send();
+        );
+        // save the subscription for wind-barbs to cancel it while the user is zooming/panning around
+        if (isWindBarbSource) {
+          this._windBarbRequest = request;
+        }
       },
     });
 
@@ -765,9 +781,12 @@ export class PsaComponent implements OnInit {
               const variableWindSpeedUnits = feature.get('wind_speed_units');
               const variableWindDirection = feature.get('wind_direction_value');
               const variableWindDirectionUnits = feature.get('wind_direction_units');
-              if (variableWindSpeed && variableWindDirection) {
-                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableWindSpeed, '1.0-2')} ${variableWindSpeedUnits}`;
+              if (variableWindDirection) {
                 currentFeature['Wind Direction'] = `${this.decimalPipe.transform(variableWindDirection, '1.0-2')} ${variableWindDirectionUnits}`;
+              }
+              // only show the wind barb's speed if the regular wind_speed variable isn't already displayed
+              if (!this.isVariableDisplayed('wind_speed') && variableWindSpeed) {
+                currentFeature['Wind Speed'] = `${this.decimalPipe.transform(variableWindSpeed, '1.0-2')} ${variableWindSpeedUnits}`;
               }
             } else {
               currentFeature[variableDisplayName] = `${variableValue} ${variableUnits}`;
