@@ -88,7 +88,7 @@ Connect to remote Postgres:
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
     # create cluster (dev)
-    kops create cluster --master-count 1 --node-count 2 --master-size t2.medium --node-size t2.medium --zones us-east-1a --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    kops create cluster --master-count 1 --node-count 2 --master-size t3.medium --node-size t3.medium --zones us-east-1a --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
     # (if necessary) configure kubectl environment to point at aws cluster
     kops export kubecfg --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state
