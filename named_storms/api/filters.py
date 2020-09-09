@@ -16,17 +16,14 @@ class NsemPsaDataFilterBase(filters.FilterSet):
     def filter_psa_variable(self, queryset, name, value):
         return queryset.filter(nsem_psa_variable__name=value)
 
-    class Meta:
-        fields = {
-            'value': ['exact', 'gt', 'gte', 'lt', 'lte'],
-            'date': ['exact', 'gt', 'gte', 'lt', 'lte']
-        }
-
 
 class NsemPsaContourFilter(NsemPsaDataFilterBase):
     class Meta:
         model = NsemPsaContour
-        fields = NsemPsaDataFilterBase.Meta.fields
+        fields = {
+            'value': ['exact', 'gt', 'gte', 'lt', 'lte'],
+            'date': ['exact']  # only a single date is accepted
+        }
 
 
 class NsemPsaDataFilter(NsemPsaDataFilterBase):
@@ -42,4 +39,7 @@ class NsemPsaDataFilter(NsemPsaDataFilterBase):
 
     class Meta:
         model = NsemPsaData
-        fields = NsemPsaDataFilterBase.Meta.fields
+        fields = {
+            'value': ['exact', 'gt', 'gte', 'lt', 'lte'],
+            'date': ['exact', 'gt', 'gte', 'lt', 'lte']
+        }

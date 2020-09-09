@@ -309,7 +309,10 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
 ), name='dispatch')
 class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     """
-    PSA Contours
+    **required params:**
+
+    - `nsem_psa_variable`
+    - `date`
     """
     # Named Storm Event Model PSA Geo ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
@@ -341,7 +344,7 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     def list(self, request, *args, **kwargs):
 
         # return an empty list if no variable filter is supplied because
-        # we can benefit from the DRF filter being presented in the API view
+        # the query is too expensive and we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
 
@@ -385,6 +388,11 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
 
 @method_decorator(gzip_page, name='dispatch')
 class NsemPsaDataViewSet(NsemPsaBaseViewSet):
+    """
+    **required params:**
+
+    - `nsem_psa_variable`
+    """
     # Named Storm Event Model PSA Data ViewSet
     #   - expects to be nested under a NamedStormViewSet detail
 
@@ -394,6 +402,13 @@ class NsemPsaDataViewSet(NsemPsaBaseViewSet):
     def get_queryset(self):
         # filter by nested nsem
         return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+
+    def list(self, request, *args, **kwargs):
+        # return an empty list if no variable filter is supplied because
+        # the query is too expensive and we can benefit from the DRF filter being presented in the API view
+        if 'nsem_psa_variable' not in request.query_params:
+            return Response([])
+        return super().list(request, *args, **kwargs)
 
 
 class NsemPsaUserExportViewSet(UserReferenceViewSetMixin, viewsets.ModelViewSet):
