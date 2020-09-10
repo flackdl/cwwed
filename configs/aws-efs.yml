@@ -5,14 +5,17 @@ metadata:
   name: efs-sc
 provisioner: efs.csi.aws.com
 
+# NOTE: enter a volume & claim for each instance/deployment of CWWED (alpha, dev, prod etc)
+
 ---
+# ALPHA
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: efs-pv
+  name: efs-pv-alpha
 spec:
   capacity:
-    storage: 5Gi
+    storage: 5Gi  # arbitrary
   volumeMode: Filesystem
   accessModes:
     - ReadWriteMany
@@ -20,10 +23,9 @@ spec:
   storageClassName: efs-sc
   csi:
     driver: efs.csi.aws.com
-    volumeHandle: fs-8c80050d  # NOTE: enter CWWED's file system ID
+    volumeHandle: fs-8c80050d:/alpha  # NOTE: enter file system ID / deployment
 
 ---
-# NOTE: enter a volume claim for each instance/deployment of CWWED (alpha, dev, prod etc)
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -34,7 +36,25 @@ spec:
   storageClassName: efs-sc
   resources:
     requests:
-      storage: 5Gi
+      storage: 5Gi  # arbitrary
+
+---
+# DEV
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: efs-pv-dev
+spec:
+  capacity:
+    storage: 5Gi  # arbitrary
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: efs-sc
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-8c80050d:/dev  # NOTE: enter file system ID / deployment
 
 ---
 apiVersion: v1
@@ -47,17 +67,6 @@ spec:
   storageClassName: efs-sc
   resources:
     requests:
-      storage: 5Gi
+      storage: 5Gi  # arbitrary
 
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: efs-prod
-spec:
-  accessModes:
-    - ReadWriteMany
-  storageClassName: efs-sc
-  resources:
-    requests:
-      storage: 5Gi

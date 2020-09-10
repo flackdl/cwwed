@@ -99,12 +99,20 @@ Do this in the AWS Console.
     
 #### Create EFS
 
+See:
+- Docs: https://github.com/kubernetes-sigs/aws-efs-csi-driver/
+- Sub Path: https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master/examples/kubernetes/volume_path
+- Static Path: https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master/examples/kubernetes/multiple_pods
+
+Deploy:
+
+    kubectl apply -k "github.com/kubernetes-sigs/aws-efs-csi-driver/deploy/kubernetes/overlays/stable/ecr/?ref=release-1.0"
+
 Create EFS (elastic file system) in console and **make sure** it's in the same region, VPC and security group as the cluster.
 
-- https://github.com/kubernetes-sigs/aws-efs-csi-driver/
-- https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master/examples/kubernetes/multiple_pods
+Follow above instructions and make sure to edit the security group to allow the inbound NFS connections from our VPC's subnet.
 
-Copy the `File System Id` from the new efs instance and update `configs/aws-efs.yml` accordingly.
+Copy the `File System Id` from the new efs instance and update `configs/aws-efs.yml` accordingly (with deployment sub-paths).
 
 Create kubernetes persistent volume & claim with the new efs instance:
     
