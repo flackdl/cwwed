@@ -101,36 +101,44 @@ Do this in the AWS Console.
 
 Create EFS (elastic file system) in console and **make sure** it's in the same region, VPC and security group as the cluster.
 
-efs-provisioner: https://github.com/kubernetes-incubator/external-storage/tree/master/aws/efs
-**NOTE** I had to modify yaml settings via github issues: [1](https://github.com/kubernetes-incubator/external-storage/issues/1209), [2](https://github.com/kubernetes-incubator/external-storage/issues/953)
+- https://github.com/kubernetes-sigs/aws-efs-csi-driver/
+- https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master/examples/kubernetes/multiple_pods
 
-Copy the `File System Id` from the new efs instance and update `configs/manifest.yml` accordingly.
+Copy the `File System Id` from the new efs instance and update `configs/aws-efs.yml` accordingly.
 
 Create kubernetes persistent volume & claim with the new efs instance:
     
-    # create efs volume (can take a couple minutes to create the provisioner pod)
-    kubectl apply -f configs/aws-efs/rbac.yaml
-    kubectl apply -f configs/aws-efs/manifest.yaml
+    # apply efs volume configs (can take a couple minutes to create the provisioner pod)
+    kubectl apply -f configs/aws-efs.yaml
     
 ### Nginx Ingress
 
 Use nginx as the kubernetes ingress.
 
 See https://kubernetes.github.io/ingress-nginx/.
+
+Deploy:
+
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.35.0/deploy/static/provider/aws/deploy.yaml
+    
+Configure:    
+
+    kubectl apply -f configs/ingress.yml
     
 ##### Load Balancing
 
-The nginx ingress will automatically create a AWS Load Balancer.
+The nginx ingress will automatically create an AWS Load Balancer.
 Once the nginx ingress service is created,
 monitor the new external Load Balancer and get it's external IP address.
 
-    kubectl get service --namespace ingress-nginx ingress-nginx
+    kubectl get service --namespace ingress-nginx ingress-nginx-controller
     
 Use that IP and configure DNS via Cloudflare.
 
 ### Autoscaler
 
 ##### Cluster autoscaler
+# TODO !!!!!
 
 See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
@@ -141,6 +149,7 @@ Defining the `<YOUR_CLUSTER_NAME>` tag seems optional at this point, though, sin
 **NOTE**: make sure the CA version matches the k8s version.
 
 ##### Metrics Server
+# TODO !!!!!
 
 The Metrics Server is required for the HPA (horizontal pod scaler) to work.
 
@@ -153,6 +162,7 @@ You can test the results with:
     kubectl top node
 
 ##### Horizontal Pod Autoscaler
+# TODO !!!!!
 
 See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ and https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/.
 
@@ -181,6 +191,7 @@ Something like:
         --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
         && true
         
+    # TODO !!!!!!
     # create kube-system secret
     kubectl --namespace kube-system create secret generic cwwed-secrets-kube-system \
         --from-literal=AUTOSCALER_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/aws_autoscaler_access_key_id.txt) \
@@ -221,12 +232,8 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
 ##### Ingress
     kubectl apply -f configs/ingress.yml
     
-##### Persistent Volume
-    # patch the persistent volume to "retain" rather than delete if the claim is deleted
-    # https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/
-    kubectl patch pv XXX -p '{"spec":{"persistentVolumeReclaimPolicy":"Retain"}}'
-    
 ##### Cluster Autoscaler
+# TODO !!!!!
 
 https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md
 
