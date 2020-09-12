@@ -146,18 +146,20 @@ Use that IP and configure DNS via Cloudflare.
 ### Autoscaler
 
 ##### Cluster autoscaler
-# TODO !!!!!
 
 See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
 necessary to edit the kops `nodes` instance group and include some tags referenced by [cluster-autoscaler.yml](configs/cluster-autoscaler.yml).
+
+I added `k8s.io/cluster-autoscaler/enabled: nodes` to the the kops InstanceGroup `nodeLabels` via
+
+    kops edit instancegroups nodes
 
 Defining the `<YOUR_CLUSTER_NAME>` tag seems optional at this point, though, since we only have one cluster.
 
 **NOTE**: make sure the CA version matches the k8s version.
 
 ##### Metrics Server
-# TODO !!!!!
 
 The Metrics Server is required for the HPA (horizontal pod scaler) to work.
 
@@ -165,12 +167,15 @@ It's necessary to follow the [kops specific instructions](https://github.com/kub
 which requires you to update the cluster, perform a rolling-update and then apply the [metrics-server](configs/metrics-server.yml) which added a couple
 extra command line arguments.
 
-You can test the results with:
+Install the actual metrics server:
+
+    kubectl apply -f configs/metrics-server.yml
+
+Test the results after a couple minutes:
 
     kubectl top node
 
 ##### Horizontal Pod Autoscaler
-# TODO !!!!!
 
 See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ and https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/.
 
@@ -199,7 +204,6 @@ Something like:
         --from-literal=SENTRY_DSN=$(cat ~/Documents/cwwed/secrets/sentry_dsn.txt) \
         && true
         
-    # TODO !!!!!!
     # create kube-system secret
     kubectl --namespace kube-system create secret generic cwwed-secrets-kube-system \
         --from-literal=AUTOSCALER_ACCESS_KEY_ID=$(cat ~/Documents/cwwed/secrets/aws_autoscaler_access_key_id.txt) \
@@ -241,9 +245,12 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     kubectl apply -f configs/ingress.yml
     
 ##### Cluster Autoscaler
-# TODO !!!!!
 
-https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md
+See https://github.com/kubernetes/autoscaler/blob/master/cluster-autoscaler/cloudprovider/aws/README.md.
+
+*NOTE*: the [cluster autoscaler](#autoscaler) instructions should have already been applied.
+
+Apply cluster autoscaler:
 
     kubectl apply -f configs/cluster-autoscaler.yml
     
