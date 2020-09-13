@@ -255,7 +255,6 @@ export class PsaComponent implements OnInit {
         // update layers
         this.availableMapLayers.forEach((availableLayer) => {
           if (availableLayer['layer']) {
-            availableLayer['isLoading'] = true;
             // wind barbs
             if (availableLayer['variable']['geo_type'] === 'wind-barb') {
               availableLayer['layer'].setStyle((feature) => {
