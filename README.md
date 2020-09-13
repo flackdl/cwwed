@@ -151,13 +151,16 @@ See https://github.com/kubernetes/autoscaler/tree/master/cluster-autoscaler and
 [some other instructions I followed](https://varlogdiego.com/kubernetes-cluster-with-autoscaling-on-aws-and-kops) which showed it was
 necessary to edit the kops `nodes` instance group and include some tags referenced by [cluster-autoscaler.yml](configs/cluster-autoscaler.yml).
 
-I added `k8s.io/cluster-autoscaler/enabled: nodes` to the the kops InstanceGroup `nodeLabels` via
+Add the following *cloudLabels* via `kops edit instancegroups nodes`:
 
-    kops edit instancegroups nodes
-
+    cloudLabels:
+        k8s.io/cluster-autoscaler/enabled: ""
+ 
 Defining the `<YOUR_CLUSTER_NAME>` tag seems optional at this point, though, since we only have one cluster.
 
 **NOTE**: make sure the CA version matches the k8s version.
+
+**NOTE**: a rolling update is necessary.
 
 ##### Metrics Server
 
