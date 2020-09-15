@@ -3,11 +3,14 @@ import xarray as xr
 import re
 
 
-src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/anil/'
+src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/anil/'
+#src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/anil/'
 out_path = os.path.join(os.path.dirname(src_path), 'wind-demo.nc')
 
 # variables to keep from the datasets
-VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
+VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m'}
+# TODO - florence
+#VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
 
 # remove any existing path if it exists
 if os.path.exists(out_path):
@@ -17,12 +20,13 @@ ds_out = xr.Dataset()
 
 for dataset_file in sorted(os.listdir(src_path)):
 
-    # must be like "wrfoutd01_2012-10-29_14_00.nc", i.e using "domain 1"
-    if re.match(r'wrfoutd01_\d{4}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}.nc', dataset_file):
+    # must be like "wrfoutd01_*.nc", i.e using "domain 1"
+    if re.match(r'wrfout_?d01_.*.nc', dataset_file):
 
+        # TODO - florence
         # skip first since it doesn't have the gust available
-        if dataset_file == 'wrfoutd01_2018-09-14_00:00:00.nc':
-            continue
+        #if dataset_file == 'wrfoutd01_2018-09-14_00:00:00.nc':
+        #    continue
 
         print('Processing {}'.format(dataset_file))
 
@@ -36,7 +40,8 @@ for dataset_file in sorted(os.listdir(src_path)):
         ds_current = ds_current.rename_vars({
             'wspd10m': 'wind_speed',
             'wdir10m': 'wind_direction',
-            'wspd10max': 'wind_gust',
+            # TODO - florence
+            #'wspd10max': 'wind_gust',
         })
 
         # combine datasets

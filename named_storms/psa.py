@@ -8,6 +8,7 @@ from shapely import wkt
 from shapely.geometry import Point
 import matplotlib.colors
 import matplotlib.pyplot as plt
+import matplotlib.tri as tri
 import matplotlib.cm
 import pytz
 import xarray as xr
@@ -24,6 +25,9 @@ logger = logging.getLogger('cwwed')
 
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
+
+# TODO - make this less arbitrary
+GRID_SIZE = 5000
 
 NULL_REPRESENT = r'\N'
 
@@ -155,7 +159,7 @@ class PsaDataset:
                         data_array = self.dataset[variable]
 
                     # save contours
-                    self.build_contours_structured(psa_variable, data_array)
+                    self._build_contours(psa_variable, data_array)
 
                     # save raw data
                     self._save_psa_data(psa_variable, data_array)
@@ -166,7 +170,7 @@ class PsaDataset:
                         data_array = self.dataset.sel(time=date)[variable]
 
                         # save contours
-                        self.build_contours_structured(psa_variable, data_array, date)
+                        self._build_contours(psa_variable, data_array, date)
 
                         # save raw data
                         self._save_psa_data(psa_variable, data_array, date)
@@ -184,16 +188,30 @@ class PsaDataset:
 
         logger.info('PSA Dataset {} has been successfully ingested'.format(self.psa_manifest_dataset))
 
-    def build_contours_structured(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
+    def _build_contours(self, nsem_psa_variable: NsemPsaVariable, zi: xr.DataArray, dt: datetime = None):
 
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
-        # create the contour
-        contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap, levels=CONTOUR_LEVELS)
+        # unstructured grid - make a triangulation and interpolate data on a mesh
+        if len(zi.shape) == 1:
+            # create triangulation
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat)
+            # create interpolator from triangulation
+            interpolator = tri.LinearTriInterpolator(triangulation, zi)
+            x = np.linspace(np.floor(self.dataset.lon.min()), np.ceil(self.dataset.lon.max()), GRID_SIZE)
+            y = np.linspace(np.floor(self.dataset.lat.min()), np.ceil(self.dataset.lat.max()), GRID_SIZE)
+            # build a mesh of data
+            xi, yi = np.meshgrid(x, y)
+            # interpolate data using mesh
+            zi = interpolator(xi, yi)
+            contourf = plt.contourf(xi, yi, zi, levels=CONTOUR_LEVELS, cmap=self.cmap)
+        # structured grid
+        else:
+            contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap, levels=CONTOUR_LEVELS)
 
-        self.build_contours(nsem_psa_variable, contourf, dt)
+        self._process_contours(nsem_psa_variable, contourf, dt)
 
-    def build_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None):
+    def _process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None):
 
         results = []
 
