@@ -223,6 +223,8 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
             *fields_values
         )
 
+        logger.info(str(time_series_query.query))
+
         results = []
 
         # time-series variables
