@@ -165,7 +165,7 @@ class NsemPsaVariableViewSet(NsemPsaBaseViewSet):
 
 class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
     """
-    PSA Time Series
+    #### PSA Time Series
     """
     queryset = NsemPsaData.objects.all()  # defined in list()
     pagination_class = None
@@ -254,7 +254,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
 
 class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     """
-    PSA Wind Barbs
+    #### Named Storm PSA Wind Barbs
     """
     # Named Storm Event Model PSA Wind Barbs ViewSet
     # - expects to be nested under a NamedStormViewSet detail
@@ -311,6 +311,8 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
 ), name='dispatch')
 class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     """
+    #### Named Storm PSA Contour
+
     **required params:**
 
     - `nsem_psa_variable`
@@ -391,6 +393,8 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
 @method_decorator(gzip_page, name='dispatch')
 class NsemPsaDataViewSet(NsemPsaBaseViewSet):
     """
+    #### Named Storm PSA Data
+
     **required params:**
 
     - `nsem_psa_variable`
