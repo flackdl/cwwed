@@ -88,10 +88,10 @@ Connect to remote Postgres:
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
     # create cluster (dev)
-    kops create cluster --master-count 1 --node-count 2 --master-size t3.medium --node-size t3.medium --zones us-east-1a --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state --yes
+    kops create cluster --master-count 1 --node-count 2 --master-size t3.medium --node-size t3.medium --zones us-east-1a --name cwwed-ingress-cluster.k8s.local --state=s3://cwwed-kops-state --yes
     
     # (if necessary) configure kubectl environment to point at aws cluster
-    kops export kubecfg --name cwwed-dev-ingress-cluster.k8s.local --state=s3://cwwed-kops-state
+    kops export kubecfg --name cwwed-ingress-cluster.k8s.local --state=s3://cwwed-kops-state
 
 #### Setup RDS (relational database service) with proper VPC (from cluster) and security group permissions.
 
@@ -192,7 +192,7 @@ Something like:
     # update $DEPLOY_STAGE to "dev", "alpha" etc
     DEPLOY_STAGE=alpha
     # NOTE: always create new secrets with `echo -n "SECRET"` to avoid newline characters
-    # NOTE: when updating, you need to either patch it (https://stackoverflow.com/a/45881259) or delete & recreate: `kubectl delete secret cwwed-secrets-$DEPLOY_STAGE`
+    # NOTE: to patch: delete & recreate: `kubectl delete secret cwwed-secrets-$DEPLOY_STAGE`
     kubectl create secret generic cwwed-secrets-$DEPLOY_STAGE \
         --from-literal=DATABASE_URL=$(cat ~/Documents/cwwed/secrets/$DEPLOY_STAGE/database_url.txt) \
         --from-literal=CWWED_HOST=$(cat ~/Documents/cwwed/secrets/$DEPLOY_STAGE/host.txt) \
@@ -356,44 +356,18 @@ Find their IAM roles:
     
 Attach policy to roles (**update role name accordingly**):
 
-    aws iam attach-role-policy --role-name masters.cwwed-dev-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
-    aws iam attach-role-policy --role-name nodes.cwwed-dev-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
+    aws iam attach-role-policy --role-name masters.cwwed-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
+    aws iam attach-role-policy --role-name nodes.cwwed-ingress-cluster.k8s.local --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy    
     
 Apply yaml for Cloudwatch agent for cluster metrics and Fluentd to send logs:
 
 **NOTE: update the `cluster name` and `region` accordingly.**
 
-    curl https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/quickstart/cwagent-fluentd-quickstart.yaml | sed "s/{{cluster_name}}/cwwed-dev-ingress-cluster.k8s.local/;s/{{region_name}}/us-east-1/" | kubectl apply -f -
+    curl https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/quickstart/cwagent-fluentd-quickstart.yaml | sed "s/{{cluster_name}}/cwwed-ingress-cluster.k8s.local/;s/{{region_name}}/us-east-1/" | kubectl apply -f -
     
 View metrics at https://console.aws.amazon.com/cloudwatch/.    
-    
-## NSEM process
 
-Create a new Covered Data Snapshot:
-
-    curl -s -H "content-type: application/json" -H "Authorization: Token eedcd6961d8bb2b28da8643c16c24eb7af035783" -d '{"named_storm": 1}' http://127.0.0.1:8000/api/named-storm-covered-data-snapshot/
-   
-This creates the snapshot in the background and emails the 'nsem' user once complete.  Retrieve the id.
-    
-Download the covered data snapshot (say, id=1):
-
-    aws s3 cp --recursive "s3://cwwed-archives/NSEM/Harvey/Covered Data Snapshots/1/" /YOUR/OUTPUT/PATH --profile nsem
-    
-Upload PSA to S3 object storage:
-
-*NOTE:* The input format must be tar+gzipped and named the correct version, i.e "psa.tgz".
-    
-    # upload using checksum
-    FILE="psa.tgz"
-    UPLOAD_PATH="NSEM/upload/psa.tgz"
-    CHECKSUM=$(openssl md5 -binary "${FILE}" | base64)
-    aws s3api put-object --bucket cwwed-archives --key "${UPLOAD_PATH}" --body "${FILE}" --metadata md5chksum=${CHECKSUM} --content-md5 ${CHECKSUM} --profile nsem
-
-Create a new PSA record to begin the extraction, validation and ingest:
-
-    curl -s -H "content-type: application/json" -H "Authorization: Token eedcd6961d8bb2b28da8643c16c24eb7af035783" -d@samples/psa-create.json http://127.0.0.1:8000/api/nsem-psa/ | python -mjson.tool
-
-## NSEM AWS policies
+## NSEM S3 policies
 
 Create AWS user *nsem* and assign the following polices:
 

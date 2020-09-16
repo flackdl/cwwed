@@ -192,19 +192,20 @@ class PsaDataset:
 
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
+        # TODO - we should only create the triangulation & mesh once per dataset
+
         # unstructured grid - make a triangulation and interpolate data on a mesh
         if len(zi.shape) == 1:
-            # create triangulation
-            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat)
             # create interpolator from triangulation
-            interpolator = tri.LinearTriInterpolator(triangulation, zi)
-            x = np.linspace(np.floor(self.dataset.lon.min()), np.ceil(self.dataset.lon.max()), GRID_SIZE)
-            y = np.linspace(np.floor(self.dataset.lat.min()), np.ceil(self.dataset.lat.max()), GRID_SIZE)
+            interpolator = tri.LinearTriInterpolator(
+                tri.Triangulation(self.dataset.lon, self.dataset.lat), zi)
             # build a mesh of data
-            xi, yi = np.meshgrid(x, y)
-            # interpolate data using mesh
-            zi = interpolator(xi, yi)
-            contourf = plt.contourf(xi, yi, zi, levels=CONTOUR_LEVELS, cmap=self.cmap)
+            xi, yi = np.meshgrid(
+                np.linspace(np.floor(self.dataset.lon.min()), np.ceil(self.dataset.lon.max()), GRID_SIZE),
+                np.linspace(np.floor(self.dataset.lat.min()), np.ceil(self.dataset.lat.max()), GRID_SIZE),
+            )
+            # build contour using interpolated data on mesh
+            contourf = plt.contourf(xi, yi, interpolator(xi, yi), levels=CONTOUR_LEVELS, cmap=self.cmap)
         # structured grid
         else:
             contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap, levels=CONTOUR_LEVELS)
