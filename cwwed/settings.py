@@ -132,7 +132,7 @@ WSGI_APPLICATION = 'cwwed.wsgi.application'
 
 DATABASES = {
     # https://github.com/kennethreitz/dj-database-url
-    'default': dj_database_url.config(default='postgis://postgres@localhost:5432/postgres', conn_max_age=300),
+    'default': dj_database_url.config(default='postgis://postgres:postgres@localhost:5432/postgres', conn_max_age=300),
 }
 
 # https://docs.djangoproject.com/en/2.0/topics/cache/
