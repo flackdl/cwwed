@@ -1,6 +1,7 @@
 import xarray as xr
 import numpy as np
 
+out_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/water-demo.nc'
 
 water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/fort.63.nc'
 water_level_max_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/maxele.63.nc'
@@ -34,5 +35,7 @@ ds = xr.Dataset(
     },
 )
 
+print('Saving to {}'.format(out_path))
+
 # save as netcdf classic because hyrax chokes on 64bit ints
-ds.to_netcdf('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/water-demo.nc', format='NETCDF4_CLASSIC')
+ds.to_netcdf(out_path, format='NETCDF4_CLASSIC')
