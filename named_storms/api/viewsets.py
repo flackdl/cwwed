@@ -371,10 +371,11 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
         geo_json = get_geojson_feature_collection_from_psa_qs(queryset)
         response = HttpResponse(geo_json, content_type='application/json')
 
-        # cache result
-        cache_key = learn_cache_key(
-            request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
-        cache.set(cache_key, geo_json, self.CACHE_TIMEOUT)
+        # cache successful result
+        if response.status_code == 200:
+            cache_key = learn_cache_key(
+                request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
+            cache.set(cache_key, geo_json, self.CACHE_TIMEOUT)
 
         return response
 

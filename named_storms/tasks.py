@@ -750,8 +750,8 @@ def cache_psa_contour_task(storm_id: int):
 
     logger.info('Caching psa geojson for nsem psa {}'.format(nsem))
 
-    # loop through every variable
-    for psa_variable in nsem.nsempsavariable_set.all():  # type: NsemPsaVariable
+    # loop through every polygon variable
+    for psa_variable in nsem.nsempsavariable_set.filter(geo_type=NsemPsaVariable.GEO_TYPE_POLYGON):  # type: NsemPsaVariable
         url = '{scheme}://{host}:{port}{path}'.format(
             scheme=settings.CWWED_SCHEME,
             host=settings.CWWED_HOST,
