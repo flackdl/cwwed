@@ -142,10 +142,9 @@ class PsaDataset:
                 )
             )
 
-            # deleting any existing psa data in debug/development only
-            if settings.DEBUG:
-                psa_variable.nsempsacontour_set.all().delete()
-                psa_variable.nsempsadata_set.all().delete()
+            # deleting any existing psa data in case we're reprocessing this psa
+            psa_variable.nsempsacontour_set.all().delete()
+            psa_variable.nsempsadata_set.all().delete()
 
             # contours
             if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
