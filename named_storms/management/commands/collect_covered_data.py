@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 from named_storms.data.factory import ProcessorCoreFactory
 from named_storms.models import NamedStorm, NamedStormCoveredDataLog, NamedStormCoveredData
-from named_storms.tasks import process_dataset_task, archive_named_storm_covered_data_task
+from named_storms.tasks import process_covered_data_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import (
     named_storm_covered_data_incomplete_path, create_directory, processor_factory_class,
     slack_channel, named_storm_covered_data_current_path_root)
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                         continue
 
                     # fetch data in parallel but wait for all tasks to complete and capture results
-                    task_group = celery.group([process_dataset_task.s(data) for data in processors_data])
+                    task_group = celery.group([process_covered_data_dataset_task.s(data) for data in processors_data])
                     group_result = task_group()
 
                     # handle exceptions from the individual task results

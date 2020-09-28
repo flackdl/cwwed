@@ -49,6 +49,13 @@ TASK_ARGS = dict(
     max_retries=10,
 )
 
+TASK_ARGS_ACK_LATE = dict(
+    # acknowledge completion after task has been fully executed vs just before because
+    # this guarantees the task will retry if the worker crashes which can happen during cluster auto scaling
+    # https://docs.celeryproject.org/en/stable/reference/celery.app.task.html#celery.app.task.Task.acks_late
+    acks_late=True,
+)
+
 
 @app.task(**TASK_ARGS)
 def fetch_url_task(url, verify=True, write_to_path=None):
@@ -73,9 +80,9 @@ def fetch_url_task(url, verify=True, write_to_path=None):
 
 
 @app.task(**TASK_ARGS)
-def process_dataset_task(data: list):
+def process_covered_data_dataset_task(data: list):
     """
-    Run the dataset processor
+    Run the covered data dataset processor
     """
     processor_data = ProcessorData(*data)
     named_storm = get_object_or_404(NamedStorm, pk=processor_data.named_storm_id)
@@ -779,7 +786,7 @@ def cache_psa_contour_task(storm_id: int):
             logger.info(r.status_code)
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS, **TASK_ARGS_ACK_LATE)
 def ingest_nsem_psa_task(nsem_psa_id):
     """
     Ingests an NSEM PSA into the CWWED database
