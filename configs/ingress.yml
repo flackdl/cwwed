@@ -20,6 +20,7 @@ spec:
       paths:
         - path: /
           backend:
-            serviceName: cwwed-dev
+            # TODO - update back to a true "dev" version whenever appropriate
+            serviceName: cwwed-alpha
             servicePort: 80
 ---

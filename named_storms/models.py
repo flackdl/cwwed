@@ -153,6 +153,9 @@ class NamedStormCoveredDataSnapshot(models.Model):
             return storage.storage_url(self.path)
         return None
 
+    def __str__(self):
+        return '{} <{}>'.format(self.named_storm, self.id)
+
 
 class NsemPsa(models.Model):
     """
