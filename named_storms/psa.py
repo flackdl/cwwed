@@ -15,7 +15,6 @@ import xarray as xr
 import numpy as np
 from django.contrib.gis import geos
 from django.db import connections
-from django.conf import settings
 
 from named_storms.models import NsemPsaManifestDataset, NsemPsaVariable, NsemPsaContour, NsemPsaData
 from named_storms.utils import named_storm_nsem_version_path
@@ -23,11 +22,9 @@ from named_storms.utils import named_storm_nsem_version_path
 
 logger = logging.getLogger('cwwed')
 
+NULL_FILL_VALUE = -9999
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
-
-# TODO - make this less arbitrary
-GRID_SIZE = 5000
 
 NULL_REPRESENT = r'\N'
 
@@ -191,20 +188,25 @@ class PsaDataset:
 
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
-        # TODO - we should only create the triangulation & mesh once per dataset
-
         # unstructured grid - make a triangulation and interpolate data on a mesh
-        if len(zi.shape) == 1:
-            # create interpolator from triangulation
-            interpolator = tri.LinearTriInterpolator(
-                tri.Triangulation(self.dataset.lon, self.dataset.lat), zi)
-            # build a mesh of data
-            xi, yi = np.meshgrid(
-                np.linspace(np.floor(self.dataset.lon.min()), np.ceil(self.dataset.lon.max()), GRID_SIZE),
-                np.linspace(np.floor(self.dataset.lat.min()), np.ceil(self.dataset.lat.max()), GRID_SIZE),
-            )
-            # build contour using interpolated data on mesh
-            contourf = plt.contourf(xi, yi, interpolator(xi, yi), levels=CONTOUR_LEVELS, cmap=self.cmap)
+        # TODO - this is a temporary assumption the "element" dimension exists and is 1-indexed (fortran style)
+        if len(zi.shape) == 1 and 'element' in self.dataset:
+
+            # replace nulls with a fill value
+            z = np.nan_to_num(zi, nan=NULL_FILL_VALUE)
+
+            # adjust 1-index mesh connectivity
+            element = np.subtract(self.dataset.element, 1)
+
+            # create mask to remove triangles with null values
+            mask = z[element].isnull()
+            # single column result of whether all the points in each triangle/row are non-null
+            mask = np.all(mask, axis=1)
+
+            # build contour from triangulation
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, element, mask=mask)
+            contourf = plt.tricontourf(triangulation, z)
+
         # structured grid
         else:
             contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], zi, cmap=self.cmap, levels=CONTOUR_LEVELS)
