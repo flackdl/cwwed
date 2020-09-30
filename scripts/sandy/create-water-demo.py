@@ -26,6 +26,8 @@ ds = xr.Dataset(
         'water_level': (['time', 'node'], dataset_water_level.zeta[date_mask(dataset_water_level)]),
         'water_level_max': (['node'], dataset_water_level_max.zeta_max),
         'wave_height': (['time', 'node'], dataset_wave_height.hs[date_mask(dataset_wave_height)]),
+        # subtract 1 from the element mesh since it's 1-indexed (fortran style)
+        'element': np.subtract(dataset_water_level.element, 1),
     },
     coords={
         # arbitrarily using water level for coord values

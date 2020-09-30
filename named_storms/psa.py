@@ -189,22 +189,19 @@ class PsaDataset:
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
         # unstructured grid - make a triangulation and interpolate data on a mesh
-        # TODO - this is a temporary assumption the "element" dimension exists and is 1-indexed (fortran style)
+        # TODO - this is a temporary assumption the "element" dimension exists for mesh connectivity
         if len(zi.shape) == 1 and 'element' in self.dataset:
 
             # replace nulls with a fill value
-            z = np.nan_to_num(zi, nan=NULL_FILL_VALUE)
-
-            # adjust 1-index mesh connectivity
-            element = np.subtract(self.dataset.element, 1)
+            z = zi.fillna(NULL_FILL_VALUE)
 
             # create mask to remove triangles with null values
-            mask = z[element].isnull()
+            mask = z[self.dataset.element].isnull()
             # single column result of whether all the points in each triangle/row are non-null
             mask = np.all(mask, axis=1)
 
             # build contour from triangulation
-            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, element, mask=mask)
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, self.dataset.element, mask=mask)
             contourf = plt.tricontourf(triangulation, z)
 
         # structured grid
