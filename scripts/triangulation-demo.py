@@ -9,8 +9,8 @@ ds = xr.open_dataset('/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/fort
 ds = ds.zeta[0].to_dataset()
 
 # y, x
-bottom_left = (33.215177641346756, -79.20178761268342)
-top_right = (35.24061087693086, -76.23547901893342)
+bottom_left = (38.53957267203905, -75.66009521484375)
+top_right = (39.91605629078665, -74.0753173828125)
 
 ds = ds.where(
     (ds.x >= bottom_left[1]) &  # xmin
