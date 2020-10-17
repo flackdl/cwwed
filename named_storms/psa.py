@@ -220,6 +220,9 @@ class PsaDataset:
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
 
+                # don't simplify the paths
+                path.should_simplify = False
+
                 polygons = path.to_polygons()
 
                 if len(polygons) == 0:

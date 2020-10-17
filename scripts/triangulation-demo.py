@@ -12,19 +12,20 @@ ds = xr.Dataset()
 ds['water_level'] = ds_original.water_level[0]
 ds['element'] = ds_original.element
 
-# clip to small geo
+# clip to geo
 # small atlantic city
 #bottom_left = (39.28541975943743, -74.6136474609375)  # (y, x)
 #top_right = (39.41922073655956, -74.3170166015625)  # (y, x)
 bottom_left = (38.53957267203905, -75.66009521484375)
 top_right = (39.91605629078665, -74.0753173828125)
 
-z = ds.water_level.where(
-    (ds.lon >= bottom_left[1]) &  # xmin
-    (ds.lat >= bottom_left[0]) &  # ymin
-    (ds.lon <= top_right[1]) &  # xmax
-    (ds.lat <= top_right[0]),  # ymax
-)
+z = ds.water_level
+#z = ds.water_level.where(
+#    (ds.lon >= bottom_left[1]) &  # xmin
+#    (ds.lat >= bottom_left[0]) &  # ymin
+#    (ds.lon <= top_right[1]) &  # xmax
+#    (ds.lat <= top_right[0]),  # ymax
+#)
 
 # create mask to remove triangles with null values
 tri_mask = z[ds.element].isnull()
