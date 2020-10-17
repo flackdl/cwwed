@@ -22,7 +22,7 @@ from named_storms.utils import named_storm_nsem_version_path
 
 logger = logging.getLogger('cwwed')
 
-NULL_FILL_VALUE = -9999
+NULL_FILL_VALUE = 0
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
 
@@ -192,17 +192,14 @@ class PsaDataset:
         # TODO - this is a temporary assumption the "element" dimension exists for mesh connectivity
         if len(zi.shape) == 1 and 'element' in self.dataset:
 
-            # replace nulls with a fill value
-            z = zi.fillna(NULL_FILL_VALUE)
-
             # create mask to remove triangles with null values
-            mask = z[self.dataset.element].isnull()
+            tri_mask = zi[self.dataset.element].isnull()
             # single column result of whether all the points in each triangle/row are non-null
-            mask = np.all(mask, axis=1)
+            tri_mask = np.all(tri_mask, axis=1)
 
             # build contour from triangulation
-            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, self.dataset.element, mask=mask)
-            contourf = plt.tricontourf(triangulation, z)
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, self.dataset.element, mask=tri_mask)
+            contourf = plt.tricontourf(triangulation, zi.fillna(NULL_FILL_VALUE))
 
         # structured grid
         else:
