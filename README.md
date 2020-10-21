@@ -2,7 +2,7 @@
 
 https://www.weather.gov/sti/coastalact_cwwed
 
-[![Build Status](https://travis-ci.com/CWWED/cwwed.svg?branch=master)](https://travis-ci.com/CWWED/cwwed)
+[![Build Status](https://travis-ci.com/flackdl/cwwed.svg?branch=master)](https://travis-ci.com/flackdl/cwwed)
 
 ## Development & Initial Setup
 
