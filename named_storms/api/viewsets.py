@@ -341,7 +341,7 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
             'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__data_type',
             'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
         ])
-        qs = qs.annotate(geom=Intersection(MakeValid(Collect(Cast('geo', GeometryField()))), self.storm.geo))
+        qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
 

@@ -206,6 +206,7 @@ class PsaDataset:
         self._process_contours(nsem_psa_variable, contourf, dt)
 
     def _process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt=None):
+        storm_geo = self.psa_manifest_dataset.nsem.named_storm.geo  # type: geos.GEOSGeometry
 
         results = []
 
@@ -221,17 +222,27 @@ class PsaDataset:
                 # don't simplify the paths
                 path.should_simplify = False
 
-                polygons = path.to_polygons()
+                path_polygons = path.to_polygons()
+                result_polygons = []
 
-                if len(polygons) == 0:
-                    logger.warning('Invalid polygon contour for {}'.format(nsem_psa_variable))
+                if len(path_polygons) == 0:
+                    logger.warning('Skipping path with empty polygons for {}'.format(nsem_psa_variable))
                     continue
 
-                # the first polygon of the path is the exterior ring while the following are interior rings (holes)
-                polygon = geos.Polygon(polygons[0], *polygons[1:])
+                # trim each polygon to storm's geo
+                for coords in path_polygons:
+                    polygon = geos.Polygon(coords)
+                    intersection = storm_geo.intersection(polygon)
+                    if not intersection.empty:
+                        # iterate over MultiPolygon results
+                        if isinstance(intersection, geos.MultiPolygon):
+                            for c in intersection.boundary.coords:
+                                result_polygons.append(c)
+                        else:
+                            result_polygons.append(intersection.boundary.coords)
 
                 results.append({
-                    'polygon': polygon,
+                    'polygon': geos.Polygon(result_polygons[0], *result_polygons[1:]),
                     'value': value,
                     'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                 })
