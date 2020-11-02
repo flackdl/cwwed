@@ -43,7 +43,7 @@ from named_storms.utils import (
 logger = get_task_logger(__name__)
 
 
-TASK_ARGS = dict(
+TASK_ARGS_RETRY = dict(
     autoretry_for=(Exception,),
     default_retry_delay=5,
     max_retries=10,
@@ -57,7 +57,7 @@ TASK_ARGS_ACK_LATE = dict(
 )
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def fetch_url_task(url, verify=True, write_to_path=None):
     """
     :param url: URL to fetch
@@ -79,7 +79,7 @@ def fetch_url_task(url, verify=True, write_to_path=None):
     return response.content.decode()  # must return bytes for serialization
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def process_covered_data_dataset_task(data: list):
     """
     Run the covered data dataset processor
@@ -100,7 +100,7 @@ def process_covered_data_dataset_task(data: list):
     return processor.to_dict()
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_id):
     """
     Archives a covered data collection and sends it to object storage
@@ -143,7 +143,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
     return log.snapshot
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
     """
     - Creates a snapshot of a storm's covered data and archives in object storage
@@ -182,7 +182,7 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     return covered_data_snapshot.id
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def extract_named_storm_covered_data_snapshot_task(nsem_psa_id):
     """
     Downloads and extracts a named storm covered data snapshot into file storage
@@ -245,7 +245,7 @@ class ExtractNSEMTaskBase(app.Task):
                 )
 
 
-EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()  # type: dict
+EXTRACT_NSEM_TASK_ARGS = TASK_ARGS_RETRY.copy()  # type: dict
 EXTRACT_NSEM_TASK_ARGS.update({
     'base': ExtractNSEMTaskBase,
 })
@@ -316,7 +316,7 @@ def extract_nsem_psa_task(nsem_id):
     return storage.url(storage_path)
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot_id: int):
     """
     Email the "nsem" user indicating the Covered Data for a particular storm is complete and ready for download.
@@ -355,7 +355,7 @@ def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot
     return named_storm_covered_data_snapshot.id
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_psa_validated_task(nsem_psa_id):
     """
     Email the "nsem" user indicating whether the PSA has been validated or not
@@ -397,7 +397,7 @@ def email_psa_validated_task(nsem_psa_id):
     return nsem_psa.id
 
 
-@app.task(**TASK_ARGS)
+@app.task
 def validate_nsem_psa_task(nsem_id):
     """
     Validates the PSA from file storage with the following:
@@ -453,8 +453,6 @@ def validate_nsem_psa_task(nsem_id):
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # TODO - WIP
-
             # structured grid
             if dataset.structured:
                 # make sure variables have the right dimension for a structured grid
@@ -463,8 +461,8 @@ def validate_nsem_psa_task(nsem_id):
                     if variable in ds:
                         shape = len(ds[variable].isel(time=0).shape)
                         if shape < 2:
-                            file_exceptions.append('structured variable {} does not have the right shape = {}'.format(variable, shape))
-            # unstructured mesh grid
+                            file_exceptions.append('dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+            # unstructured grid
             # http://ugrid-conventions.github.io/ugrid-conventions/
             else:
                 if dataset.topology_name not in ds:
@@ -494,7 +492,7 @@ def validate_nsem_psa_task(nsem_id):
     nsem_psa.save()
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
@@ -722,7 +720,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     return nsem_psa_user_export.id
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
@@ -757,7 +755,7 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def cache_psa_contour_task(storm_id: int):
     """
     Automatically creates cached responses for a storm's PSA contour results by crawling every api endpoint
@@ -799,7 +797,7 @@ def cache_psa_contour_task(storm_id: int):
             logger.info(r.status_code)
 
 
-@app.task(**TASK_ARGS, **TASK_ARGS_ACK_LATE)
+@app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE)
 def ingest_nsem_psa_task(nsem_psa_id):
     """
     Ingests an NSEM PSA into the CWWED database
@@ -826,7 +824,7 @@ def ingest_nsem_psa_task(nsem_psa_id):
     logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_psa_ingested_task(nsem_psa_id):
     """
     Email the "nsem" user indicating the PSA has been ingested
