@@ -2,7 +2,7 @@ import csv
 import logging
 import geojson
 from celery import chain, group
-from django.contrib.gis.db.models.functions import Intersection, Distance, MakeValid
+from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
