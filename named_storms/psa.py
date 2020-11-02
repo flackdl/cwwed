@@ -236,14 +236,18 @@ class PsaDataset:
                 # build all polygons for this path using the calculated interior rings/holes
                 for exterior in exteriors:
                     p = geos.Polygon(exterior)
-                    holes = []
-                    for interior in interiors:
+                    interior_indexes = []
+                    for idx, interior in enumerate(interiors):
                         # exterior contains at least one point of this interior
                         if p.contains(geos.Point(*interior[0])):
-                            holes.append(interior)
-                    result_polygons.append(geos.Polygon(exterior, *holes))
+                            interior_indexes.append(idx)
+                    result_polygons.append(geos.Polygon(exterior, *[interiors[idx] for idx in interior_indexes]))
 
-                # trim to storm's geo
+                    # remove used interiors to speed up sequential scans
+                    for idx in interior_indexes:
+                        interiors.pop(idx)
+
+                # trim polygon to storm's geo
                 polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
                 if polygon.empty:
                     logger.warning('skipping empty polygon from storm intersection')
@@ -290,7 +294,6 @@ class PsaDataset:
     @classmethod
     def classify_polygons(cls, polygons):
         # classify polygons based on their area
-
         exteriors = []
         interiors = []
         for p in polygons:
@@ -298,7 +301,6 @@ class PsaDataset:
                 exteriors.append(p)
             else:
                 interiors.append(p)
-
         return exteriors, interiors
 
     @staticmethod
