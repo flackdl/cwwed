@@ -1,7 +1,11 @@
+import os
+
 import xarray as xr
 import numpy as np
 
-out_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/water-demo.nc'
+out_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
+out_full = os.path.join(out_path, 'water-demo.nc')
+out_minimal = os.path.join(out_path, 'water-demo-minimal.nc')
 
 water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/fort.63.nc'
 water_level_max_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/maxele.63.nc'
@@ -26,8 +30,7 @@ ds = xr.Dataset(
         'water_level': (['time', 'node'], dataset_water_level.zeta[date_mask(dataset_water_level)]),
         'water_level_max': (['node'], dataset_water_level_max.zeta_max),
         'wave_height': (['time', 'node'], dataset_wave_height.hs[date_mask(dataset_wave_height)]),
-        # subtract 1 from the element mesh since it's 1-indexed (fortran style)
-        'element': np.subtract(dataset_water_level.element, 1),
+        'element': dataset_water_level.element,
     },
     coords={
         # arbitrarily using water level for coord values
@@ -37,7 +40,17 @@ ds = xr.Dataset(
     },
 )
 
-print('Saving to {}'.format(out_path))
+# appease CF conventions
+# remove invalid "units" attribute from "element" topology
+if 'units' in ds.element.attrs:
+    del ds.element.attrs['units']
+if 'cf_role' in ds.element.attrs:
+    del ds.element.attrs['cf_role']
 
-# save as netcdf classic because hyrax chokes on 64bit ints
-ds.to_netcdf(out_path, format='NETCDF4_CLASSIC')
+# full
+print('Saving full to {}'.format(out_full))
+ds.to_netcdf(out_full, format='NETCDF4_CLASSIC')  # save as netcdf classic because hyrax chokes on 64bit ints
+
+# minimal
+print('Saving minimal to {}'.format(out_minimal))
+ds.isel(time=slice(0, 2)).to_netcdf(out_minimal, format='NETCDF4_CLASSIC')

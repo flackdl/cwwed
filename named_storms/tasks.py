@@ -397,22 +397,21 @@ def email_psa_validated_task(nsem_psa_id):
     return nsem_psa.id
 
 
-@app.task(**EXTRACT_NSEM_TASK_ARGS)
+@app.task(**TASK_ARGS)
 def validate_nsem_psa_task(nsem_id):
     """
-    Validates the PSA model product output from file storage with the following:
+    Validates the PSA from file storage with the following:
     - cf conventions - http://cfconventions.org/
     - expected coordinates
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
     - netcdf only
-    - no NaNs
 
     TODO
         validate all required variables exist
+        validate mesh structured vs unstructured
         validate dataset has all dates required by the psa
         validate the dataset is structured so we can create contours correctly
-        * validate null values (do we want to do this?)
         validate wind barb requirements (needs wind speed and wind direction)
     """
 
@@ -454,13 +453,26 @@ def validate_nsem_psa_task(nsem_id):
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # TODO - verify if we actually want to validate against null values
-            ## nulls
-            #for variable in dataset.variables:
-            #    if ds[variable].isnull().any():
-            #        if variable not in variable_exceptions:
-            #            variable_exceptions[variable] = []
-            #        variable_exceptions[variable].append('has null values')
+            # TODO - WIP
+
+            # structured grid
+            if dataset.structured:
+                # make sure variables have the right dimension for a structured grid
+                for variable in NsemPsaVariable.get_time_series_variables():
+                    # choose first time and make sure it has at least 2 dimensions (x, y)
+                    if variable in ds:
+                        shape = len(ds[variable].isel(time=0).shape)
+                        if shape < 2:
+                            file_exceptions.append('structured variable {} does not have the right shape = {}'.format(variable, shape))
+            # unstructured mesh grid
+            # http://ugrid-conventions.github.io/ugrid-conventions/
+            else:
+                if dataset.topology_name not in ds:
+                    file_exceptions.append('topology_name "{}" missing from dataset'.format(dataset.topology_name))
+                    # 0-based vs 1-based indexing for mesh connectivity
+                    # http://ugrid-conventions.github.io/ugrid-conventions/#zero-or-one-based-indexing
+                elif 'start_index' not in ds[dataset.topology_name].attrs:
+                    file_exceptions.append('start_index attribute missing from topology name "{}"'.format(dataset.topology_name))
 
         if file_exceptions or variable_exceptions:
             e = {'file': file_exceptions, 'variables': variable_exceptions}
@@ -477,6 +489,7 @@ def validate_nsem_psa_task(nsem_id):
     # success
     else:
         nsem_psa.validated = True
+
     nsem_psa.date_validation = datetime.utcnow().replace(tzinfo=pytz.utc)
     nsem_psa.save()
 

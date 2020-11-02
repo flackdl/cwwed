@@ -13,6 +13,15 @@
           "wind_speed",
           "wind_direction"
         ]
+      },
+      {
+        "path": "sandy-water-demo.nc",
+        "variables": [
+          "water_level",
+          "wave_height"
+        ],
+        "structured": false,
+        "topology_name": "element"
       }
     ]
   }

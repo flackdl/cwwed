@@ -180,27 +180,35 @@ class PsaDataset:
 
     def _build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xr.DataArray, dt: datetime = None):
 
+
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
+        # structured grid
+        if self.psa_manifest_dataset.structured:
+            contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
+
         # unstructured grid - use provided triangulation to contour
-        # TODO - this is a temporary assumption the "element" dimension exists for mesh connectivity
-        if len(z.shape) == 1 and 'element' in self.dataset:
+        else:
+
+            # adjust mesh topology indexing if this is 0 or 1-based indexing (https://github.com/ugrid-conventions/ugrid-conventions)
+            # subtract n from the topology/mesh
+            topology = self.dataset[self.psa_manifest_dataset.topology_name]
+            topology = np.subtract(
+                topology,
+                topology.attrs['start_index'],
+            )
 
             # create mask to identify triangles with null values
-            tri_mask = z[self.dataset.element].isnull()
+            tri_mask = z[topology].isnull()
             # convert to single dimension result of whether all the points in each triangle/row are non-null
             tri_mask = np.all(tri_mask, axis=1)
 
             # build triangulation using supplied mesh connectivity
-            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, self.dataset.element, mask=tri_mask)
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, topology, mask=tri_mask)
 
             # replace nulls with an arbitrary fill value and then only contour valid levels
             levels = np.linspace(z.min(), z.max(), num=CONTOUR_LEVELS)
             contourf = plt.tricontourf(triangulation, z.fillna(NULL_FILL_VALUE), levels=levels, cmap=self.cmap)
-
-        # structured grid
-        else:
-            contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
 
         self._process_contours(nsem_psa_variable, contourf, dt)
 

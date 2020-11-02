@@ -193,6 +193,8 @@ class NsemPsaManifestDataset(models.Model):
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
+    structured = models.BooleanField(default=True, help_text='Whether the dataset has a structured grid')
+    topology_name = models.CharField(max_length=50, default='element', help_text='Variable name for unstructured mesh connectivity')
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
@@ -342,6 +344,10 @@ class NsemPsaVariable(models.Model):
 
     def get_attribute(self, attribute: str):
         return NsemPsaVariable.get_variable_attribute(self.name, attribute)
+
+    @classmethod
+    def get_time_series_variables(cls):
+        return [name for name, v in cls.VARIABLES.items() if v['data_type'] == cls.DATA_TYPE_TIME_SERIES]
 
     @classmethod
     def get_variable_attribute(cls, variable, attribute: str):
