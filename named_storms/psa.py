@@ -250,10 +250,8 @@ class PsaDataset:
                         if p.contains(geos.Point(*interior[0])):
                             interior_indexes.append(idx)
                     result_polygons.append(geos.Polygon(exterior, *[interiors[idx] for idx in interior_indexes]))
-
                     # remove used interiors to speed up sequential scans
-                    for idx in interior_indexes:
-                        interiors.pop(idx)
+                    interiors = [interior for i, interior in enumerate(interiors) if i not in interior_indexes]
 
                 # trim polygon to storm's geo
                 polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
