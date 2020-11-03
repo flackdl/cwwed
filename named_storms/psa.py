@@ -33,6 +33,8 @@ class PsaDataset:
     cmap = matplotlib.cm.get_cmap('jet')
     dataset: xr.Dataset = None
 
+    # TODO - break this up for parallelization
+
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
 
@@ -45,7 +47,7 @@ class PsaDataset:
             assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
             logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
 
-            # create the psa variable
+            # get or create the psa variable
             psa_variable, _ = self.psa_manifest_dataset.nsem.nsempsavariable_set.get_or_create(
                 name=variable,
                 defaults=dict(
@@ -180,15 +182,17 @@ class PsaDataset:
 
     def _build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xr.DataArray, dt: datetime = None):
 
-
         logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
 
         # structured grid
         if self.psa_manifest_dataset.structured:
+            logger.info('[structured]')
             contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
 
         # unstructured grid - use provided triangulation to contour
         else:
+
+            logger.info('[unstructured]')
 
             # adjust mesh topology indexing if this is 0 or 1-based indexing (https://github.com/ugrid-conventions/ugrid-conventions)
             # subtract n from the topology/mesh
@@ -223,7 +227,7 @@ class PsaDataset:
             # contour level value
             value = contourf.levels[i]
 
-            logger.info('{} = {}'.format(i, value))
+            logger.info('contour level {} = {}'.format(i, value))
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -253,7 +257,7 @@ class PsaDataset:
                     # remove used interiors to speed up sequential scans
                     interiors = [interior for i, interior in enumerate(interiors) if i not in interior_indexes]
 
-                # trim polygon to storm's geo
+                # trim result polygon to storm's geo
                 polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
                 if polygon.empty:
                     logger.warning('skipping empty polygon from storm intersection')
