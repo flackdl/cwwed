@@ -53,4 +53,4 @@ ds.to_netcdf(out_full, format='NETCDF4_CLASSIC')  # save as netcdf classic becau
 
 # minimal
 print('Saving minimal to {}'.format(out_minimal))
-ds.isel(time=slice(0, 2)).to_netcdf(out_minimal, format='NETCDF4_CLASSIC')
+ds.isel(time=slice(0, 3)).to_netcdf(out_minimal, format='NETCDF4_CLASSIC')

@@ -29,7 +29,7 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
-        args: ['worker', '--concurrency=2', '-A', 'cwwed', '-l', 'info']
+        args: ['worker', '-A', 'cwwed', '-l', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage

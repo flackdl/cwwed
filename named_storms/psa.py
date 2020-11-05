@@ -31,87 +31,75 @@ NULL_REPRESENT = r'\N'
 
 class PsaDataset:
     cmap = matplotlib.cm.get_cmap('jet')
-    dataset: xr.Dataset = None
-
-    # TODO - break this up for parallelization
+    dataset: xr.Dataset
+    psa_manifest_dataset: NsemPsaManifestDataset
 
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
+        self._open_dataset()
 
-    def ingest(self):
-        for variable in self.psa_manifest_dataset.variables:
+    def ingest_variable(self, variable: str, date: datetime = None):
 
-            # close and reopen dataset for memory cleanup
-            self._toggle_dataset()
+        assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
 
-            assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
-            logger.info('Processing dataset variable {} for {}'.format(variable, self.psa_manifest_dataset))
-
-            # get or create the psa variable
-            psa_variable, _ = self.psa_manifest_dataset.nsem.nsempsavariable_set.get_or_create(
-                name=variable,
-                defaults=dict(
-                    geo_type=NsemPsaVariable.get_variable_attribute(variable, 'geo_type'),
-                    data_type=NsemPsaVariable.get_variable_attribute(variable, 'data_type'),
-                    element_type=NsemPsaVariable.get_variable_attribute(variable, 'element_type'),
-                    units=NsemPsaVariable.get_variable_attribute(variable, 'units'),
-                    auto_displayed=NsemPsaVariable.get_variable_attribute(variable, 'auto_displayed'),
-                )
+        # get or create the psa variable
+        psa_variable, _ = self.psa_manifest_dataset.nsem.nsempsavariable_set.get_or_create(
+            name=variable,
+            defaults=dict(
+                geo_type=NsemPsaVariable.get_variable_attribute(variable, 'geo_type'),
+                data_type=NsemPsaVariable.get_variable_attribute(variable, 'data_type'),
+                element_type=NsemPsaVariable.get_variable_attribute(variable, 'element_type'),
+                units=NsemPsaVariable.get_variable_attribute(variable, 'units'),
+                auto_displayed=NsemPsaVariable.get_variable_attribute(variable, 'auto_displayed'),
             )
+        )
 
-            # delete any existing psa data in case we're reprocessing this psa
-            psa_variable.nsempsacontour_set.all().delete()
-            psa_variable.nsempsadata_set.all().delete()
+        logger.info('{}: processing variable {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
 
-            # contours
-            if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
+        # delete any existing psa data in case we're reprocessing this psa
+        psa_variable.nsempsacontour_set.filter(date=date).delete()
+        psa_variable.nsempsadata_set.filter(date=date).delete()
 
-                # max values
-                if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
-                    # use the first time value if there's a time dimension at all
-                    if 'time' in self.dataset[variable].dims:
-                        data_array = self.dataset[variable][0]
-                    else:
-                        data_array = self.dataset[variable]
+        # contours
+        if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
 
-                    # save contours
-                    self._build_contours(psa_variable, data_array)
+            # max values
+            if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+                # use the first time value if there's a time dimension
+                if 'time' in self.dataset[variable].dims:
+                    data_array = self.dataset[variable][0]
+                else:
+                    data_array = self.dataset[variable]
 
-                    # save raw data
-                    self._save_psa_data(psa_variable, data_array)
+                # save contours
+                self._build_contours(psa_variable, data_array)
 
-                # time series
-                elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
-                    for date in self.psa_manifest_dataset.nsem.dates:
-                        data_array = self.dataset.sel(time=date)[variable]
+                # save raw data
+                self._save_psa_data(psa_variable, data_array)
 
-                        # save contours
-                        self._build_contours(psa_variable, data_array, date)
+            # time series
+            elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+                assert date is not None, 'date must be supplied for time-series variable {}'.format(psa_variable)
+                data_array = self.dataset.sel(time=date)[variable]
 
-                        # save raw data
-                        self._save_psa_data(psa_variable, data_array, date)
+                # save contours
+                self._build_contours(psa_variable, data_array, date)
 
-                psa_variable.color_bar = self._color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
+                # save raw data
+                self._save_psa_data(psa_variable, data_array, date)
 
-            # wind barbs - only saving point data with wind directions
-            elif psa_variable.name == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION:
-                for date in self.psa_manifest_dataset.nsem.dates:
-                    data_array = self.dataset.sel(time=date)[variable]
-                    # save raw data
-                    self._save_psa_data(psa_variable, data_array, date)
+            psa_variable.color_bar = self._color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
 
-            psa_variable.save()
+        # wind barbs - only saving point data with wind directions
+        elif psa_variable.name == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION:
+            assert date is not None, 'date must be supplied for time-series variable {}'.format(psa_variable)
+            data_array = self.dataset.sel(time=date)[variable]
+            # save raw data
+            self._save_psa_data(psa_variable, data_array, date)
 
-        logger.info('PSA Dataset {} has been successfully ingested'.format(self.psa_manifest_dataset))
+        psa_variable.save()
 
-    def _toggle_dataset(self):
-        # close and reopen for memory saving purposes
-
-        # close if already open
-        if self.dataset:
-            self.dataset.close()
-
-        # open dataset
+    def _open_dataset(self):
         self.dataset = xr.open_dataset(os.path.join(
             named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
             self.psa_manifest_dataset.path)
@@ -125,7 +113,7 @@ class PsaDataset:
         https://www.psycopg.org/docs/cursor.html#cursor.copy_from
         """
 
-        logger.info('saving psa data for {} at {}'.format(psa_variable, date))
+        logger.info('{}: saving psa data for {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
 
         # define database columns to copy to
         columns = [
@@ -182,17 +170,14 @@ class PsaDataset:
 
     def _build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xr.DataArray, dt: datetime = None):
 
-        logger.info('building contours for {} at {}'.format(nsem_psa_variable, dt))
+        logger.info('{}: building contours for {} at {}'.format(self.psa_manifest_dataset, nsem_psa_variable, dt))
 
         # structured grid
         if self.psa_manifest_dataset.structured:
-            logger.info('[structured]')
             contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
 
         # unstructured grid - use provided triangulation to contour
         else:
-
-            logger.info('[unstructured]')
 
             # adjust mesh topology indexing if this is 0 or 1-based indexing (https://github.com/ugrid-conventions/ugrid-conventions)
             # subtract n from the topology/mesh
@@ -227,7 +212,7 @@ class PsaDataset:
             # contour level value
             value = contourf.levels[i]
 
-            logger.info('contour level {} = {}'.format(i, value))
+            logger.info('{}: contour level {} = {}'.format(self.psa_manifest_dataset, i, value))
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -239,7 +224,7 @@ class PsaDataset:
                 path_polygons = path.to_polygons()
 
                 if len(path_polygons) == 0:
-                    logger.warning('Skipping path with empty polygons for {}'.format(nsem_psa_variable))
+                    logger.warning('{}: skipping path with empty polygons for {}'.format(self.psa_manifest_dataset, nsem_psa_variable))
                     continue
 
                 # classify exterior and interior polygons
@@ -248,23 +233,34 @@ class PsaDataset:
                 # build all polygons for this path using the calculated interior rings/holes
                 for exterior in exteriors:
                     p = geos.Polygon(exterior)
-                    interior_indexes = []
-                    for idx, interior in enumerate(interiors):
-                        # exterior contains at least one point of this interior
-                        if p.contains(geos.Point(*interior[0])):
-                            interior_indexes.append(idx)
-                    result_polygons.append(geos.Polygon(exterior, *[interiors[idx] for idx in interior_indexes]))
-                    # remove used interiors to speed up sequential scans
-                    interiors = [interior for i, interior in enumerate(interiors) if i not in interior_indexes]
 
-                # trim result polygon to storm's geo
-                polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
-                if polygon.empty:
-                    logger.warning('skipping empty polygon from storm intersection')
-                    continue
+                    # handle invalid polygon
+                    if not p.valid:
+                        logger.info('{}: applying buffer(0) to invalid polygon'.format(self.psa_manifest_dataset))
+                        p = p.buffer(0)
+
+                    # trim polygon to storm's geo
+                    p = storm_geo.intersection(p)
+                    if p.empty:
+                        continue
+
+                    # generate interior rings/holes
+                    holes = []
+                    for interior in interiors:
+                        # exterior contains at least one point of this interior so add it to it's holes
+                        if p.contains(geos.Point(*interior[0])):
+                            holes.append(interior)
+
+                    # add to results
+                    if isinstance(p, geos.MultiPolygon):
+                        mp = p
+                        for p in mp:
+                            result_polygons.append(geos.Polygon(p[0], *holes))
+                    else:
+                        result_polygons.append(geos.Polygon(p[0], *holes))
 
                 results.append({
-                    'polygon': polygon,
+                    'polygon': geos.MultiPolygon(result_polygons),
                     'value': value,
                     'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                 })

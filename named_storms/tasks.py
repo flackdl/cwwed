@@ -32,7 +32,7 @@ from named_storms.data.processors import ProcessorData
 from named_storms.psa import PsaDataset
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
-    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot)
+    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset)
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -798,23 +798,25 @@ def cache_psa_contour_task(storm_id: int):
 
 
 @app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE)
-def ingest_nsem_psa_task(nsem_psa_id):
+def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, date: datetime):
     """
-    Ingests an NSEM PSA into the CWWED database
+    Ingests an NSEM PSA Dataset variable into CWWED
     """
+    dataset_manifest = get_object_or_404(NsemPsaManifestDataset, pk=psa_dataset_id)
+    assert variable in dataset_manifest.variables, 'Variable not found in {}'.format(dataset_manifest)
+    PsaDataset(psa_manifest_dataset=dataset_manifest).ingest_variable(variable, date)
+    logger.info('{}: {} variable (date={}) has been successfully ingested'.format(dataset_manifest, variable, date))
 
+
+@app.task(**TASK_ARGS_RETRY)
+def postprocess_psa_ingest_task(nsem_psa_id):
+    """
+    Update the psa as processed and email the "nsem" user indicating the PSA has been ingested
+    """
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
-
-    # only process if the psa was validated
-    if not nsem_psa.validated:
-        msg = '{} was not validated so skipping ingestion'.format(nsem_psa)
-        logger.warning(msg)
-        raise Exception(msg)
-
-    # process each dataset
-    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
-        psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
-        psa_dataset.ingest()
+    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
+    nsem_psa_api_url = "{}://{}:{}{}".format(
+        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
     # save psa as processed
     nsem_psa.processed = True
@@ -822,17 +824,6 @@ def ingest_nsem_psa_task(nsem_psa_id):
     nsem_psa.save()
 
     logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
-
-
-@app.task(**TASK_ARGS_RETRY)
-def email_psa_ingested_task(nsem_psa_id):
-    """
-    Email the "nsem" user indicating the PSA has been ingested
-    """
-    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
-    nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
-    nsem_psa_api_url = "{}://{}:{}{}".format(
-        settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
     body = """
         PSA has been ingested.

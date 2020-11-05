@@ -28,10 +28,14 @@ from named_storms.sql import wind_barbs_query
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
-    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa_task,
-    email_psa_ingested_task, cache_psa_contour_task,
+    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task,
+    postprocess_psa_ingest_task, cache_psa_contour_task,
+    ingest_nsem_psa_dataset_variable_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
+from named_storms.models import (
+    NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot,
+    NsemPsaData, NsemPsaManifestDataset,
+)
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
     NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer)
@@ -100,6 +104,21 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
         qs = qs.distinct('named_storm_id')
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
 
+    @classmethod
+    def get_ingest_psa_dataset_tasks(cls, nsem_psa_id):
+        """
+        Creates tasks to ingest an NSEM PSA into CWWED
+        """
+
+        nsem_psa = NsemPsa.objects.get(id=nsem_psa_id)
+        tasks = []
+        # create tasks to process each variable for each date in each dataset
+        for dataset in nsem_psa.nsempsamanifestdataset_set.all():  # type: NsemPsaManifestDataset
+            for variable in dataset.variables:
+                for date in nsem_psa.dates:
+                    tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable, date))
+        return tasks
+
     def perform_create(self, serializer):
         # save the instance first so we can create a task to extract and validate the model output
         nsem_psa = serializer.save()  # type: NsemPsa
@@ -111,10 +130,10 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             validate_nsem_psa_task.si(nsem_psa.id),
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
-            # ingest the psa
-            ingest_nsem_psa_task.si(nsem_psa.id),
-            # email psa ingest completion
-            email_psa_ingested_task.si(nsem_psa.id),
+            # ingest the psa in parallel by creating tasks for each dataset/variable/date
+            group(*self.get_ingest_psa_dataset_tasks(nsem_psa.id)),
+            # save psa as processed and send confirmation email
+            postprocess_psa_ingest_task.si(nsem_psa.id),
             # execute these final tasks in parallel
             group(
                 # cache geo json for this psa
