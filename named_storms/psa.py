@@ -56,7 +56,7 @@ class PsaDataset:
 
         logger.info('{}: processing variable {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
 
-        # delete any existing psa data in case we're reprocessing this psa
+        # delete any existing psa variable data in case we're reprocessing this psa
         psa_variable.nsempsacontour_set.filter(date=date).delete()
         psa_variable.nsempsadata_set.filter(date=date).delete()
 
@@ -232,32 +232,35 @@ class PsaDataset:
 
                 # build all polygons for this path using the calculated interior rings/holes
                 for exterior in exteriors:
-                    p = geos.Polygon(exterior)
+                    polygon = geos.Polygon(exterior)
 
                     # handle invalid polygon
-                    if not p.valid:
+                    if not polygon.valid:
                         logger.info('{}: applying buffer(0) to invalid polygon'.format(self.psa_manifest_dataset))
-                        p = p.buffer(0)
+                        polygon = polygon.buffer(0)
 
                     # trim polygon to storm's geo
-                    p = storm_geo.intersection(p)
-                    if p.empty:
+                    polygon = storm_geo.intersection(polygon)
+                    if polygon.empty:
                         continue
 
-                    # generate interior rings/holes
-                    holes = []
-                    for interior in interiors:
-                        # exterior contains at least one point of this interior so add it to it's holes
-                        if p.contains(geos.Point(*interior[0])):
-                            holes.append(interior)
-
-                    # add to results
-                    if isinstance(p, geos.MultiPolygon):
-                        mp = p
-                        for p in mp:
-                            result_polygons.append(geos.Polygon(p[0], *holes))
+                    if isinstance(polygon, geos.MultiPolygon):
+                        polygons = [p for p in polygon]
                     else:
-                        result_polygons.append(geos.Polygon(p[0], *holes))
+                        polygons = [polygon]
+
+                    # TODO - water_level isn't working right (layered polygons)
+                    for polygon in polygons:
+
+                        # generate interior rings/holes
+                        holes = []
+                        for interior in interiors:
+                            # exterior contains at least one point of this interior so add it to the list of holes
+                            if polygon.contains(geos.Point(*interior[0])):
+                                holes.append(interior)
+
+                        # add to results
+                        result_polygons.append(geos.Polygon(polygon[0], *holes))
 
                 results.append({
                     'polygon': geos.MultiPolygon(result_polygons),
