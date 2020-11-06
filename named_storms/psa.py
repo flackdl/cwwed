@@ -234,22 +234,11 @@ class PsaDataset:
                 for exterior in exteriors:
                     polygon = geos.Polygon(exterior)
 
-                    # handle invalid polygon
-                    if not polygon.valid:
-                        logger.info('{}: applying buffer(0) to invalid polygon'.format(self.psa_manifest_dataset))
-                        polygon = polygon.buffer(0)
-
-                    # trim polygon to storm's geo
-                    polygon = storm_geo.intersection(polygon)
-                    if polygon.empty:
-                        continue
-
                     if isinstance(polygon, geos.MultiPolygon):
                         polygons = [p for p in polygon]
                     else:
                         polygons = [polygon]
 
-                    # TODO - water_level isn't working right (layered polygons)
                     for polygon in polygons:
 
                         # generate interior rings/holes
@@ -262,8 +251,13 @@ class PsaDataset:
                         # add to results
                         result_polygons.append(geos.Polygon(polygon[0], *holes))
 
+                polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
+                if not polygon.valid:
+                    logger.info('fixing invalid clipped poly')
+                    polygon = polygon.buffer(0)
+
                 results.append({
-                    'polygon': geos.MultiPolygon(result_polygons),
+                    'polygon': polygon,
                     'value': value,
                     'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                 })
