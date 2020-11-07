@@ -212,8 +212,6 @@ class PsaDataset:
             # contour level value
             value = contourf.levels[i]
 
-            logger.info('{}: contour level {} = {}'.format(self.psa_manifest_dataset, i, value))
-
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
 
@@ -247,7 +245,6 @@ class PsaDataset:
                 # trim final result to storm's geo
                 polygon = geos.MultiPolygon(result_polygons)
                 if not polygon.valid:
-                    logger.info('fixing invalid clipped polygon result')
                     polygon = polygon.buffer(0)
                 polygon = storm_geo.intersection(polygon)
 
