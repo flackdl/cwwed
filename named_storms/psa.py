@@ -234,27 +234,22 @@ class PsaDataset:
                 for exterior in exteriors:
                     polygon = geos.Polygon(exterior)
 
-                    if isinstance(polygon, geos.MultiPolygon):
-                        polygons = [p for p in polygon]
-                    else:
-                        polygons = [polygon]
+                    # generate interior rings/holes
+                    holes = []
+                    for interior in interiors:
+                        # exterior contains at least one point of this interior so add it to the list of holes
+                        if polygon.contains(geos.Point(*interior[0])):
+                            holes.append(interior)
 
-                    for polygon in polygons:
+                    # add to results
+                    result_polygons.append(geos.Polygon(polygon[0], *holes))
 
-                        # generate interior rings/holes
-                        holes = []
-                        for interior in interiors:
-                            # exterior contains at least one point of this interior so add it to the list of holes
-                            if polygon.contains(geos.Point(*interior[0])):
-                                holes.append(interior)
-
-                        # add to results
-                        result_polygons.append(geos.Polygon(polygon[0], *holes))
-
-                polygon = storm_geo.intersection(geos.MultiPolygon(result_polygons))
+                # trim final result to storm's geo
+                polygon = geos.MultiPolygon(result_polygons)
                 if not polygon.valid:
-                    logger.info('fixing invalid clipped poly')
+                    logger.info('fixing invalid clipped polygon result')
                     polygon = polygon.buffer(0)
+                polygon = storm_geo.intersection(polygon)
 
                 results.append({
                     'polygon': polygon,
