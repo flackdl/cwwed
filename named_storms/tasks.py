@@ -402,6 +402,7 @@ def validate_nsem_psa_task(nsem_id):
     """
     Validates the PSA from file storage with the following:
     - cf conventions - http://cfconventions.org/
+    - ugrid conventions - http://ugrid-conventions.github.io/ugrid-conventions/
     - expected coordinates
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)

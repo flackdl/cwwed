@@ -44,7 +44,7 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
 
-  public DEFAULT_ZOOM_LEVEL = 7;
+  public DEFAULT_ZOOM_LEVEL = 8;
 
   public mapLayerOptions = [
     {name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD},
