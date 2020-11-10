@@ -232,12 +232,20 @@ class PsaDataset:
                 for exterior in exteriors:
                     polygon = geos.Polygon(exterior)
 
-                    # generate interior rings/holes
+                    interior_indexes = []
+
+                    # assign interior rings (holes)
                     holes = []
-                    for interior in interiors:
+                    for idx, interior in enumerate(interiors):
                         # exterior contains at least one point of this interior so add it to the list of holes
                         if polygon.contains(geos.Point(*interior[0])):
+                            interior_indexes.append(idx)
                             holes.append(interior)
+
+                    # TODO - this won't work when there's a polygon in a donut because a hole may be assigned to the wrong exterior
+                    # TODO - GEOS_NOTICE: Holes are nested at or near point -90.204428274050727 29.825885454219971
+                    # remove used interiors
+                    interiors = [interior for i, interior in enumerate(interiors) if i not in interior_indexes]
 
                     # add to results
                     result_polygons.append(geos.Polygon(polygon[0], *holes))

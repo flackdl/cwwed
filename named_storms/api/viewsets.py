@@ -353,7 +353,6 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     def get_queryset(self):
         """
         - group all geometries together (st_collect) by same variable & value
-        - clip psa to storm's geo (st_intersection)
         """
         qs = NsemPsaContour.objects.filter(nsem_psa_variable__nsem=self.nsem)
         qs = qs.values(*[
