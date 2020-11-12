@@ -2,10 +2,12 @@ import os
 import logging
 from datetime import datetime
 from io import StringIO
+from typing import List, Tuple
 
+from pyproj import Geod
 import geopandas
 from shapely import wkt
-from shapely.geometry import Point
+from shapely import geometry
 import matplotlib.colors
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -25,6 +27,7 @@ logger = logging.getLogger('cwwed')
 NULL_FILL_VALUE = -9999
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
+MIN_POLYGON_AREA_METERS = 1
 
 NULL_REPRESENT = r'\N'
 
@@ -144,10 +147,10 @@ class PsaDataset:
 
             # coordinates are individual columns so zip them together
             if set(df.columns).issuperset(['lat', 'lon']):
-                df['point'] = list(map(lambda p: Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
+                df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
             # coordinates are a pandas MultiIndex so we can directly map them to points
             elif set(df.index.names).issuperset(['lat', 'lon']):
-                df['point'] = df.index.map(lambda p: Point(p[1], p[0]))
+                df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
             else:
                 raise Exception('Expected lat and lon coordinates either as index or columns')
 
@@ -179,8 +182,9 @@ class PsaDataset:
         # unstructured grid - use provided triangulation to contour
         else:
 
-            # adjust mesh topology indexing if this is 0 or 1-based indexing (https://github.com/ugrid-conventions/ugrid-conventions)
-            # subtract n from the topology/mesh
+            # adjust mesh topology indexing if this is 0-based or 1-based indexing
+            # see https://github.com/ugrid-conventions/ugrid-conventions
+            # subtract n from the topology/mesh using "start_index" metadata
             topology = self.dataset[self.psa_manifest_dataset.topology_name]
             topology = np.subtract(
                 topology,
@@ -207,10 +211,10 @@ class PsaDataset:
         results = []
 
         # process contour results
-        for i, collection in enumerate(contourf.collections):
+        for collection_idx, collection in enumerate(contourf.collections):
 
             # contour level value
-            value = contourf.levels[i]
+            value = contourf.levels[collection_idx]
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -226,29 +230,42 @@ class PsaDataset:
                     continue
 
                 # classify exterior and interior polygons
-                exteriors, interiors = self.classify_polygons(path_polygons)
+                exterior_polygons, interior_rings = self.classify_polygons(path_polygons)
 
                 # build all polygons for this path using the calculated interior rings/holes
-                for exterior in exteriors:
-                    polygon = geos.Polygon(exterior)
+                for exterior_idx, exterior in enumerate(exterior_polygons):
+
+                    # ignore polygons that seem way too small by checking area
+                    if self._area(exterior) < MIN_POLYGON_AREA_METERS:
+                        #logger.info('Skipping small exterior {}'.format(exterior_idx))
+                        #open('/home/danny/Downloads/exterior-{}-{}.json'.format(collection_idx, exterior_idx), 'w').write(exterior.json)
+                        continue
 
                     interior_indexes = []
 
+                    # sort interiors by size so we add the right ones first and skip nested ones
+                    interior_rings.sort(key=lambda x: geos.Polygon(x).area, reverse=True)
+
                     # assign interior rings (holes)
-                    holes = []
-                    for idx, interior in enumerate(interiors):
-                        # exterior contains at least one point of this interior so add it to the list of holes
-                        if polygon.contains(geos.Point(*interior[0])):
-                            interior_indexes.append(idx)
-                            holes.append(interior)
+                    exterior_interior_rings = []
+                    for interior_idx, interior in enumerate(interior_rings):
+                        # exterior contains this interior
+                        if exterior.contains(interior):
+                            # avoid nested rings (i.e. an interior that belongs to another exterior)
+                            for exterior_interior_ring in exterior_interior_rings:
+                                # skip since an existing hole for this exterior contains this interior so it must be for another exterior
+                                if geos.Polygon(exterior_interior_ring).contains(interior):
+                                    break
+                            # include this interior
+                            else:  # for/else
+                                interior_indexes.append(interior_idx)
+                                exterior_interior_rings.append(interior)
 
-                    # TODO - this won't work when there's a polygon in a donut because a hole may be assigned to the wrong exterior
-                    # TODO - GEOS_NOTICE: Holes are nested at or near point -90.204428274050727 29.825885454219971
                     # remove used interiors
-                    interiors = [interior for i, interior in enumerate(interiors) if i not in interior_indexes]
+                    interior_rings = [interior for i, interior in enumerate(interior_rings) if i not in interior_indexes]
 
-                    # add to results
-                    result_polygons.append(geos.Polygon(polygon[0], *holes))
+                    result_polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
+                    result_polygons.append(result_polygon)
 
                 # trim final result to storm's geo
                 polygon = geos.MultiPolygon(result_polygons)
@@ -271,6 +288,11 @@ class PsaDataset:
                 value=result['value'],
                 color=result['color'],
             ).save()
+
+    def _area(self, polygon: geos.Polygon) -> float:
+        # create a shapely object and round the coords down a bit
+        polygon = geometry.Polygon(np.around(polygon[0].coords, 4))
+        return Geod(ellps="WGS84").geometry_area_perimeter(polygon)[0]
 
     def _color_bar_values(self, z_min: float, z_max: float):
         # build color bar values
@@ -295,15 +317,15 @@ class PsaDataset:
         return np.cross(ring, v2).sum() / 2.0
 
     @classmethod
-    def classify_polygons(cls, polygons):
+    def classify_polygons(cls, polygons) -> Tuple[List[geos.Polygon], List[geos.LinearRing]]:
         # classify polygons based on their area
         exteriors = []
         interiors = []
         for p in polygons:
             if cls.signed_area(p) >= 0:
-                exteriors.append(p)
+                exteriors.append(geos.Polygon(p))
             else:
-                interiors.append(p)
+                interiors.append(geos.LinearRing(p))
         return exteriors, interiors
 
     @staticmethod
