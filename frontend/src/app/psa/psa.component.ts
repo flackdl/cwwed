@@ -15,7 +15,7 @@ import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
-import { Fill, Style, Icon } from 'ol/style.js';
+import { Stroke, Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
@@ -553,6 +553,9 @@ export class PsaComponent implements OnInit {
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.form.get('opacity').value),
       }),
+      stroke: new Stroke({
+        color: '#fff',
+      }),
     })
   }
 
@@ -759,6 +762,9 @@ export class PsaComponent implements OnInit {
       const features = this.map.getFeaturesAtPixel(event.pixel);
 
       if (features) {
+        if (features.length > 1) {
+          console.log(features);
+        }
         features.forEach((feature) => {
 
           const variableName = feature.get('name');

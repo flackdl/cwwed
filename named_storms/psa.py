@@ -4,7 +4,6 @@ from datetime import datetime
 from io import StringIO
 from typing import List, Tuple
 
-from pyproj import Geod
 import geopandas
 from shapely import wkt
 from shapely import geometry
@@ -15,6 +14,7 @@ import matplotlib.cm
 import pytz
 import xarray as xr
 import numpy as np
+from django.contrib.gis.gdal import GDALException
 from django.contrib.gis import geos
 from django.db import connections
 
@@ -27,7 +27,7 @@ logger = logging.getLogger('cwwed')
 NULL_FILL_VALUE = -9999
 CONTOUR_LEVELS = 25
 COLOR_STEPS = 10  # color bar range
-MIN_POLYGON_AREA_METERS = 1
+MIN_POLYGON_AREA_PERIMETER_RATIO = .1
 
 NULL_REPRESENT = r'\N'
 
@@ -39,7 +39,10 @@ class PsaDataset:
 
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
-        self._open_dataset()
+        self.dataset = xr.open_dataset(os.path.join(
+            named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
+            self.psa_manifest_dataset.path)
+        )
 
     def ingest_variable(self, variable: str, date: datetime = None):
 
@@ -101,12 +104,6 @@ class PsaDataset:
             self._save_psa_data(psa_variable, data_array, date)
 
         psa_variable.save()
-
-    def _open_dataset(self):
-        self.dataset = xr.open_dataset(os.path.join(
-            named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
-            self.psa_manifest_dataset.path)
-        )
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """
@@ -208,8 +205,6 @@ class PsaDataset:
     def _process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt):
         storm_geo = self.psa_manifest_dataset.nsem.named_storm.geo  # type: geos.GEOSGeometry
 
-        results = []
-
         # process contour results
         for collection_idx, collection in enumerate(contourf.collections):
 
@@ -222,7 +217,6 @@ class PsaDataset:
                 # don't simplify the paths
                 path.should_simplify = False
 
-                result_polygons = []
                 path_polygons = path.to_polygons()
 
                 if len(path_polygons) == 0:
@@ -235,10 +229,8 @@ class PsaDataset:
                 # build all polygons for this path using the calculated interior rings/holes
                 for exterior_idx, exterior in enumerate(exterior_polygons):
 
-                    # ignore polygons that seem way too small by checking area
-                    if self._area(exterior) < MIN_POLYGON_AREA_METERS:
-                        #logger.info('Skipping small exterior {}'.format(exterior_idx))
-                        #open('/home/danny/Downloads/exterior-{}-{}.json'.format(collection_idx, exterior_idx), 'w').write(exterior.json)
+                    # skip invalid polygons
+                    if not self._is_valid_polygon(exterior):
                         continue
 
                     interior_indexes = []
@@ -264,35 +256,39 @@ class PsaDataset:
                     # remove used interiors
                     interior_rings = [interior for i, interior in enumerate(interior_rings) if i not in interior_indexes]
 
-                    result_polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
-                    result_polygons.append(result_polygon)
+                    # build final result polygon and trim to storm's geo
+                    polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
+                    polygon = storm_geo.intersection(polygon)
+                    if polygon.empty:
+                        continue
+                    if not polygon.valid:
+                        polygon = polygon.buffer(0)
 
-                # trim final result to storm's geo
-                polygon = geos.MultiPolygon(result_polygons)
-                if not polygon.valid:
-                    polygon = polygon.buffer(0)
-                polygon = storm_geo.intersection(polygon)
+                    # build new psa results from contour results
+                    NsemPsaContour.objects.create(
+                        nsem_psa_variable=nsem_psa_variable,
+                        date=dt,
+                        geo=polygon,
+                        value=value,
+                        color=matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
+                    )
 
-                results.append({
-                    'polygon': polygon,
-                    'value': value,
-                    'color': matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
-                })
+    @classmethod
+    def _is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
+        try:
+            transformed = cls._transformed_polygon(polygon)
+        except GDALException:
+            # TODO - remove
+            #open('/home/danny/Downloads/polygon-invalid-{}.json'.format(id(polygon)), 'w').write(polygon.json)
+            return False
+        if transformed.area / transformed.length < MIN_POLYGON_AREA_PERIMETER_RATIO:
+            return False
+        return True
 
-        # build new psa results from contour results
-        for result in results:
-            NsemPsaContour(
-                nsem_psa_variable=nsem_psa_variable,
-                date=dt,
-                geo=result['polygon'],
-                value=result['value'],
-                color=result['color'],
-            ).save()
-
-    def _area(self, polygon: geos.Polygon) -> float:
-        # create a shapely object and round the coords down a bit
-        polygon = geometry.Polygon(np.around(polygon[0].coords, 4))
-        return Geod(ellps="WGS84").geometry_area_perimeter(polygon)[0]
+    @staticmethod
+    def _transformed_polygon(polygon: geos.Polygon) -> geos.Polygon:
+        # transform polygon to the web mercator coordinate reference system which uses meters
+        return polygon.transform(3857, clone=True)
 
     def _color_bar_values(self, z_min: float, z_max: float):
         # build color bar values
@@ -323,7 +319,7 @@ class PsaDataset:
         interiors = []
         for p in polygons:
             if cls.signed_area(p) >= 0:
-                exteriors.append(geos.Polygon(p))
+                exteriors.append(geos.Polygon(p, srid=4326))
             else:
                 interiors.append(geos.LinearRing(p))
         return exteriors, interiors
