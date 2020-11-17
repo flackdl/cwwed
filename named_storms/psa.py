@@ -25,10 +25,9 @@ from named_storms.utils import named_storm_nsem_version_path
 logger = logging.getLogger('cwwed')
 
 NULL_FILL_VALUE = -9999
-CONTOUR_LEVELS = 25
-COLOR_STEPS = 10  # color bar range
-MIN_POLYGON_AREA_PERIMETER_RATIO = .5
-
+CONTOUR_LEVELS = 25  # number of contour levels
+COLOR_STEPS = 10  # number of color bar steps
+MIN_POLYGON_AREA_PERIMETER_RATIO = .5  # minimum area/perimeter ratio
 NULL_REPRESENT = r'\N'
 
 
@@ -107,8 +106,8 @@ class PsaDataset:
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """
-        manually copy data into postgres via it's COPY mechanism which is much more efficient
-        than using django's orm (even bulk_create) since it has to serialize every object
+        perform a low level data copy into postgres via it's COPY mechanism which is much more
+        efficient than using django's orm (even bulk_create) since it has to serialize every object
         https://www.postgresql.org/docs/9.4/sql-copy.html
         https://www.psycopg.org/docs/cursor.html#cursor.copy_from
         """
@@ -255,14 +254,21 @@ class PsaDataset:
                     # build final result polygon
                     polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
 
-                    # skip invalid polygon
-                    if not self._is_valid_polygon(polygon):
-                        continue
-
                     # trim to storm's geo
                     polygon = storm_geo.intersection(polygon)
 
-                    # build new psa results from contour results
+                    # remove/skip invalid polygons
+                    if isinstance(polygon, geos.MultiPolygon):
+                        # remove invalid polygons from this multipolygon
+                        polygon = geos.MultiPolygon([p for p in polygon if self._is_valid_polygon(p)])
+                        if polygon.empty:
+                            continue
+                    else:  # polygon
+                        # skip invalid polygon
+                        if not self._is_valid_polygon(polygon):
+                            continue
+
+                    # create psa result from contour result
                     NsemPsaContour.objects.create(
                         nsem_psa_variable=nsem_psa_variable,
                         date=dt,
@@ -273,13 +279,13 @@ class PsaDataset:
 
     @classmethod
     def _is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
+        # return whether the area to perimeter ratio meets the minimum
         if polygon.empty:
             return False
         try:
             transformed = cls._transformed_polygon(polygon)
         except GDALException:
             return False
-        # return whether the area to perimeter ratio meets the minimum
         return transformed.area / transformed.length > MIN_POLYGON_AREA_PERIMETER_RATIO
 
     @staticmethod
@@ -306,6 +312,7 @@ class PsaDataset:
 
     @staticmethod
     def signed_area(ring):
+        # https://en.wikipedia.org/wiki/Shoelace_formula
         v2 = np.roll(ring, -1, axis=0)
         return np.cross(ring, v2).sum() / 2.0
 

@@ -555,6 +555,7 @@ export class PsaComponent implements OnInit {
       }),
       stroke: new Stroke({
         color: '#fff',
+        width: .5,
       }),
     })
   }
@@ -762,9 +763,6 @@ export class PsaComponent implements OnInit {
       const features = this.map.getFeaturesAtPixel(event.pixel);
 
       if (features) {
-        if (features.length > 1) {
-          console.log(features);
-        }
         features.forEach((feature) => {
 
           const variableName = feature.get('name');
