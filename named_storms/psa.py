@@ -229,10 +229,6 @@ class PsaDataset:
                 # build all polygons for this path using the calculated interior rings/holes
                 for exterior_idx, exterior in enumerate(exterior_polygons):
 
-                    # skip invalid polygons
-                    if not self._is_valid_polygon(exterior):
-                        continue
-
                     interior_indexes = []
 
                     # sort interiors by size so we add the right ones first and skip nested ones
@@ -256,13 +252,15 @@ class PsaDataset:
                     # remove used interiors
                     interior_rings = [interior for i, interior in enumerate(interior_rings) if i not in interior_indexes]
 
-                    # build final result polygon and trim to storm's geo
+                    # build final result polygon
                     polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
-                    polygon = storm_geo.intersection(polygon)
-                    if polygon.empty:
+
+                    # skip invalid polygon
+                    if not self._is_valid_polygon(polygon):
                         continue
-                    if not polygon.valid:
-                        polygon = polygon.buffer(0)
+
+                    # trim to storm's geo
+                    polygon = storm_geo.intersection(polygon)
 
                     # build new psa results from contour results
                     NsemPsaContour.objects.create(
@@ -275,15 +273,14 @@ class PsaDataset:
 
     @classmethod
     def _is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
+        if polygon.empty:
+            return False
         try:
             transformed = cls._transformed_polygon(polygon)
         except GDALException:
-            # TODO - remove
-            #open('/home/danny/Downloads/polygon-invalid-{}.json'.format(id(polygon)), 'w').write(polygon.json)
             return False
-        if transformed.area / transformed.length < MIN_POLYGON_AREA_PERIMETER_RATIO:
-            return False
-        return True
+        # return whether the area to perimeter ratio meets the minimum
+        return transformed.area / transformed.length > MIN_POLYGON_AREA_PERIMETER_RATIO
 
     @staticmethod
     def _transformed_polygon(polygon: geos.Polygon) -> geos.Polygon:
