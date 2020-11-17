@@ -254,6 +254,10 @@ class PsaDataset:
                     # build final result polygon
                     polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
 
+                    # fix any self-intersecting "bow ties"
+                    if not polygon.valid:
+                        polygon = polygon.buffer(0)
+
                     # trim to storm's geo
                     polygon = storm_geo.intersection(polygon)
 
