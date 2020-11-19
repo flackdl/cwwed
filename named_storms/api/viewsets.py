@@ -1,7 +1,7 @@
 import csv
 import logging
 import geojson
-from celery import chain, group
+from celery import chain, group, chord
 from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
@@ -131,17 +131,22 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
             # ingest the psa in parallel by creating tasks for each dataset/variable/date
-            group(*self.get_ingest_psa_dataset_tasks(nsem_psa.id)),
-            # save psa as processed and send confirmation email
-            postprocess_psa_ingest_task.si(nsem_psa.id),
-            # execute these final tasks in parallel
-            group(
-                # cache geo json for this psa
-                cache_psa_contour_task.si(nsem_psa.named_storm_id),
-                # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
-                extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
+            chord(
+                header=self.get_ingest_psa_dataset_tasks(nsem_psa.id),
+                # then run the following sequentially
+                body=chain(
+                    # save psa as processed and send confirmation email
+                    postprocess_psa_ingest_task.si(nsem_psa.id),
+                    # execute these final tasks in parallel
+                    group(
+                        # cache geo json for this psa
+                        cache_psa_contour_task.si(nsem_psa.named_storm_id),
+                        # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
+                        extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
+                    ),
+                )
             ),
-        ).apply_async()
+        )()
 
 
 class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):

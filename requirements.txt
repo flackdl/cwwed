@@ -1,6 +1,6 @@
 boto3==1.11.6
 bpython==0.18
-celery==4.4.0
+celery==5.0.2
 # chfchecker - updated version which supports the _Encoding attribute
 git+https://github.com/cedadev/cf-checker@4aff368aed350482e8827409ddc302bea95da876
 dj-database-url==0.5.0
@@ -16,7 +16,7 @@ git+https://github.com/TracyWebTech/django-revproxy.git@4cefe4ae4bf4834a2e1229b9
 django-storages==1.8
 djangorestframework==3.11.0
 emrichen==0.2.2
-flower==0.9.3
+flower==0.9.5
 geojson==2.5.0
 geopandas==0.6.2
 gunicorn==20.0.4
