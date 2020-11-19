@@ -799,7 +799,7 @@ def cache_psa_contour_task(storm_id: int):
 
 
 @app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE)
-def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, date: datetime):
+def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, date: datetime = None):
     """
     Ingests an NSEM PSA Dataset variable into CWWED
     """

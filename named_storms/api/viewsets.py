@@ -115,8 +115,12 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
         # create tasks to process each variable for each date in each dataset
         for dataset in nsem_psa.nsempsamanifestdataset_set.all():  # type: NsemPsaManifestDataset
             for variable in dataset.variables:
-                for date in nsem_psa.dates:
-                    tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable, date))
+                # max-values data type so there's no date
+                if NsemPsaVariable.get_variable_attribute(variable, 'data_type') == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+                    tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable))
+                else:
+                    for date in nsem_psa.dates:
+                        tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable, date))
         return tasks
 
     def perform_create(self, serializer):
