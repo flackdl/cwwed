@@ -34,7 +34,6 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
                 INNER JOIN named_storms_nsempsa nsn ON nsn.id = v1.nsem_id
                 INNER JOIN named_storms_namedstorm n ON n.id = nsn.named_storm_id
             WHERE
-                 ST_Within(d1.point::geometry, n.geo::geometry) AND
                  ST_Within(d1.point::geometry, ST_Expand(ST_GeomFromText(%(center)s, 4326), %(expand_distance)s)) AND
                  d1.id %% %(step)s = 0
         '''
