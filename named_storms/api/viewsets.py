@@ -30,7 +30,7 @@ from named_storms.tasks import (
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
     email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task,
     postprocess_psa_ingest_task, cache_psa_contour_task,
-    ingest_nsem_psa_dataset_variable_task,
+    ingest_nsem_psa_dataset_variable_task, postprocess_psa_validated_task,
 )
 from named_storms.models import (
     NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot,
@@ -134,6 +134,8 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             validate_nsem_psa_task.si(nsem_psa.id),
             # email validation result
             email_psa_validated_task.si(nsem_psa.id),
+            # handle possible failure
+            postprocess_psa_validated_task.si(nsem_psa.id),
             # ingest the psa in parallel by creating tasks for each dataset/variable/date
             chord(
                 header=self.get_ingest_psa_dataset_tasks(nsem_psa.id),

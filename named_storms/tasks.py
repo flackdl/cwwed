@@ -355,6 +355,16 @@ def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot
     return named_storm_covered_data_snapshot.id
 
 
+@app.task
+def postprocess_psa_validated_task(nsem_psa_id):
+    """
+    Raise exception if the PSA wasn't validated
+    """
+    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
+    if not nsem_psa.validated:
+        raise Exception('PSA {} was not validated'.format(nsem_psa))
+
+
 @app.task(**TASK_ARGS_RETRY)
 def email_psa_validated_task(nsem_psa_id):
     """
