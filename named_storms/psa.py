@@ -83,7 +83,7 @@ class PsaDataset:
                 self._save_psa_data(psa_variable, data_array)
 
             # time series
-            elif psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
+            else:
                 assert date is not None, 'date must be supplied for time-series variable {}'.format(psa_variable)
                 data_array = self.dataset.sel(time=date)[variable]
 
@@ -101,8 +101,20 @@ class PsaDataset:
             data_array = self.dataset.sel(time=date)[variable]
             # save raw data
             self._save_psa_data(psa_variable, data_array, date)
+        else:
+            raise Exception('{}: Unknown variable type {}'.format(self.psa_manifest_dataset, variable))
 
+        psa_variable.meta = self._to_python_values(data_array.attrs)
         psa_variable.save()
+
+    def get_metadata(self):
+        # return dataset metadata in python native types
+        return self._to_python_values(self.dataset.attrs)
+
+    @staticmethod
+    def _to_python_values(data: dict) -> dict:
+        # converts numpy values to python native types
+        return dict((key, value.item() if isinstance(value, np.generic) else value) for key, value in data.items())
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """

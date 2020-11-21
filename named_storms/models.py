@@ -79,7 +79,9 @@ class CoveredData(models.Model):
 
 class CoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES), help_text='Optionally specify a custom processor factory')
+    processor_factory = models.CharField(
+        max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES),
+        help_text='Optionally specify a custom processor factory')
     processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
     url = models.CharField(max_length=5000)
@@ -195,6 +197,7 @@ class NsemPsaManifestDataset(models.Model):
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
     structured = models.BooleanField(default=True, help_text='Whether the dataset has a structured grid')
     topology_name = models.CharField(max_length=50, default='element', help_text='Variable name for unstructured mesh connectivity')
+    meta = fields.JSONField(default=dict, blank=True)  # psa dataset attributes
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
@@ -325,6 +328,7 @@ class NsemPsaVariable(models.Model):
     data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
     element_type = models.CharField(choices=zip(ELEMENTS, ELEMENTS), max_length=20)  # i.e "water"
     units = models.CharField(choices=zip(UNITS, UNITS), max_length=20)  # i.e "m/s"
+    meta = fields.JSONField(default=dict, blank=True)  # psa variable attributes from dataset
 
     class Meta:
         unique_together = ('nsem', 'name')

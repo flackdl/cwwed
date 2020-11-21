@@ -28,7 +28,7 @@ from named_storms.sql import wind_barbs_query
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
-    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task,
+    email_psa_user_export_task, validate_nsem_psa_task,
     postprocess_psa_ingest_task, cache_psa_contour_task,
     ingest_nsem_psa_dataset_variable_task, postprocess_psa_validated_task,
 )
@@ -38,7 +38,7 @@ from named_storms.models import (
 )
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer, NsemPsaManifestDatasetSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -132,9 +132,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             extract_nsem_psa_task.s(nsem_psa.id),
             # validate once extracted
             validate_nsem_psa_task.si(nsem_psa.id),
-            # email validation result
-            email_psa_validated_task.si(nsem_psa.id),
-            # handle possible failure
+            # post-process the validation and email validation result
             postprocess_psa_validated_task.si(nsem_psa.id),
             # ingest the psa in parallel by creating tasks for each dataset/variable/date
             chord(
@@ -480,3 +478,9 @@ class NsemPsaUserExportNestedViewSet(NsemPsaBaseViewSet, NsemPsaUserExportViewSe
         context = super().get_serializer_context()
         context['nsem'] = self.nsem
         return context
+
+
+class NsemPsaManifestDatasetViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NsemPsaManifestDatasetSerializer
+    queryset = NsemPsaManifestDataset.objects.all()
+    filterset_fields = ('nsem', 'nsem__named_storm')

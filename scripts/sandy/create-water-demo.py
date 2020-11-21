@@ -27,9 +27,21 @@ def date_mask(dataset: xr.Dataset):
 
 ds = xr.Dataset(
     {
-        'water_level': (['time', 'node'], dataset_water_level.zeta[date_mask(dataset_water_level)]),
-        'water_level_max': (['node'], dataset_water_level_max.zeta_max),
-        'wave_height': (['time', 'node'], dataset_wave_height.hs[date_mask(dataset_wave_height)]),
+        'water_level': (
+            ['time', 'node'],
+            dataset_water_level.zeta[date_mask(dataset_water_level)],
+            dataset_water_level.zeta.attrs,
+        ),
+        'water_level_max': (
+            ['node'],
+            dataset_water_level_max.zeta_max,
+            dataset_water_level_max.zeta_max.attrs
+        ),
+        'wave_height': (
+            ['time', 'node'],
+            dataset_wave_height.hs[date_mask(dataset_wave_height)],
+            dataset_wave_height.hs.attrs,
+        ),
         'element': dataset_water_level.element,
     },
     coords={
@@ -38,14 +50,24 @@ ds = xr.Dataset(
         'lon': (['node'], dataset_water_level.x),
         'lat': (['node'], dataset_water_level.y),
     },
+    attrs=dataset_water_level.attrs,
 )
 
-# appease CF conventions
+#
+# satisfy CF conventions
+#
+
 # remove invalid "units" attribute from "element" topology
 if 'units' in ds.element.attrs:
     del ds.element.attrs['units']
+# remove invalid "cf_role" attribute from "element" topology
 if 'cf_role' in ds.element.attrs:
     del ds.element.attrs['cf_role']
+# remove conflicting case-sensitive "conventions" UGRID attribute
+if 'UGRID' in ds.attrs.get('Conventions', ''):
+    del ds.attrs['Conventions']
+# fix invalid "water_level_max" standard name by copying from water level
+ds.water_level_max.attrs['standard_name'] = ds.water_level.attrs['standard_name']
 
 # full
 print('Saving full to {}'.format(out_full))

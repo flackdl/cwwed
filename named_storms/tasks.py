@@ -358,17 +358,8 @@ def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot
 @app.task
 def postprocess_psa_validated_task(nsem_psa_id):
     """
-    Raise exception if the PSA wasn't validated
-    """
-    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
-    if not nsem_psa.validated:
-        raise Exception('PSA {} was not validated'.format(nsem_psa))
-
-
-@app.task(**TASK_ARGS_RETRY)
-def email_psa_validated_task(nsem_psa_id):
-    """
     Email the "nsem" user indicating whether the PSA has been validated or not
+    Raise exception if the PSA wasn't validated
     """
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
@@ -404,7 +395,9 @@ def email_psa_validated_task(nsem_psa_id):
         recipient_list=recipients,
         html_message=html_body,
     )
-    return nsem_psa.id
+
+    if not nsem_psa.validated:
+        raise Exception('PSA {} was not validated'.format(nsem_psa))
 
 
 @app.task
@@ -828,6 +821,11 @@ def postprocess_psa_ingest_task(nsem_psa_id):
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
     nsem_psa_api_url = "{}://{}:{}{}".format(
         settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
+
+    # save the dataset's metadata in the psa manifest dataset
+    for psa_manifest_dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        psa_manifest_dataset.meta = PsaDataset(psa_manifest_dataset).get_metadata()
+        psa_manifest_dataset.save()
 
     # save psa as processed
     nsem_psa.processed = True
