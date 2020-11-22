@@ -503,7 +503,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
-    psa_path = named_storm_nsem_version_path(nsem_psa_user_export.nsem)
     tmp_user_export_path = os.path.join(
         root_data_path(),
         settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
@@ -517,71 +516,45 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # create temporary directory
     create_directory(tmp_user_export_path)
 
-    # netcdf/csv - extract low level data from netcdf files
-    # TODO - extract data from NsemPsaData now that we're storing every data point
+    # netcdf/csv - extract raw point data
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-            ds_file_path = os.path.join(psa_path, psa_dataset.path)
+            ds = xr.Dataset()
+            ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)
 
-            # open dataset
-            ds = xr.open_dataset(ds_file_path)
+            # choose any variable/date combination and retrieve the points to build the dataset's coordinates
+            psa_variable = psa_dataset.nsem.nsempsavariable_set.first()  # type: NsemPsaVariable
+            qs_data = psa_variable.nsempsadata_set.filter(date=psa_dataset.nsem.dates[0])  # any date
+            coords = np.array([d.point.coords for d in qs_data])
+            ds_coords = {
+                'lon': (['node'], coords[:, 0]),
+                'lat': (['node'], coords[:, 1]),
+            }
 
-            # subset using user-defined bounding box
-            ds = ds.where(
-                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &  # xmin
-                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &  # ymin
-                (ds.lon <= nsem_psa_user_export.bbox.extent[2]) &  # xmax
-                (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
-                drop=True)
+            # TODO - handle time
 
-            # skip dataset if there is missing data on any dimensions (ie. bounding box could have been too small)
-            if not all([len(ds[d]) for d in list(ds.dims)]):
-                continue
+            # add every variable to the dataset
+            for variable in psa_dataset.variables:
+                # get the matching psa variable and retrieve the point data
+                psa_variable = psa_dataset.nsem.nsempsavariable_set.first(name=variable)
+                assert psa_variable is not None, 'variable {} does not exist in {}'.format(variable, psa_dataset)
+                qs_data = psa_variable.nsempsadata_set.all()
+                values = [d.value for d in qs_data]
+                # append the data array
+                ds[psa_variable.name] = xr.DataArray(values, coords=ds_coords, dims=['node'])
 
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
-                # use xarray to create the netcdf export
-                ds.to_netcdf(os.path.join(tmp_user_export_path, psa_dataset.path))
+                pass
 
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
+                pass
 
-                # verify this dataset has the export date requested
-                if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
-                    continue
-
-                # subset by export date filter
-                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
-
-                # create pandas DataFrame which makes a csv conversion very simple
-                df_out = pd.DataFrame()
-
-                # insert a new column for each variable to df_out
-                for i, variable in enumerate(psa_dataset.variables):
-
-                    # verify this variable exists in the dataset
-                    if variable in list(ds.data_vars):
-
-                        df = ds[variable].to_dataframe()
-
-                        # initialize df_out DataFrame on first iteration
-                        if i == 0:
-                            df_out = df
-                        # insert df Series as a new column
-                        else:
-                            df_out.insert(len(df_out.columns), variable, df[variable])
-
-                # NOTE: due to the "crooked" shape of the structured grid
-                # this is necessary because the above xarray "where" bbox/extent
-                # filter is including coords _just_ outside the requested extent with no values present,
-                # so this simply guarantees those rows are removed
-                df_out = df_out.dropna()
-
-                # write csv
-                df_out.to_csv(
-                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
+            # save dataset as netcdf
+            ds.to_netcdf(ds_out_path)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
