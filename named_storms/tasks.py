@@ -500,6 +500,7 @@ def validate_nsem_psa_task(nsem_id):
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+    nsem_psa = nsem_psa_user_export.nsem
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
@@ -521,40 +522,78 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-            ds = xr.Dataset()
-            ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)
+            ds_out = xr.Dataset()
+            ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
+
+            # TODO - ValueError: conflicting sizes for dimension 'node': length 55 on the data but length 127 on coordinate 'lon'
 
             # choose any variable/date combination and retrieve the points to build the dataset's coordinates
-            psa_variable = psa_dataset.nsem.nsempsavariable_set.first()  # type: NsemPsaVariable
-            qs_data = psa_variable.nsempsadata_set.filter(date=psa_dataset.nsem.dates[0])  # any date
-            coords = np.array([d.point.coords for d in qs_data])
+            psa_variable = psa_dataset.nsem.nsempsavariable_set.get(name=psa_dataset.variables[0])  # type: NsemPsaVariable
+            points = psa_variable.nsempsadata_set.annotate(
+                geom_point=Cast('point', GeometryField())
+            ).filter(
+                geom_point__within=nsem_psa_user_export.bbox,
+                date=psa_dataset.nsem.dates[0],  # choose any specific date
+            ).values_list('point', flat=True)
+            coords = np.array([p.coords for p in points])
             ds_coords = {
+                'time': (['time'], nsem_psa.dates),
                 'lon': (['node'], coords[:, 0]),
                 'lat': (['node'], coords[:, 1]),
             }
 
-            # TODO - handle time
-
             # add every variable to the dataset
             for variable in psa_dataset.variables:
+
                 # get the matching psa variable and retrieve the point data
-                psa_variable = psa_dataset.nsem.nsempsavariable_set.first(name=variable)
+                psa_variable = psa_dataset.nsem.nsempsavariable_set.filter(name=variable).first()
                 assert psa_variable is not None, 'variable {} does not exist in {}'.format(variable, psa_dataset)
-                qs_data = psa_variable.nsempsadata_set.all()
-                values = [d.value for d in qs_data]
-                # append the data array
-                ds[psa_variable.name] = xr.DataArray(values, coords=ds_coords, dims=['node'])
+
+                # build data for each date in the psa
+                results = []
+                for date in nsem_psa.dates:
+                    values = psa_variable.nsempsadata_set.annotate(
+                        # cast geography type to geometry
+                        geom_point=Cast('point', GeometryField())
+                    ).filter(
+                        geom_point__within=nsem_psa_user_export.bbox,
+                        date=date,
+                    ).values_list('value', flat=True)
+                    results.append(values)
+
+                # add the data array to the dataset
+                ds_out[psa_variable.name] = xr.DataArray(np.array(results), coords=ds_coords, dims=['time', 'node'])
 
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
-                pass
+                ds_out.to_netcdf(ds_out_path)
 
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
-                pass
 
-            # save dataset as netcdf
-            ds.to_netcdf(ds_out_path)
+                # verify this dataset has the export date requested
+                if not ds_out.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
+                    continue
+
+                # subset by export date filter
+                ds_out = ds_out.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
+
+                # create pandas DataFrame which makes a csv conversion very simple
+                df_out = pd.DataFrame()
+
+                # insert a new column for each variable to df_out
+                for variable in ds_out.data_vars:
+
+                    # TODO - missing point data
+
+                    df = ds_out[variable].to_dataframe()
+
+                    # insert df as a new column
+                    df_out.insert(len(df_out.columns), variable, df[variable])
+
+                # write csv
+                df_out.to_csv(
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
@@ -652,8 +691,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         config=BotoCoreConfig(signature_version='s3v4'))
 
     # user export key name (using the export_id enforces uniqueness)
-    key_name = '{dir}/{storm_name}-{export_id}.{extension}'.format(
-        dir=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
+    key_name = '{path}/{storm_name}-{export_id}.{extension}'.format(
+        path=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
         export_id=nsem_psa_user_export.id,
         storm_name=nsem_psa_user_export.nsem.named_storm,
         extension=settings.CWWED_ARCHIVE_EXTENSION,

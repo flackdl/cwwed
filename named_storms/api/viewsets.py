@@ -136,6 +136,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             postprocess_psa_validated_task.si(nsem_psa.id),
             # ingest the psa in parallel by creating tasks for each dataset/variable/date
             chord(
+                # TODO - include an error callback to email failure
                 header=self.get_ingest_psa_dataset_tasks(nsem_psa.id),
                 # then run the following sequentially
                 body=chain(
