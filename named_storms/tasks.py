@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
-from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash
 from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
 from django.db import connection
@@ -32,7 +32,7 @@ from named_storms.data.processors import ProcessorData
 from named_storms.psa import PsaDataset
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
-    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset)
+    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset, NsemPsaData)
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -525,16 +525,24 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             ds_out = xr.Dataset()
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
-            # TODO - ValueError: conflicting sizes for dimension 'node': length 55 on the data but length 127 on coordinate 'lon'
-
-            # choose any variable/date combination and retrieve the points to build the dataset's coordinates
-            psa_variable = psa_dataset.nsem.nsempsavariable_set.get(name=psa_dataset.variables[0])  # type: NsemPsaVariable
-            points = psa_variable.nsempsadata_set.annotate(
-                geom_point=Cast('point', GeometryField())
+            # retrieve all the points within the user's bounding box
+            point_data = NsemPsaData.objects.annotate(
+                geo_hash=GeoHash('point'),
+                geom_point=Cast('point', GeometryField()),
             ).filter(
+                nsem_psa_variable__name__in=psa_dataset.variables,
+                nsem_psa_variable__nsem=nsem_psa,
                 geom_point__within=nsem_psa_user_export.bbox,
-                date=psa_dataset.nsem.dates[0],  # choose any specific date
-            ).values_list('point', flat=True)
+            ).distinct(
+                'geo_hash',
+            ).only(
+                'point',
+            ).order_by(
+                'geo_hash',
+            )
+            points = [d.point for d in point_data]
+
+            # build the dataset coordinates
             coords = np.array([p.coords for p in points])
             ds_coords = {
                 'time': (['time'], nsem_psa.dates),
@@ -545,21 +553,35 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # add every variable to the dataset
             for variable in psa_dataset.variables:
 
-                # get the matching psa variable and retrieve the point data
+                # get the matching psa variable and retrieve the point values
                 psa_variable = psa_dataset.nsem.nsempsavariable_set.filter(name=variable).first()
                 assert psa_variable is not None, 'variable {} does not exist in {}'.format(variable, psa_dataset)
 
-                # build data for each date in the psa
+                # build results for data in each date in the psa
                 results = []
                 for date in nsem_psa.dates:
-                    values = psa_variable.nsempsadata_set.annotate(
-                        # cast geography type to geometry
-                        geom_point=Cast('point', GeometryField())
+                    values_data = list(psa_variable.nsempsadata_set.annotate(
+                        geo_hash=GeoHash('point'),
                     ).filter(
-                        geom_point__within=nsem_psa_user_export.bbox,
+                        geo_hash__in=[d.geo_hash for d in point_data],
                         date=date,
-                    ).values_list('value', flat=True)
-                    results.append(values)
+                    ).only(
+                        'value',
+                        'point',
+                    ).order_by(
+                        'geo_hash',
+                    ))
+                    values_points = [d.point for d in values_data]
+                    # iterate over entire point list and insert NaN for absent values
+                    result = []
+                    for point in points:
+                        try:
+                            idx = values_points.index(point)
+                        except ValueError:
+                            result.append(np.nan)
+                        else:
+                            result.append(values_data[idx].value)
+                    results.append(result)
 
                 # add the data array to the dataset
                 ds_out[psa_variable.name] = xr.DataArray(np.array(results), coords=ds_coords, dims=['time', 'node'])
@@ -580,11 +602,12 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
                 # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
+                df_out['date'] = np.full(len(ds_out.node), nsem_psa_user_export.date_filter)
+                df_out['lon'] = ds_out['lon']
+                df_out['lat'] = ds_out['lat']
 
                 # insert a new column for each variable to df_out
                 for variable in ds_out.data_vars:
-
-                    # TODO - missing point data
 
                     df = ds_out[variable].to_dataframe()
 
