@@ -166,12 +166,12 @@ class NsemPsa(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
     covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.PROTECT)
-    manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
+    manifest = models.JSONField()  # defines the uploaded psa dataset files and variables
     path = models.TextField()  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
-    validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
+    validation_exceptions = models.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
     processed = models.BooleanField(default=False)  # whether the psa was fully ingested/processed
     date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the psa is processed
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list
@@ -197,7 +197,7 @@ class NsemPsaManifestDataset(models.Model):
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
     structured = models.BooleanField(default=True, help_text='Whether the dataset has a structured grid')
     topology_name = models.CharField(max_length=50, default='element', help_text='Variable name for unstructured mesh connectivity')
-    meta = fields.JSONField(default=dict, blank=True)  # psa dataset attributes
+    meta = models.JSONField(default=dict, blank=True)  # psa dataset attributes
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
@@ -321,14 +321,14 @@ class NsemPsaVariable(models.Model):
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
-    color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
+    color_bar = models.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
     auto_displayed = models.BooleanField(default=False)
     display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level"
     geo_type = models.CharField(choices=zip(GEO_TYPES, GEO_TYPES), max_length=20)  # i.e "polygon"
     data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
     element_type = models.CharField(choices=zip(ELEMENTS, ELEMENTS), max_length=20)  # i.e "water"
     units = models.CharField(choices=zip(UNITS, UNITS), max_length=20)  # i.e "m/s"
-    meta = fields.JSONField(default=dict, blank=True)  # psa variable attributes from dataset
+    meta = models.JSONField(default=dict, blank=True)  # psa variable attributes from dataset
 
     class Meta:
         unique_together = ('nsem', 'name')

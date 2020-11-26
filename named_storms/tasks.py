@@ -677,7 +677,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # group all intersecting geometries together by variable & value and
             # only return the export's bbox intersection
-            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # NOTE: using ST_MakeValid due fix any ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsacontour_set.filter(**data_kwargs)
             qs = qs.values(*[
                 'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name',
