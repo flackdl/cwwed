@@ -54,7 +54,7 @@ class NamedStorm(models.Model):
         through='NamedStormCoveredData',
     )
     name = models.CharField(max_length=50, unique=True)  # i.e "Harvey"
-    geo = models.GeometryField(geography=True)
+    geo = models.PolygonField(geography=True)
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
     active = models.BooleanField(default=True)
@@ -99,7 +99,7 @@ class NamedStormCoveredData(models.Model):
     date_start = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
     date_end = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
     dates_required = models.BooleanField(default=True)
-    geo = models.GeometryField(geography=True)
+    geo = models.PolygonField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
     date_collected = models.DateField(blank=True, null=True)   # indicates last collection date, operating as a switch to recollect
 
@@ -381,7 +381,7 @@ class NsemPsaData(models.Model):
 class NsemPsaContour(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
-    geo = models.GeometryField(geography=True)
+    geo = models.GeometryField(geography=True)  # can be Polygon or MultiPolygon
     value = models.FloatField()
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
@@ -412,7 +412,7 @@ class NsemPsaUserExport(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(max_length=1500, null=True, blank=True)  # signed download url
     format = models.CharField(max_length=30, choices=FORMAT_CHOICES)
-    bbox = models.GeometryField(geography=True)
+    bbox = models.PolygonField(geography=True)
     date_filter = models.DateTimeField(null=True, blank=True)  # date to filter export against
     date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
