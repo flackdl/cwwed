@@ -406,17 +406,12 @@ def validate_nsem_psa_task(nsem_id):
     Validates the PSA from file storage with the following:
     - cf conventions - http://cfconventions.org/
     - ugrid conventions - http://ugrid-conventions.github.io/ugrid-conventions/
-    - expected coordinates
+    - expected coordinates in dataset
+    - supplied dates exist in dataset
+    - supplied variables exist in dataset
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
     - netcdf only
-
-    TODO
-        validate all required variables exist
-        validate mesh structured vs unstructured
-        validate dataset has all dates required by the psa
-        validate the dataset is structured so we can create contours correctly
-        validate wind barb requirements (needs wind speed and wind direction)
     """
 
     valid_files = []
@@ -449,11 +444,18 @@ def validate_nsem_psa_task(nsem_id):
                 if result['FATAL'] or result['ERROR']:
                     variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
+            # dates
+            for date in nsem_psa.dates:
+                try:
+                    ds.sel(time=date)
+                except KeyError:
+                    file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
+
             # coordinates
             if not required_coords.issubset(list(ds.coords)):
                 file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
-            # variables in the manifest dataset must exist in the actual dataset
+            # variables
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
@@ -465,10 +467,11 @@ def validate_nsem_psa_task(nsem_id):
                     if variable in ds:
                         shape = len(ds[variable].isel(time=0).shape)
                         if shape < 2:
-                            file_exceptions.append('dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
-            # unstructured grid
-            # http://ugrid-conventions.github.io/ugrid-conventions/
+                            file_exceptions.append(
+                                'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+            # unstructured grid - http://ugrid-conventions.github.io/ugrid-conventions/
             else:
+                # validate the specified topology name is present in the dataset
                 if dataset.topology_name not in ds:
                     file_exceptions.append('topology_name "{}" missing from dataset'.format(dataset.topology_name))
                     # 0-based vs 1-based indexing for mesh connectivity
@@ -521,6 +524,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
+
+            # TODO - include psa manifest dataset meta on ds_out (dataset and variables)
 
             ds_out = xr.Dataset()
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
