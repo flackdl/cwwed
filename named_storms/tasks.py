@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField
-from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash, Distance
 from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
 from django.db import connection
@@ -530,21 +530,38 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             ds_out = xr.Dataset()
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
-            # retrieve all the points within the user's bounding box
-            point_data = NsemPsaData.objects.annotate(
+            # retrieve all points for all variables for this psa
+            point_data_all = NsemPsaData.objects.annotate(
                 geo_hash=GeoHash('point'),
                 geom_point=Cast('point', GeometryField()),
             ).filter(
                 nsem_psa_variable__name__in=psa_dataset.variables,
                 nsem_psa_variable__nsem=nsem_psa,
+            ).only(
+                'point',
+            )
+
+            # filter points within the user's bounding box
+            point_data = point_data_all.filter(
                 geom_point__within=nsem_psa_user_export.bbox,
             ).distinct(
                 'geo_hash',
-            ).only(
-                'point',
             ).order_by(
                 'geo_hash',
             )
+
+            if not point_data.exists():
+                point_data = point_data_all.annotate(
+                    distance=Distance('point', nsem_psa_user_export.bbox),
+                ).filter(
+                    point__dwithin=(nsem_psa_user_export.bbox, 500),
+                ).order_by(
+                    # sort by ascending distance to get the closest point
+                    'distance', 'geo_hash',
+                ).distinct(
+                    'distance', 'geo_hash',
+                )[:1]  # only use the closest point
+
             points = [d.point for d in point_data]
 
             # build the dataset coordinates
@@ -579,6 +596,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     values_points = [d.point for d in values_data]
                     # iterate over entire point list and insert NaN for absent values
                     result = []
+
+                    logger.info('building values results')
+
                     for point in points:
                         try:
                             idx = values_points.index(point)
@@ -586,6 +606,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                             result.append(np.nan)
                         else:
                             result.append(values_data[idx].value)
+                            values_points.pop(idx)
+
+                    logger.info('built values results')
+
                     results.append(result)
 
                 # add the data array to the dataset
