@@ -523,6 +523,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # netcdf/csv - extract raw point data
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
 
+        # csv exports to a specific date while netcdf includes all
+        dates_to_export = [nsem_psa_user_export.date_filter] if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV else nsem_psa.dates
+
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
             # TODO - include psa manifest dataset meta on ds_out (dataset and variables)
@@ -551,10 +554,12 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             )
 
             if not point_data.exists():
+                # TODO - should we include closest points for _each_ unique variable since they may not all share the same points?
+                # TODO - would shouldn't look too far away to get the closest point because it may include something very inaccurate
                 point_data = point_data_all.annotate(
                     distance=Distance('point', nsem_psa_user_export.bbox),
                 ).filter(
-                    point__dwithin=(nsem_psa_user_export.bbox, 500),
+                    point__dwithin=(nsem_psa_user_export.bbox, 500),  # meters
                 ).order_by(
                     # sort by ascending distance to get the closest point
                     'distance', 'geo_hash',
@@ -567,7 +572,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # build the dataset coordinates
             coords = np.array([p.coords for p in points])
             ds_coords = {
-                'time': (['time'], nsem_psa.dates),
+                'time': (['time'], dates_to_export),
                 'lon': (['node'], coords[:, 0]),
                 'lat': (['node'], coords[:, 1]),
             }
@@ -581,7 +586,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
                 # build results for data in each date in the psa
                 results = []
-                for date in nsem_psa.dates:
+                for date in dates_to_export:
                     values_data = list(psa_variable.nsempsadata_set.annotate(
                         geo_hash=GeoHash('point'),
                     ).filter(
@@ -626,9 +631,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 if not ds_out.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
                     continue
 
-                # subset by export date filter
-                ds_out = ds_out.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
-
                 # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
                 df_out['date'] = np.full(len(ds_out.node), nsem_psa_user_export.date_filter)
@@ -638,6 +640,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # insert a new column for each variable to df_out
                 for variable in ds_out.data_vars:
 
+                    # convert data array to a panda dataframe
                     df = ds_out[variable].to_dataframe()
 
                     # insert df as a new column
