@@ -27,7 +27,11 @@
           </div>
         </form>
         <div *ngIf="isComplete" class="my-2 d-flex justify-content-center text-center">
-          <div  class="alert alert-success">
+          <div *ngIf="!psaUserExport.success" class="alert alert-danger">
+            <h4>Export failed</h4>
+            <p>{{ psaUserExport.exception || 'An unknown error occurred.' }}</p>
+          </div>
+          <div *ngIf="psaUserExport.success" class="alert alert-success">
             <h4>Export complete</h4>
             <div class="my-2">
               <a [href]="psaUserExport.url" target="_blank" class="btn btn-primary">Download <span class="oi oi-data-transfer-download"></span></a>

@@ -533,39 +533,25 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             ds_out = xr.Dataset()
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
-            # retrieve all points for all variables for this psa
-            point_data_all = NsemPsaData.objects.annotate(
+            # filter points within the user's bounding box
+            point_data = NsemPsaData.objects.annotate(
                 geo_hash=GeoHash('point'),
                 geom_point=Cast('point', GeometryField()),
             ).filter(
                 nsem_psa_variable__name__in=psa_dataset.variables,
                 nsem_psa_variable__nsem=nsem_psa,
-            ).only(
-                'point',
-            )
-
-            # filter points within the user's bounding box
-            point_data = point_data_all.filter(
                 geom_point__within=nsem_psa_user_export.bbox,
             ).distinct(
                 'geo_hash',
             ).order_by(
                 'geo_hash',
+            ).only(
+                'point',
             )
 
+            # export's bounding box didn't contain any points/data
             if not point_data.exists():
-                # TODO - should we include closest points for _each_ unique variable since they may not all share the same points?
-                # TODO - would shouldn't look too far away to get the closest point because it may include something very inaccurate
-                point_data = point_data_all.annotate(
-                    distance=Distance('point', nsem_psa_user_export.bbox),
-                ).filter(
-                    point__dwithin=(nsem_psa_user_export.bbox, 500),  # meters
-                ).order_by(
-                    # sort by ascending distance to get the closest point
-                    'distance', 'geo_hash',
-                ).distinct(
-                    'distance', 'geo_hash',
-                )[:1]  # only use the closest point
+                continue
 
             points = [d.point for d in point_data]
 
@@ -602,8 +588,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     # iterate over entire point list and insert NaN for absent values
                     result = []
 
-                    logger.info('building values results')
-
                     for point in points:
                         try:
                             idx = values_points.index(point)
@@ -612,8 +596,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                         else:
                             result.append(values_data[idx].value)
                             values_points.pop(idx)
-
-                    logger.info('built values results')
 
                     results.append(result)
 
@@ -642,6 +624,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
                     # convert data array to a panda dataframe
                     df = ds_out[variable].to_dataframe()
+                    # drop any existing indexes and use default sequential index
+                    df.reset_index(drop=True, inplace=True)
 
                     # insert df as a new column
                     df_out.insert(len(df_out.columns), variable, df[variable])
@@ -717,6 +701,10 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             ])
             qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
 
+            # export's bounding box didn't contain any points/data
+            if not qs.exists():
+                continue
+
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
                 # annotate with AsKML
                 qs = qs.annotate(kml=AsKML('geom'))
@@ -727,6 +715,16 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # write geojson to file
                 with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
                     fh.write(get_geojson_feature_collection_from_psa_qs(qs))
+
+    # no data found in the export's bounding box
+    if len(os.listdir(tmp_user_export_path)) == 0:
+        msg = "No data found in the export's bounding box."
+        logger.warning(msg)
+        # update export instance
+        nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
+        nsem_psa_user_export.exception = msg
+        nsem_psa_user_export.save()
+        return
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
@@ -783,19 +781,24 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # remove temporary directory
     shutil.rmtree(tmp_user_export_path)
 
+    nsem_psa_user_export.success = True
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
     nsem_psa_user_export.url = presigned_url
     nsem_psa_user_export.save()
-
-    return nsem_psa_user_export.id
 
 
 @app.task(**TASK_ARGS_RETRY)
 def email_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
+    if nsem_psa_user_export.success:
+        msg = 'Your Post Storm Assessment export is complete.'
+    else:
+        msg = nsem_psa_user_export.exception or 'There was no data found within the specified selection.'
+
     context = dict(
+        msg=msg,
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
         date_filter=nsem_psa_user_export.date_filter,
@@ -804,7 +807,7 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
     text_body = """
-        Your Post Storm Assessment export is complete.
+        {msg}
         
         Storm: {storm}
         Date: {date_filter}

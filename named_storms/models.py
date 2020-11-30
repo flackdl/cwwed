@@ -417,3 +417,5 @@ class NsemPsaUserExport(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
     date_expires = models.DateTimeField(null=True, blank=True)
+    success = models.BooleanField(default=False)
+    exception = models.CharField(null=True, blank=True, max_length=1000, help_text='message for an unsuccessful export')
