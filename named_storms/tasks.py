@@ -530,7 +530,9 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # TODO - include psa manifest dataset meta on ds_out (dataset and variables)
 
-            ds_out = xr.Dataset()
+            # create export dataset including any supplied metadata from the manifest
+            ds_out = xr.Dataset(attrs=psa_dataset.meta)
+
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
             # filter points within the user's bounding box
@@ -600,7 +602,12 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     results.append(result)
 
                 # add the data array to the dataset
-                ds_out[psa_variable.name] = xr.DataArray(np.array(results), coords=ds_coords, dims=['time', 'node'])
+                ds_out[psa_variable.name] = xr.DataArray(
+                    np.array(results),
+                    coords=ds_coords,
+                    dims=['time', 'node'],
+                    attrs=psa_variable.meta,
+                )
 
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
@@ -883,7 +890,7 @@ def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, da
 
 
 @app.task(**TASK_ARGS_RETRY)
-def postprocess_psa_ingest_task(nsem_psa_id):
+def postprocess_psa_ingest_task(nsem_psa_id: int, success: bool):
     """
     Update the psa as processed and email the "nsem" user indicating the PSA has been ingested
     """
@@ -892,32 +899,38 @@ def postprocess_psa_ingest_task(nsem_psa_id):
     nsem_psa_api_url = "{}://{}:{}{}".format(
         settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
+    # TODO - need to save metadata for dimensions too
+    
     # save the dataset's metadata in the psa manifest dataset
     for psa_manifest_dataset in nsem_psa.nsempsamanifestdataset_set.all():
         psa_manifest_dataset.meta = PsaDataset(psa_manifest_dataset).get_metadata()
         psa_manifest_dataset.save()
 
     # save psa as processed
-    nsem_psa.processed = True
+    nsem_psa.processed = success
     nsem_psa.date_processed = timezone.now()
     nsem_psa.save()
 
-    logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
+    msg = 'PSA {psa} {msg}'.format(
+        msg='has been successfully ingested' if success else 'failed during ingestion',
+        psa=nsem_psa,
+    )
 
-    body = """
-        PSA has been ingested.
+    logger.info(msg)
 
-        API: {api_url}
-        """.format(
+    context = dict(
+        msg=msg,
+        nsem_psa=nsem_psa,
         api_url=nsem_psa_api_url,
     )
 
-    html_body = render_to_string(
-        'email_psa_ingested.html',
-        context={
-            "nsem_psa": nsem_psa,
-            "nsem_psa_api_url": nsem_psa_api_url,
-        })
+    body = """
+        {msg}.
+
+        API: {api_url}
+        """.format(**context)
+
+    html_body = render_to_string('email_psa_ingested.html', context=context)
 
     # include the "nsem" user and all super users
     recipients = get_superuser_emails()
@@ -925,7 +938,7 @@ def postprocess_psa_ingest_task(nsem_psa_id):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='PSA ingested ({psa_id})'.format(psa_id=nsem_psa.id),
+        subject=msg,
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,

@@ -1,5 +1,6 @@
 import csv
 import logging
+
 import geojson
 from celery import chain, group, chord
 from django.contrib.gis.db.models.functions import Distance
@@ -136,12 +137,11 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             postprocess_psa_validated_task.si(nsem_psa.id),
             # ingest the psa in parallel by creating tasks for each dataset/variable/date
             chord(
-                # TODO - include an error callback to email failure
                 header=self.get_ingest_psa_dataset_tasks(nsem_psa.id),
                 # then run the following sequentially
                 body=chain(
                     # save psa as processed and send confirmation email
-                    postprocess_psa_ingest_task.si(nsem_psa.id),
+                    postprocess_psa_ingest_task.si(nsem_psa.id, True),  # success
                     # execute these final tasks in parallel
                     group(
                         # cache geo json for this psa
@@ -150,7 +150,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
                         extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
                     ),
                 )
-            ),
+            ).on_error(postprocess_psa_ingest_task.si(nsem_psa.id, False))  # header failure (ingestion failed)
         )()
 
 
