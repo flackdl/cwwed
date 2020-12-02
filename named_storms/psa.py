@@ -31,7 +31,7 @@ MIN_POLYGON_AREA_PERIMETER_RATIO = .5  # minimum area/perimeter ratio
 NULL_REPRESENT = r'\N'
 
 
-class PsaDataset:
+class PsaDatasetProcessor:
     cmap = matplotlib.cm.get_cmap('jet')
     dataset: xr.Dataset
     psa_manifest_dataset: NsemPsaManifestDataset
@@ -110,6 +110,10 @@ class PsaDataset:
     def get_metadata(self):
         # return dataset metadata in python native types
         return self._to_python_values(self.dataset.attrs)
+
+    def get_variable_metadata(self, variable: str):
+        # return dataset metadata in python native types
+        return self._to_python_values(self.dataset[variable].attrs)
 
     @staticmethod
     def _to_python_values(data: dict) -> dict:

@@ -198,6 +198,9 @@ class NsemPsaManifestDataset(models.Model):
     structured = models.BooleanField(default=True, help_text='Whether the dataset has a structured grid')
     topology_name = models.CharField(max_length=50, default='element', help_text='Variable name for unstructured mesh connectivity')
     meta = models.JSONField(default=dict, blank=True)  # psa dataset attributes
+    meta_time = models.JSONField(default=dict, blank=True)  # psa time variable attributes
+    meta_lon = models.JSONField(default=dict, blank=True)  # psa lon variable attributes
+    meta_lat = models.JSONField(default=dict, blank=True)  # psa lat variable attributes
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)

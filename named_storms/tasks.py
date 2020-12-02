@@ -29,7 +29,7 @@ from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.data.processors import ProcessorData
-from named_storms.psa import PsaDataset
+from named_storms.psa import PsaDatasetProcessor
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset, NsemPsaData)
@@ -528,8 +528,6 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-            # TODO - include psa manifest dataset meta on ds_out (dataset and variables)
-
             # create export dataset including any supplied metadata from the manifest
             ds_out = xr.Dataset(attrs=psa_dataset.meta)
 
@@ -608,6 +606,11 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                     dims=['time', 'node'],
                     attrs=psa_variable.meta,
                 )
+
+            # include metadata for space and time
+            ds_out.time.attrs = psa_dataset.meta_time
+            ds_out.lat.attrs = psa_dataset.meta_lat
+            ds_out.lon.attrs = psa_dataset.meta_lon
 
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
@@ -885,7 +888,7 @@ def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, da
     """
     dataset_manifest = get_object_or_404(NsemPsaManifestDataset, pk=psa_dataset_id)
     assert variable in dataset_manifest.variables, 'Variable not found in {}'.format(dataset_manifest)
-    PsaDataset(psa_manifest_dataset=dataset_manifest).ingest_variable(variable, date)
+    PsaDatasetProcessor(psa_manifest_dataset=dataset_manifest).ingest_variable(variable, date)
     logger.info('{}: {} variable (date={}) has been successfully ingested'.format(dataset_manifest, variable, date))
 
 
@@ -899,11 +902,13 @@ def postprocess_psa_ingest_task(nsem_psa_id: int, success: bool):
     nsem_psa_api_url = "{}://{}:{}{}".format(
         settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
-    # TODO - need to save metadata for dimensions too
-    
     # save the dataset's metadata in the psa manifest dataset
     for psa_manifest_dataset in nsem_psa.nsempsamanifestdataset_set.all():
-        psa_manifest_dataset.meta = PsaDataset(psa_manifest_dataset).get_metadata()
+        psa_processor = PsaDatasetProcessor(psa_manifest_dataset)
+        psa_manifest_dataset.meta = psa_processor.get_metadata()
+        psa_manifest_dataset.meta_time = psa_processor.get_variable_metadata('time')
+        psa_manifest_dataset.meta_lat = psa_processor.get_variable_metadata('lat')
+        psa_manifest_dataset.meta_lon = psa_processor.get_variable_metadata('lon')
         psa_manifest_dataset.save()
 
     # save psa as processed
