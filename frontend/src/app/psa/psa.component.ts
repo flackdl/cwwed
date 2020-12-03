@@ -553,6 +553,10 @@ export class PsaComponent implements OnInit {
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.form.get('opacity').value),
       }),
+      stroke: new Stroke({
+        color: '#ffffff',
+        size: 2,
+      })
     })
   }
 

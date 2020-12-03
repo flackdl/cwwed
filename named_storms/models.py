@@ -205,6 +205,9 @@ class NsemPsaManifestDataset(models.Model):
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
 
+    class Meta:
+        ordering = ['-id']
+
 
 class NsemPsaVariable(models.Model):
     DATA_TYPE_TIME_SERIES = 'time-series'

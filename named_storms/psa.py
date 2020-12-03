@@ -115,74 +115,6 @@ class PsaDatasetProcessor:
         # return dataset metadata in python native types
         return self._to_python_values(self.dataset[variable].attrs)
 
-    @staticmethod
-    def _to_python_values(data: dict) -> dict:
-        # converts numpy values to python native types
-        return dict((key, value.item() if isinstance(value, np.generic) else value) for key, value in data.items())
-
-    def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
-        """
-        perform a low level data copy into postgres via it's COPY mechanism which is much more
-        efficient than using django's orm (even bulk_create) since it has to serialize every object
-        https://www.postgresql.org/docs/9.4/sql-copy.html
-        https://www.psycopg.org/docs/cursor.html#cursor.copy_from
-        """
-
-        logger.info('{}: saving psa data for {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
-
-        # define database columns to copy to
-        columns = [
-            NsemPsaData.nsem_psa_variable.field.attname,
-            NsemPsaData.point.field.attname,
-            NsemPsaData.value.field.attname,
-            NsemPsaData.date.field.attname,
-        ]
-
-        # use default database connection
-        with connections['default'].cursor() as cursor:
-
-            # create pandas dataframe for csv output
-            df = da.to_dataframe()
-
-            # drop nulls
-            df = df.dropna()
-
-            # include empty date column placeholder if it doesn't exist
-            if date is None:
-                df['time'] = None
-
-            # add psa variable column
-            df['psa_variable_id'] = psa_variable.id
-
-            # add point column in wkt format using the lat/lon coordinates and handle
-            # cases where the lat/lon are either indexes or column values
-
-            # coordinates are individual columns so zip them together
-            if set(df.columns).issuperset(['lat', 'lon']):
-                df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
-            # coordinates are a pandas MultiIndex so we can directly map them to points
-            elif set(df.index.names).issuperset(['lat', 'lon']):
-                df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
-            else:
-                raise Exception('Expected lat and lon coordinates either as index or columns')
-
-            # create geopandas dataframe and filter to storm's geo
-            gdf = geopandas.GeoDataFrame(df)
-            gdf = gdf.set_geometry('point')
-            gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
-
-            # reorder gdf columns
-            gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
-
-            with StringIO() as f:
-
-                # write csv results to file-like object
-                gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
-                f.seek(0)  # set file read position back to beginning
-
-                # copy data into table using postgres COPY feature
-                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',', null=NULL_REPRESENT)
-
     def _build_contours(self, nsem_psa_variable: NsemPsaVariable, z: xr.DataArray, dt: datetime = None):
 
         logger.info('{}: building contours for {} at {}'.format(self.psa_manifest_dataset, nsem_psa_variable, dt))
@@ -204,12 +136,17 @@ class PsaDatasetProcessor:
             )
 
             # create mask to identify triangles with null values
-            tri_mask = z[topology].isnull()
-            # convert to single dimension result of whether all the points in each triangle/row are non-null
-            tri_mask = np.all(tri_mask, axis=1)
+            tri_nulls = z[topology].isnull()
+            # convert to single dimension result of whether any the points in each triangle/row are null
+            tri_mask = np.any(tri_nulls, axis=1)
 
-            # build triangulation using supplied mesh connectivity
-            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, topology, mask=tri_mask)
+            # build triangulation using supplied mesh connectivity and tri mask
+            triangulation = tri.Triangulation(
+                self.dataset.lon,
+                self.dataset.lat,
+                triangles=topology,
+                mask=tri_mask,
+            )
 
             # replace nulls with an arbitrary fill value and then only contour valid levels
             levels = np.linspace(z.min(), z.max(), num=CONTOUR_LEVELS)
@@ -280,12 +217,12 @@ class PsaDatasetProcessor:
                     # remove/skip invalid polygons
                     if isinstance(polygon, geos.MultiPolygon):
                         # remove invalid polygons from this multipolygon
-                        polygon = geos.MultiPolygon([p for p in polygon if self._is_valid_polygon(p)])
+                        polygon = geos.MultiPolygon([p for p in polygon if self.is_valid_polygon(p)])
                         if polygon.empty:
                             continue
                     else:  # polygon
                         # skip invalid polygon
-                        if not self._is_valid_polygon(polygon):
+                        if not self.is_valid_polygon(polygon):
                             continue
 
                     # create psa result from contour result
@@ -297,21 +234,68 @@ class PsaDatasetProcessor:
                         color=matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
                     )
 
-    @classmethod
-    def _is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
-        # return whether the area to perimeter ratio meets the minimum
-        if polygon.empty:
-            return False
-        try:
-            transformed = cls._transformed_polygon(polygon)
-        except GDALException:
-            return False
-        return transformed.area / transformed.length > MIN_POLYGON_AREA_PERIMETER_RATIO
+    def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
+        """
+        perform a low level data copy into postgres via it's COPY mechanism which is much more
+        efficient than using django's orm (even bulk_create) since it has to serialize every object
+        https://www.postgresql.org/docs/9.4/sql-copy.html
+        https://www.psycopg.org/docs/cursor.html#cursor.copy_from
+        """
 
-    @staticmethod
-    def _transformed_polygon(polygon: geos.Polygon) -> geos.Polygon:
-        # transform polygon to the web mercator coordinate reference system which uses meters
-        return polygon.transform(3857, clone=True)
+        logger.info('{}: saving psa data for {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
+
+        # define database columns to copy to
+        columns = [
+            NsemPsaData.nsem_psa_variable.field.attname,
+            NsemPsaData.point.field.attname,
+            NsemPsaData.value.field.attname,
+            NsemPsaData.date.field.attname,
+        ]
+
+        # use default database connection
+        with connections['default'].cursor() as cursor:
+
+            # create pandas dataframe for csv output
+            df = da.to_dataframe()
+
+            # drop nulls
+            df = df.dropna()
+
+            # include empty date column placeholder if it doesn't exist
+            if date is None:
+                df['time'] = None
+
+            # add psa variable column
+            df['psa_variable_id'] = psa_variable.id
+
+            # add point column in wkt format using the lat/lon coordinates and handle
+            # cases where the lat/lon are either indexes or column values
+
+            # coordinates are individual columns so zip them together
+            if set(df.columns).issuperset(['lat', 'lon']):
+                df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
+            # coordinates are a pandas MultiIndex so we can directly map them to points
+            elif set(df.index.names).issuperset(['lat', 'lon']):
+                df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
+            else:
+                raise Exception('Expected lat and lon coordinates either as index or columns')
+
+            # create geopandas dataframe and filter to storm's geo
+            gdf = geopandas.GeoDataFrame(df)
+            gdf = gdf.set_geometry('point')
+            gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
+
+            # reorder gdf columns
+            gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
+
+            with StringIO() as f:
+
+                # write csv results to file-like object
+                gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
+                f.seek(0)  # set file read position back to beginning
+
+                # copy data into table using postgres COPY feature
+                cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',', null=NULL_REPRESENT)
 
     def _color_bar_values(self, z_min: float, z_max: float):
         # build color bar values
@@ -329,6 +313,27 @@ class PsaDatasetProcessor:
             color_values.append((step_value, hex_value))
 
         return color_values
+
+    @staticmethod
+    def _to_python_values(data: dict) -> dict:
+        # converts numpy values to python native types
+        return dict((key, value.item() if isinstance(value, np.generic) else value) for key, value in data.items())
+
+    @classmethod
+    def is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
+        # return whether the area to perimeter ratio meets the minimum
+        if polygon.empty:
+            return False
+        try:
+            transformed = cls.transform_polygon(polygon)
+        except GDALException:
+            return False
+        return transformed.area / transformed.length > MIN_POLYGON_AREA_PERIMETER_RATIO
+
+    @staticmethod
+    def transform_polygon(polygon: geos.Polygon) -> geos.Polygon:
+        # transform polygon to the web mercator coordinate reference system which uses meters
+        return polygon.transform(3857, clone=True)
 
     @staticmethod
     def signed_area(ring):

@@ -46,9 +46,21 @@ ds = xr.Dataset(
     },
     coords={
         # arbitrarily using water level for coord values
-        'time': (['time'], dataset_water_level.time[date_mask(dataset_water_level)]),
-        'lon': (['node'], dataset_water_level.x),
-        'lat': (['node'], dataset_water_level.y),
+        'time': (
+            ['time'],
+            dataset_water_level.time[date_mask(dataset_water_level)],
+            dataset_water_level.time.attrs,
+        ),
+        'lon': (
+            ['node'],
+            dataset_water_level.x,
+            dataset_water_level.x.attrs,
+        ),
+        'lat': (
+            ['node'],
+            dataset_water_level.y,
+            dataset_water_level.y.attrs,
+        ),
     },
     attrs=dataset_water_level.attrs,
 )
@@ -66,6 +78,11 @@ if 'cf_role' in ds.element.attrs:
 # remove conflicting case-sensitive "conventions" UGRID attribute
 if 'UGRID' in ds.attrs.get('Conventions', ''):
     del ds.attrs['Conventions']
+# remove "positive" attribute from lat/lon
+# "(4.3): Invalid value for positive attribute"
+del ds.lon.attrs['positive']
+del ds.lat.attrs['positive']
+
 # fix invalid "water_level_max" standard name by copying from water level
 ds.water_level_max.attrs['standard_name'] = ds.water_level.attrs['standard_name']
 
