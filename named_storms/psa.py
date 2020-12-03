@@ -14,7 +14,6 @@ import matplotlib.cm
 import pytz
 import xarray as xr
 import numpy as np
-from django.contrib.gis.gdal import GDALException
 from django.contrib.gis import geos
 from django.db import connections
 
@@ -27,7 +26,6 @@ logger = logging.getLogger('cwwed')
 NULL_FILL_VALUE = -9999
 CONTOUR_LEVELS = 25  # number of contour levels
 COLOR_STEPS = 10  # number of color bar steps
-MIN_POLYGON_AREA_PERIMETER_RATIO = .5  # minimum area/perimeter ratio
 NULL_REPRESENT = r'\N'
 
 
@@ -214,16 +212,9 @@ class PsaDatasetProcessor:
                     # trim to storm's geo
                     polygon = storm_geo.intersection(polygon)
 
-                    # remove/skip invalid polygons
-                    if isinstance(polygon, geos.MultiPolygon):
-                        # remove invalid polygons from this multipolygon
-                        polygon = geos.MultiPolygon([p for p in polygon if self.is_valid_polygon(p)])
-                        if polygon.empty:
-                            continue
-                    else:  # polygon
-                        # skip invalid polygon
-                        if not self.is_valid_polygon(polygon):
-                            continue
+                    # skip empty results
+                    if polygon.empty:
+                        continue
 
                     # create psa result from contour result
                     NsemPsaContour.objects.create(
@@ -318,17 +309,6 @@ class PsaDatasetProcessor:
     def _to_python_values(data: dict) -> dict:
         # converts numpy values to python native types
         return dict((key, value.item() if isinstance(value, np.generic) else value) for key, value in data.items())
-
-    @classmethod
-    def is_valid_polygon(cls, polygon: geos.Polygon) -> bool:
-        # return whether the area to perimeter ratio meets the minimum
-        if polygon.empty:
-            return False
-        try:
-            transformed = cls.transform_polygon(polygon)
-        except GDALException:
-            return False
-        return transformed.area / transformed.length > MIN_POLYGON_AREA_PERIMETER_RATIO
 
     @staticmethod
     def transform_polygon(polygon: geos.Polygon) -> geos.Polygon:
