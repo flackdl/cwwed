@@ -3,18 +3,16 @@ import xarray as xr
 import re
 
 
-src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/anil/'
+base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
+src_path = os.path.join(base_path, 'anil')
 #src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/anil/'
-out_path = os.path.join(os.path.dirname(src_path), 'wind-demo.nc')
+out_full = os.path.join(base_path, 'wind-demo.nc')
+out_minimal = os.path.join(base_path, 'wind-demo-minimal.nc')
 
 # variables to keep from the datasets
 VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m'}
 # TODO - florence
 #VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
-
-# remove any existing path if it exists
-if os.path.exists(out_path):
-    os.remove(out_path)
 
 ds_out = xr.Dataset()
 
@@ -47,7 +45,11 @@ for dataset_file in sorted(os.listdir(src_path)):
         # combine datasets
         ds_out = ds_out.combine_first(ds_current)
 
-print('Saving to {}'.format(out_path))
-
+# full
+print('Saving to {}'.format(out_full))
 # save as netcdf classic because hyrax chokes on 64bit ints
-ds_out.to_netcdf(out_path, format='NETCDF4_CLASSIC')
+ds_out.to_netcdf(out_full, format='NETCDF4_CLASSIC')
+
+# minimal
+print('Saving minimal to {}'.format(out_minimal))
+ds_out.isel(time=slice(0, 3)).to_netcdf(out_minimal, format='NETCDF4_CLASSIC')

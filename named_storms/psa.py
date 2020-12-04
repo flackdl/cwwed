@@ -120,6 +120,7 @@ class PsaDatasetProcessor:
         # structured grid
         if self.psa_manifest_dataset.structured:
             contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
+            self._process_contours_gridded(nsem_psa_variable, contourf, dt)
 
         # unstructured grid - use provided triangulation to contour
         else:
@@ -139,27 +140,49 @@ class PsaDatasetProcessor:
             tri_mask = np.any(tri_nulls, axis=1)
 
             # build triangulation using supplied mesh connectivity and tri mask
-            triangulation = tri.Triangulation(
-                self.dataset.lon,
-                self.dataset.lat,
-                triangles=topology,
-                mask=tri_mask,
-            )
+            triangulation = tri.Triangulation(self.dataset.lon, self.dataset.lat, triangles=topology, mask=tri_mask)
 
             # replace nulls with an arbitrary fill value and then only contour valid levels
             levels = np.linspace(z.min(), z.max(), num=CONTOUR_LEVELS)
-            contourf = plt.tricontourf(triangulation, z.fillna(NULL_FILL_VALUE), levels=levels, cmap=self.cmap)
+            tricontourf = plt.tricontourf(triangulation, z.fillna(NULL_FILL_VALUE), levels=levels, cmap=self.cmap)
 
-        self._process_contours(nsem_psa_variable, contourf, dt)
+            self._process_contours_triangulation(nsem_psa_variable, tricontourf, dt)
 
-    def _process_contours(self, nsem_psa_variable: NsemPsaVariable, contourf, dt):
-        storm_geo = self.psa_manifest_dataset.nsem.named_storm.geo  # type: geos.GEOSGeometry
+    def _process_contours_gridded(self, nsem_psa_variable: NsemPsaVariable, contourf, dt):
+        # the polygons that come out of matplotlib's contourf are nicely ordered exteriors with interior rings so
+        # it's very straightforward to build the resulting polygons
+
+        # process matplotlib contourf results
+        for i, collection in enumerate(contourf.collections):
+
+            # contour level value and color
+            value = contourf.levels[i]
+            color = matplotlib.colors.to_hex(self.cmap(contourf.norm(value)))
+
+            # loop through all polygons that have the same intensity level
+            for path in collection.get_paths():
+
+                polygons = path.to_polygons()
+
+                if len(polygons) == 0:
+                    logger.warning('Invalid polygon contour for {}'.format(nsem_psa_variable))
+                    continue
+
+                # the first polygon of the path is the exterior ring while the following are interior rings (holes)
+                polygon = geos.Polygon(polygons[0], *polygons[1:])
+
+                self._save_contour(nsem_psa_variable, dt, polygon, value, color)
+
+    def _process_contours_triangulation(self, nsem_psa_variable: NsemPsaVariable, tricontourf, dt):
+        # the polygons that come out of matplotlib's tricontourf are unordered and unidentified (exterior vs interior)
+        # so we have to calculate which are exterior rings and which interior rings are contained within each exterior
 
         # process contour results
-        for collection_idx, collection in enumerate(contourf.collections):
+        for collection_idx, collection in enumerate(tricontourf.collections):
 
-            # contour level value
-            value = contourf.levels[collection_idx]
+            # contour level value and color
+            value = tricontourf.levels[collection_idx]
+            color = matplotlib.colors.to_hex(self.cmap(tricontourf.norm(value)))
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -205,25 +228,32 @@ class PsaDatasetProcessor:
                     # build final result polygon
                     polygon = geos.Polygon(exterior[0], *exterior_interior_rings)
 
-                    # fix any self-intersecting "bow ties"
-                    if not polygon.valid:
-                        polygon = polygon.buffer(0)
+                    self._save_contour(nsem_psa_variable, dt, polygon, value, color)
 
-                    # trim to storm's geo
-                    polygon = storm_geo.intersection(polygon)
+    def _save_contour(self, nsem_psa_variable: NsemPsaVariable, dt: datetime, polygon: geos.Polygon, value: float, color: str):
+        # save a contour result
 
-                    # skip empty results
-                    if polygon.empty:
-                        continue
+        storm_geo = self.psa_manifest_dataset.nsem.named_storm.geo  # type: geos.GEOSGeometry
 
-                    # create psa result from contour result
-                    NsemPsaContour.objects.create(
-                        nsem_psa_variable=nsem_psa_variable,
-                        date=dt,
-                        geo=polygon,
-                        value=value,
-                        color=matplotlib.colors.to_hex(self.cmap(contourf.norm(value))),
-                    )
+        # fix any self-intersecting "bow ties"
+        if not polygon.valid:
+            polygon = polygon.buffer(0)
+
+        # trim to storm's geo
+        polygon = storm_geo.intersection(polygon)
+
+        # skip empty results
+        if polygon.empty:
+            return
+
+        # create psa result from contour result
+        NsemPsaContour.objects.create(
+            nsem_psa_variable=nsem_psa_variable,
+            date=dt,
+            geo=polygon,
+            value=value,
+            color=color,
+        )
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """
