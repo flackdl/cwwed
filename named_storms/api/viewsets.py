@@ -99,7 +99,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
-        qs = self.queryset.filter(extracted=True, validated=True, processed=True)
+        qs = self.filter_queryset(self.queryset).filter(extracted=True, validated=True, processed=True)
         # order by named_storm_id vs named_storm to prevent table join which django has issues with using distinct on
         qs = qs.order_by('named_storm_id', '-date_created')
         qs = qs.distinct('named_storm_id')
