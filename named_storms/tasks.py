@@ -534,7 +534,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
             # filter points within the user's bounding box
-            point_data = NsemPsaData.objects.annotate(
+            all_data = NsemPsaData.objects.annotate(
                 geo_hash=GeoHash('point'),
                 geom_point=Cast('point', GeometryField()),
             ).filter(
@@ -550,13 +550,13 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             )
 
             # export's bounding box didn't contain any points/data
-            if not point_data.exists():
+            if not all_data.exists():
                 continue
 
-            points = [d.point for d in point_data]
+            all_points = [d.point for d in all_data]
 
             # build the dataset coordinates
-            coords = np.array([p.coords for p in points])
+            coords = np.array([p.coords for p in all_points])
             ds_coords = {
                 'time': (['time'], dates_to_export),
                 'lon': (['node'], coords[:, 0]),
@@ -573,29 +573,34 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # build results for data in each date in the psa
                 results = []
                 for date in dates_to_export:
-                    values_data = list(psa_variable.nsempsadata_set.annotate(
+                    variable_data = psa_variable.nsempsadata_set.annotate(
                         geo_hash=GeoHash('point'),
                     ).filter(
-                        geo_hash__in=[d.geo_hash for d in point_data],
+                        geo_hash__in=[d.geo_hash for d in all_data],
                         date=date,
                     ).only(
                         'value',
                         'point',
                     ).order_by(
                         'geo_hash',
-                    ))
-                    values_points = [d.point for d in values_data]
-                    # iterate over entire point list and insert NaN for absent values
+                    )
+                    variable_data = list(variable_data)
+                    variable_points = [d.point for d in variable_data]
                     result = []
 
-                    for point in points:
+                    # iterate over point/data list and insert NaN for absent values
+                    for point in all_points:
                         try:
-                            idx = values_points.index(point)
+                            idx = variable_points.index(point)
+                        # no value at this point
                         except ValueError:
                             result.append(np.nan)
+                        # insert value for this located point
                         else:
-                            result.append(values_data[idx].value)
-                            values_points.pop(idx)
+                            result.append(variable_data[idx].value)
+                            # remove found object from lists
+                            variable_data.pop(idx)
+                            variable_points.pop(idx)
 
                     results.append(result)
 
