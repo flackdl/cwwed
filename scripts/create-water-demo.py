@@ -3,22 +3,37 @@ import os
 import xarray as xr
 import numpy as np
 
-out_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
-out_full = os.path.join(out_path, 'water-demo.nc')
-out_minimal = os.path.join(out_path, 'water-demo-minimal.nc')
+## sandy
+#base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
+# florence
+base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/'
 
-water_level_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/fort.63.nc'
-water_level_max_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/adcirc/maxele.63.nc'
-wave_dataset_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/WW3/wave-side/ww3.ExplicitCD.2012_hs.nc'
+
+out_full = os.path.join(base_path, 'water-demo.nc')
+out_minimal = os.path.join(base_path, 'water-demo-minimal.nc')
+
+water_level_dataset_path = os.path.join(base_path, 'ali/fort.63.nc')
+# sandy
+#water_level_max_dataset_path = os.path.join(base_path, 'ali/maxele.63.nc')
+
+# sandy
+#wave_dataset_path = os.path.join(base_path, 'ali/ww3.ExplicitCD.2012_hs.nc')
+# florence
+wave_dataset_path = os.path.join(base_path, 'ali/ww3.FL_HWRFHRRRCFS_ADCIRC_BND.2018_hs.nc')
 
 dataset_water_level = xr.open_dataset(water_level_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
-dataset_water_level_max = xr.open_dataset(water_level_max_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
+# sandy
+#dataset_water_level_max = xr.open_dataset(water_level_max_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
 dataset_wave_height = xr.open_dataset(wave_dataset_path)
 
 
 def date_mask(dataset: xr.Dataset):
-    start = '2012-10-29 13:00:00'
-    end = '2012-10-30 09:00:00'
+    ## sandy
+    #start = '2012-10-29 13:00:00'
+    #end = '2012-10-30 09:00:00'
+    # florence
+    start = '2018-09-14T01:00:00'
+    end = '2018-09-14T20:00:00'
     return (
             (dataset['time'] >= np.datetime64(start)) &
             (dataset['time'] <= np.datetime64(end))
@@ -32,11 +47,12 @@ ds = xr.Dataset(
             dataset_water_level.zeta[date_mask(dataset_water_level)],
             dataset_water_level.zeta.attrs,
         ),
-        'water_level_max': (
-            ['node'],
-            dataset_water_level_max.zeta_max,
-            dataset_water_level_max.zeta_max.attrs
-        ),
+        # sandy
+        #'water_level_max': (
+        #    ['node'],
+        #    dataset_water_level_max.zeta_max,
+        #    dataset_water_level_max.zeta_max.attrs
+        #),
         'wave_height': (
             ['time', 'node'],
             dataset_wave_height.hs[date_mask(dataset_wave_height)],
@@ -78,13 +94,15 @@ if 'cf_role' in ds.element.attrs:
 # remove conflicting case-sensitive "conventions" UGRID attribute
 if 'UGRID' in ds.attrs.get('Conventions', ''):
     del ds.attrs['Conventions']
-# remove "positive" attribute from lat/lon
-# "(4.3): Invalid value for positive attribute"
-del ds.lon.attrs['positive']
-del ds.lat.attrs['positive']
+# remove "positive" attribute from lat/lon ((4.3): Invalid value for positive attribute)
+if 'positive' in ds.lon.attrs:
+    del ds.lon.attrs['positive']
+if 'positive' in ds.lat.attrs:
+    del ds.lat.attrs['positive']
 
-# fix invalid "water_level_max" standard name by copying from water level
-ds.water_level_max.attrs['standard_name'] = ds.water_level.attrs['standard_name']
+## sandy
+## fix invalid "water_level_max" standard name by copying from water level
+#ds.water_level_max.attrs['standard_name'] = ds.water_level.attrs['standard_name']
 
 # full
 print('Saving full to {}'.format(out_full))

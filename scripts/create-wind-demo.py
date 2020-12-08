@@ -3,16 +3,19 @@ import xarray as xr
 import re
 
 
-base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
+# sandy
+#base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/sandy/'
+# florence
+base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/'
 src_path = os.path.join(base_path, 'anil')
-#src_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/anil/'
 out_full = os.path.join(base_path, 'wind-demo.nc')
 out_minimal = os.path.join(base_path, 'wind-demo-minimal.nc')
 
 # variables to keep from the datasets
-VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m'}
-# TODO - florence
-#VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
+# sandy
+#VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m'}
+# florence
+VARIABLES = {'time', 'lat', 'lon', 'wspd10m', 'wdir10m', 'wspd10max'}
 
 ds_out = xr.Dataset()
 
@@ -23,8 +26,8 @@ for dataset_file in sorted(os.listdir(src_path)):
 
         # TODO - florence
         # skip first since it doesn't have the gust available
-        #if dataset_file == 'wrfoutd01_2018-09-14_00:00:00.nc':
-        #    continue
+        if dataset_file == 'wrfoutd01_2018-09-14_00:00:00.nc':
+            continue
 
         print('Processing {}'.format(dataset_file))
 
@@ -39,7 +42,7 @@ for dataset_file in sorted(os.listdir(src_path)):
             'wspd10m': 'wind_speed',
             'wdir10m': 'wind_direction',
             # TODO - florence
-            #'wspd10max': 'wind_gust',
+            'wspd10max': 'wind_gust',
         })
 
         # combine datasets

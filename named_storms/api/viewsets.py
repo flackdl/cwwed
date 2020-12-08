@@ -39,7 +39,8 @@ from named_storms.models import (
 )
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer, NsemPsaManifestDatasetSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer, NsemPsaManifestDatasetSerializer, NsemPsaWindBarbsSerializer,
+    NsemPsaContourSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -289,8 +290,8 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
 
     def get_serializer_class(self):
-        # TODO - define serializer for api docs
-        return Serializer
+        # dummy serializer class
+        return NsemPsaWindBarbsSerializer
 
     def list(self, request, *args, date=None, **kwargs):
 
@@ -355,8 +356,8 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_serializer_class(self):
-        # TODO - define serializer for api docs
-        return Serializer
+        # dummy serializer class
+        return NsemPsaContourSerializer
 
     def get_queryset(self):
         """
