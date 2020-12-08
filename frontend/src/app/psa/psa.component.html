@@ -1,6 +1,7 @@
 <div class="position-relative" #psaContainer id="psa-container">
   <ngx-loading [show]="isLoading"></ngx-loading>
-  <div class="card">
+  <h3 class="alert alert-danger" *ngIf="initError">{{ initError }}</h3>
+  <div class="card" *ngIf="nsemPsa">
     <div class="card-header d-flex justify-content-between">
       <h1>{{ namedStorm.name }}</h1>
       <div class="d-flex justify-content-end">

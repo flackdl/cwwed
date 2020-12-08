@@ -563,12 +563,12 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 'lat': (['node'], coords[:, 1]),
             }
 
-            # add every variable to the dataset
-            for variable in psa_dataset.variables:
-
-                # get the matching psa variable and retrieve the point values
-                psa_variable = psa_dataset.nsem.nsempsavariable_set.filter(name=variable).first()
-                assert psa_variable is not None, 'variable {} does not exist in {}'.format(variable, psa_dataset)
+            # add every time-series variable to the out dataset for this psa dataset
+            variable_kwargs = dict(
+                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                name__in=psa_dataset.variables,
+            )
+            for psa_variable in psa_dataset.nsem.nsempsavariable_set.filter(**variable_kwargs):
 
                 # build results for data in each date in the psa
                 results = []

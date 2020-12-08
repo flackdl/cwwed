@@ -18,8 +18,8 @@ ds_out = xr.Dataset()
 
 for dataset_file in sorted(os.listdir(src_path)):
 
-    # must be like "wrfoutd01_*.nc", i.e using "domain 1"
-    if re.match(r'wrfout_?d01_.*.nc', dataset_file):
+    # must be like "wrfoutd01_*.00.nc", i.e using "domain 1" and on the hour "00"
+    if re.match(r'wrfout_?d01_.*.00.nc', dataset_file):
 
         # TODO - florence
         # skip first since it doesn't have the gust available
