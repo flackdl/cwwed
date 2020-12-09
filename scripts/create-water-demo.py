@@ -91,7 +91,7 @@ if 'units' in ds.element.attrs:
 # remove invalid "cf_role" attribute from "element" topology
 if 'cf_role' in ds.element.attrs:
     del ds.element.attrs['cf_role']
-# remove conflicting case-sensitive "conventions" UGRID attribute
+# remove conflicting case-sensitive "Conventions" UGRID attribute
 if 'UGRID' in ds.attrs.get('Conventions', ''):
     del ds.attrs['Conventions']
 # remove "positive" attribute from lat/lon ((4.3): Invalid value for positive attribute)

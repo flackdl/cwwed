@@ -735,7 +735,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 continue
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
-                # annotate with AsKML and "ST_CollectionHomogenize" to guarantee we only get (multi)geometries
+                # annotate with "AsKML" to get kml and "ST_CollectionHomogenize" to guarantee we only get (multi)geometries
                 qs = qs.annotate(kml=AsKML(Func(F('geom'), function='ST_CollectionHomogenize')))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
