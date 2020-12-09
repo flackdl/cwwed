@@ -449,7 +449,7 @@ def validate_nsem_psa_task(nsem_id):
             # dates
             for date in nsem_psa.dates:
                 try:
-                    ds.sel(time=date)
+                    ds.sel(time=date.isoformat())
                 except KeyError:
                     file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
 
