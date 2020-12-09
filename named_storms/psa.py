@@ -341,11 +341,6 @@ class PsaDatasetProcessor:
         return dict((key, value.item() if isinstance(value, np.generic) else value) for key, value in data.items())
 
     @staticmethod
-    def transform_polygon(polygon: geos.Polygon) -> geos.Polygon:
-        # transform polygon to the web mercator coordinate reference system which uses meters
-        return polygon.transform(3857, clone=True)
-
-    @staticmethod
     def signed_area(ring):
         # https://en.wikipedia.org/wiki/Shoelace_formula
         v2 = np.roll(ring, -1, axis=0)
