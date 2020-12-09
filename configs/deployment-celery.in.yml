@@ -29,7 +29,8 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
-        args: ['-A', 'cwwed', 'worker', '-l', 'info']
+        # TODO - why is celery not recognizing the broker defined in the python package? manually specifying until resolved
+        args: ['--app', 'cwwed', '--broker', 'redis://redis-alpha', 'worker', '--loglevel', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
@@ -53,9 +54,9 @@ spec:
           exec:
             command:
               - celery
-              - inspect
               - -A
               - cwwed
+              - inspect
               - ping
           periodSeconds: 10
           failureThreshold: 30
@@ -64,9 +65,9 @@ spec:
           exec:
             command:
               - celery
-              - inspect
               - -A
               - cwwed
+              - inspect
               - ping
           periodSeconds: 60
           failureThreshold: 5
@@ -74,9 +75,9 @@ spec:
           exec:
             command:
               - celery
-              - inspect
               - -A
               - cwwed
+              - inspect
               - ping
           periodSeconds: 60
           failureThreshold: 5
