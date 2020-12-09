@@ -9,13 +9,13 @@ import Point from 'ol/geom/Point';
 import WKT from 'ol/format/WKT';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
-import {defaults as defaultControls, FullScreen} from 'ol/control.js';
+import { defaults as defaultControls, FullScreen } from 'ol/control.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
-import { Fill, Style, Icon } from 'ol/style.js';
+import { Stroke, Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
 import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
@@ -44,7 +44,7 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
 
-  public DEFAULT_ZOOM_LEVEL = 7;
+  public DEFAULT_ZOOM_LEVEL = 8;
 
   public mapLayerOptions = [
     {name: 'OpenStreetMap', value: this.MAP_LAYER_OSM_STANDARD},
@@ -76,6 +76,7 @@ export class PsaComponent implements OnInit {
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
+  public initError: string;
 
   @ViewChild('popup', {static: false}) popupEl: ElementRef;
   @ViewChild('tooltip', {static: false}) tooltipEl: ElementRef;
@@ -103,22 +104,37 @@ export class PsaComponent implements OnInit {
       return this.route.snapshot.params['id'] == storm.id;
     });
 
-    this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
-      return nsemPsa.named_storm === this.namedStorm.id;
-    });
+    if (this.namedStorm) {
 
-    this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
-      return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
-    });
+      this.nsemPsa = _.find(this.cwwedService.nsemPsaList, (nsemPsa) => {
+        return nsemPsa.named_storm === this.namedStorm.id;
+      });
 
-    // create initial form group
-    this.form = this.fb.group({
-      opacity: new FormControl(.5),
-      variables: new FormControl(),
-      date: new FormControl(this.route.snapshot.queryParams['date'] || 0),
-    });
+      if (this.nsemPsa) {
 
-    this._fetchDataAndBuildMap();
+        this.psaDatesFormatted = this.nsemPsa.dates.map((date) => {
+          return moment(date, moment.defaultFormatUtc).format('YYYY-MM-DD HH:mm');
+        });
+
+        // create initial form group
+        this.form = this.fb.group({
+          opacity: new FormControl(.5),
+          variables: new FormControl(),
+          date: new FormControl(this.route.snapshot.queryParams['date'] || 0),
+        });
+
+        this._fetchDataAndBuildMap();
+
+      } else {
+        // no valid psa
+        this.isLoading = false;
+        this.initError = `No valid PSA found for storm ${this.namedStorm.name}`;
+      }
+    } else {
+      // unknown storm
+      this.isLoading = false;
+      this.initError = `Unknown storm`;
+    }
   }
 
   public getDateInputFormatted(dateIndex: number) {
@@ -553,6 +569,10 @@ export class PsaComponent implements OnInit {
       fill: new Fill({
         color: hexToRgba(feature.get('fill'), this.form.get('opacity').value),
       }),
+      stroke: new Stroke({
+        color: hexToRgba('#ffffff',  this.form.get('opacity').value),
+        size: .3,
+      })
     })
   }
 

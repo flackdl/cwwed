@@ -11,9 +11,11 @@
   <div class="card-body">
     <div class="card-text">
       <div>
-        <p class="mb-3">A download link will be generated here once the export is complete. However, you will also receive an email at <span class="text-info">{{ getUser().email }}</span> with the download link so you are free to leave this page.</p>
-        <div>Export format: <i>{{ format }}</i></div>
-        <div *ngIf="date">Export date: <i>{{ date }}</i></div>
+        <div class="alert alert-info" role="alert">
+          <div>Export format: <i>{{ format }}</i></div>
+          <div *ngIf="date">Export date: <i>{{ date }}</i></div>
+        </div>
+        <p class="my-3">A download link will be generated here once the export is complete. However, you will also receive an email at <span class="text-primary">{{ getUser().email }}</span> with the download link so you are free to leave this page.</p>
       </div>
       <div>
         <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="!isComplete">
@@ -25,7 +27,11 @@
           </div>
         </form>
         <div *ngIf="isComplete" class="my-2 d-flex justify-content-center text-center">
-          <div  class="alert alert-success">
+          <div *ngIf="!psaUserExport.success" class="alert alert-danger">
+            <h4>Export failed</h4>
+            <p>{{ psaUserExport.exception || 'An unknown error occurred.' }}</p>
+          </div>
+          <div *ngIf="psaUserExport.success" class="alert alert-success">
             <h4>Export complete</h4>
             <div class="my-2">
               <a [href]="psaUserExport.url" target="_blank" class="btn btn-primary">Download <span class="oi oi-data-transfer-download"></span></a>

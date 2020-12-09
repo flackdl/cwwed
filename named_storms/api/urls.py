@@ -9,6 +9,7 @@ router.register(r'covered-data', viewsets.CoveredDataViewSet)
 router.register(r'named-storm-covered-data-snapshot', viewsets.NamedStormCoveredDataSnapshotViewSet)
 router.register(r'nsem-psa', viewsets.NsemPsaViewSet)
 router.register(r'nsem-psa-user-export', viewsets.NsemPsaUserExportViewSet)
+router.register(r'nsem-psa-manifest-dataset', viewsets.NsemPsaManifestDatasetViewSet)
 
 
 urlpatterns = [

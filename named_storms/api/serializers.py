@@ -229,3 +229,15 @@ class NsemPsaDataSerializer(serializers.ModelSerializer):
 class NsemPsaTimeSeriesSerializer(serializers.Serializer):
     variable = NsemPsaVariableSerializer()
     values = serializers.ListField(child=serializers.FloatField())
+
+
+class NsemPsaWindBarbsSerializer(serializers.Serializer):
+    # placeholder to satisfy api doc generation
+    # output is geojson
+    pass
+
+
+class NsemPsaContourSerializer(serializers.Serializer):
+    # placeholder to satisfy api doc generation
+    # output is geojson
+    pass

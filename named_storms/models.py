@@ -54,7 +54,7 @@ class NamedStorm(models.Model):
         through='NamedStormCoveredData',
     )
     name = models.CharField(max_length=50, unique=True)  # i.e "Harvey"
-    geo = models.GeometryField(geography=True)
+    geo = models.PolygonField(geography=True)
     date_start = models.DateTimeField()
     date_end = models.DateTimeField()
     active = models.BooleanField(default=True)
@@ -79,7 +79,9 @@ class CoveredData(models.Model):
 
 class CoveredDataProvider(models.Model):
     covered_data = models.ForeignKey(CoveredData, on_delete=models.CASCADE)
-    processor_factory = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES), help_text='Optionally specify a custom processor factory')
+    processor_factory = models.CharField(
+        max_length=50, choices=zip(PROCESSOR_DATA_FACTORY_CHOICES, PROCESSOR_DATA_FACTORY_CHOICES),
+        help_text='Optionally specify a custom processor factory')
     processor_source = models.CharField(max_length=50, choices=zip(PROCESSOR_DATA_SOURCE_CHOICES, PROCESSOR_DATA_SOURCE_CHOICES))
     name = models.CharField(max_length=500)  # i.e  "NOAA/NCEP"
     url = models.CharField(max_length=5000)
@@ -97,7 +99,7 @@ class NamedStormCoveredData(models.Model):
     date_start = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
     date_end = models.DateTimeField(blank=True, null=True)  # optionally enforced in custom validation
     dates_required = models.BooleanField(default=True)
-    geo = models.GeometryField(geography=True)
+    geo = models.PolygonField(geography=True)
     external_storm_id = models.CharField(max_length=80, blank=True)  # an id for a storm in an external system
     date_collected = models.DateField(blank=True, null=True)   # indicates last collection date, operating as a switch to recollect
 
@@ -164,12 +166,12 @@ class NsemPsa(models.Model):
     named_storm = models.ForeignKey(NamedStorm, on_delete=models.CASCADE)
     date_created = models.DateTimeField(auto_now_add=True)
     covered_data_snapshot = models.ForeignKey(NamedStormCoveredDataSnapshot, on_delete=models.PROTECT)
-    manifest = fields.JSONField()  # defines the uploaded psa dataset files and variables
+    manifest = models.JSONField()  # defines the uploaded psa dataset files and variables
     path = models.TextField()  # path to the psa
     extracted = models.BooleanField(default=False)  # whether the psa has been extracted to file storage
     date_validation = models.DateTimeField(null=True, blank=True)  # manually set once the psa validation was attempted
     validated = models.BooleanField(default=False)  # whether the supplied psa was validated
-    validation_exceptions = fields.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
+    validation_exceptions = models.JSONField(default=dict, blank=True)  # any specific exceptions when validating the psa
     processed = models.BooleanField(default=False)  # whether the psa was fully ingested/processed
     date_processed = models.DateTimeField(null=True, blank=True)  # manually set once the psa is processed
     dates = fields.ArrayField(base_field=models.DateTimeField(), default=list)  # type: list
@@ -193,9 +195,18 @@ class NsemPsaManifestDataset(models.Model):
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     path = models.CharField(max_length=200)
     variables = fields.ArrayField(base_field=models.CharField(max_length=20))  # type: list
+    structured = models.BooleanField(default=True, help_text='Whether the dataset has a structured grid')
+    topology_name = models.CharField(max_length=50, default='element', help_text='Variable name for unstructured mesh connectivity')
+    meta = models.JSONField(default=dict, blank=True)  # psa dataset attributes
+    meta_time = models.JSONField(default=dict, blank=True)  # psa time variable attributes
+    meta_lon = models.JSONField(default=dict, blank=True)  # psa lon variable attributes
+    meta_lat = models.JSONField(default=dict, blank=True)  # psa lat variable attributes
 
     def __str__(self):
         return '{}: {}'.format(self.nsem, self.path)
+
+    class Meta:
+        ordering = ['-id']
 
 
 class NsemPsaVariable(models.Model):
@@ -316,13 +327,14 @@ class NsemPsaVariable(models.Model):
 
     nsem = models.ForeignKey(NsemPsa, on_delete=models.CASCADE)
     name = models.CharField(max_length=50, choices=zip(VARIABLE_DATASETS, VARIABLE_DATASETS))  # i.e "water_level"
-    color_bar = fields.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
+    color_bar = models.JSONField(default=dict, blank=True)  # a list of 2-tuples, i.e [(.5, '#2e2e2e'),]
     auto_displayed = models.BooleanField(default=False)
     display_name = models.CharField(max_length=50, choices=zip(VARIABLE_NAMES, VARIABLE_NAMES))  # i.e "Water Level"
     geo_type = models.CharField(choices=zip(GEO_TYPES, GEO_TYPES), max_length=20)  # i.e "polygon"
     data_type = models.CharField(choices=zip(DATA_TYPES, DATA_TYPES), max_length=20)  # i.e "time-series"
     element_type = models.CharField(choices=zip(ELEMENTS, ELEMENTS), max_length=20)  # i.e "water"
     units = models.CharField(choices=zip(UNITS, UNITS), max_length=20)  # i.e "m/s"
+    meta = models.JSONField(default=dict, blank=True)  # psa variable attributes from dataset
 
     class Meta:
         unique_together = ('nsem', 'name')
@@ -342,6 +354,10 @@ class NsemPsaVariable(models.Model):
 
     def get_attribute(self, attribute: str):
         return NsemPsaVariable.get_variable_attribute(self.name, attribute)
+
+    @classmethod
+    def get_time_series_variables(cls):
+        return [name for name, v in cls.VARIABLES.items() if v['data_type'] == cls.DATA_TYPE_TIME_SERIES]
 
     @classmethod
     def get_variable_attribute(cls, variable, attribute: str):
@@ -371,7 +387,7 @@ class NsemPsaData(models.Model):
 class NsemPsaContour(models.Model):
     nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
     date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
-    geo = models.GeometryField(geography=True)
+    geo = models.GeometryField(geography=True)  # can be Polygon or MultiPolygon
     value = models.FloatField()
     color = models.CharField(max_length=7, blank=True)  # rgb hex, i.e "#ffffff"
 
@@ -402,8 +418,10 @@ class NsemPsaUserExport(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(max_length=1500, null=True, blank=True)  # signed download url
     format = models.CharField(max_length=30, choices=FORMAT_CHOICES)
-    bbox = models.GeometryField(geography=True)
+    bbox = models.PolygonField(geography=True)
     date_filter = models.DateTimeField(null=True, blank=True)  # date to filter export against
     date_created = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True, blank=True)
     date_expires = models.DateTimeField(null=True, blank=True)
+    success = models.BooleanField(default=False)
+    exception = models.CharField(null=True, blank=True, max_length=1000, help_text='message for an unsuccessful export')

@@ -2,9 +2,6 @@ from django.contrib.gis import geos
 from django.db import connection
 from datetime import datetime
 from named_storms.models import NsemPsaVariable
-import logging
-
-logger = logging.getLogger('cwwed')
 
 
 def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
@@ -28,13 +25,13 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
                         d1.id != d2.id
                 )
                 INNER JOIN named_storms_nsempsavariable v2 ON (
+                    v2.nsem_id = %(psa_id)s AND
                     d2.nsem_psa_variable_id = v2.id AND
                     v2.name = %(wind_speed)s
                 )
                 INNER JOIN named_storms_nsempsa nsn ON nsn.id = v1.nsem_id
                 INNER JOIN named_storms_namedstorm n ON n.id = nsn.named_storm_id
             WHERE
-                 ST_Within(d1.point::geometry, n.geo::geometry) AND
                  ST_Within(d1.point::geometry, ST_Expand(ST_GeomFromText(%(center)s, 4326), %(expand_distance)s)) AND
                  d1.id %% %(step)s = 0
         '''
@@ -49,8 +46,6 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
             # show more spatial distance of wind barbs when zoomed out
             'expand_distance': .2 if step == 1 else .8,
         }
-
-        logger.info(sql % params)
 
         cursor.execute(sql, params)
 

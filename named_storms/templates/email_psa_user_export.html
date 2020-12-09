@@ -1,6 +1,8 @@
-<h3>Your Post Storm Assessment export is complete.</h3>
+<h3>{{ msg }}</h3>
 <div>Storm: {{ storm }}</div>
 {% if date_filter  %}<div>Date: {{ date_filter }}</div>{% endif %}
 <div>Format: {{ format }}</div>
 <div>Bounding Box: {{ bbox }}</div>
-<p><a href="{{ url }}" target="_blank"><button type="button">Download</button></a></p>
+{% if url %}
+	<p><a href="{{ url }}" target="_blank"><button type="button">Download</button></a></p>
+{% endif %}

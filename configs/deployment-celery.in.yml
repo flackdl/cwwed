@@ -11,7 +11,7 @@ kind: Deployment
 metadata:
   name: !Var deployment_name
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: !Var app
@@ -29,13 +29,13 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
-        args: ['worker', '--concurrency=2', '-A', 'cwwed', '-l', 'info']
+        args: ['-A', 'cwwed', 'worker', '-l', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "1000M"
+            memory: "550M"
             cpu: "200m"
         env:
           - name: DJANGO_SETTINGS_MODULE

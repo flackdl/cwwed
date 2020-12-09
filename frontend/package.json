@@ -26,7 +26,7 @@
     "@ng-bootstrap/ng-bootstrap": "^5.2.1",
     "@sentry/browser": "^5.11.1",
     "@types/lodash": "^4.14.149",
-    "bootstrap": "^4.4.1",
+    "bootstrap": "^4.5.3",
     "chart.js": "^2.9.3",
     "core-js": "^3.6.4",
     "hex-to-rgba": "^2.0.1",

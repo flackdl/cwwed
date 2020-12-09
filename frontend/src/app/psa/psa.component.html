@@ -1,6 +1,7 @@
 <div class="position-relative" #psaContainer id="psa-container">
   <ngx-loading [show]="isLoading"></ngx-loading>
-  <div class="card">
+  <h3 class="alert alert-danger" *ngIf="initError">{{ initError }}</h3>
+  <div class="card" *ngIf="nsemPsa">
     <div class="card-header d-flex justify-content-between">
       <h1>{{ namedStorm.name }}</h1>
       <div class="d-flex justify-content-end">
@@ -19,7 +20,7 @@
 
           <!-- map controls -->
           <ngb-accordion #acc="ngbAccordion" activeIds="map-filters" [formGroup]="form" *ngIf="form">
-            <ngb-panel title="Map Filters" id="map-filters">
+            <ngb-panel title="Filters" id="map-filters">
               <ng-template ngbPanelContent>
                 <div class="form-group" formGroupName="variables">
                   <div class="form-check" *ngFor="let psaVariable of psaVariables">
@@ -38,7 +39,7 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>Data Opacity</label>
+                  <label>Layer Opacity</label>
                   <input type="range" step=".1" min=".1" max="1" formControlName="opacity" class="w-100">
                 </div>
                 <div class="form-group">

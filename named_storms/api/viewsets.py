@@ -1,8 +1,9 @@
 import csv
 import logging
+
 import geojson
-from celery import chain, group
-from django.contrib.gis.db.models.functions import Intersection, Distance, MakeValid
+from celery import chain, group, chord
+from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
@@ -28,13 +29,18 @@ from named_storms.sql import wind_barbs_query
 from named_storms.tasks import (
     create_named_storm_covered_data_snapshot_task, extract_nsem_psa_task, email_nsem_user_covered_data_complete_task,
     extract_named_storm_covered_data_snapshot_task, create_psa_user_export_task,
-    email_psa_user_export_task, validate_nsem_psa_task, email_psa_validated_task, ingest_nsem_psa_task,
-    email_psa_ingested_task, cache_psa_contour_task,
+    email_psa_user_export_task, validate_nsem_psa_task,
+    postprocess_psa_ingest_task, cache_psa_contour_task,
+    ingest_nsem_psa_dataset_variable_task, postprocess_psa_validated_task,
 )
-from named_storms.models import NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot, NsemPsaData
+from named_storms.models import (
+    NamedStorm, CoveredData, NsemPsa, NsemPsaVariable, NsemPsaContour, NsemPsaUserExport, NamedStormCoveredDataSnapshot,
+    NsemPsaData, NsemPsaManifestDataset,
+)
 from named_storms.api.serializers import (
     NamedStormSerializer, CoveredDataSerializer, NamedStormDetailSerializer, NsemPsaSerializer, NsemPsaVariableSerializer, NsemPsaUserExportSerializer,
-    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer)
+    NamedStormCoveredDataSnapshotSerializer, NsemPsaDataSerializer, NsemPsaTimeSeriesSerializer, NsemPsaManifestDatasetSerializer, NsemPsaWindBarbsSerializer,
+    NsemPsaContourSerializer)
 from named_storms.utils import get_geojson_feature_collection_from_psa_qs
 
 logger = logging.getLogger('cwwed')
@@ -94,11 +100,30 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
     @action(methods=['get'], detail=False, url_path='per-storm')
     def per_storm(self, request):
         # return the most recent/distinct NSEM records per storm
-        qs = self.queryset.filter(extracted=True, validated=True, processed=True)
-        # NOTE: order by `named_storm_id` vs `named_storm` to prevent table join which django has issues with using distinct on
+        qs = self.filter_queryset(self.queryset).filter(extracted=True, validated=True, processed=True)
+        # order by named_storm_id vs named_storm to prevent table join which django has issues with using distinct on
         qs = qs.order_by('named_storm_id', '-date_created')
         qs = qs.distinct('named_storm_id')
         return Response(NsemPsaSerializer(qs, many=True, context=self.get_serializer_context()).data)
+
+    @classmethod
+    def get_ingest_psa_dataset_tasks(cls, nsem_psa_id):
+        """
+        Creates tasks to ingest an NSEM PSA into CWWED
+        """
+
+        nsem_psa = NsemPsa.objects.get(id=nsem_psa_id)
+        tasks = []
+        # create tasks to process each variable for each date in each dataset
+        for dataset in nsem_psa.nsempsamanifestdataset_set.all():  # type: NsemPsaManifestDataset
+            for variable in dataset.variables:
+                # max-values data type so there's no date
+                if NsemPsaVariable.get_variable_attribute(variable, 'data_type') == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
+                    tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable))
+                else:
+                    for date in nsem_psa.dates:
+                        tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable, date))
+        return tasks
 
     def perform_create(self, serializer):
         # save the instance first so we can create a task to extract and validate the model output
@@ -109,20 +134,25 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
             extract_nsem_psa_task.s(nsem_psa.id),
             # validate once extracted
             validate_nsem_psa_task.si(nsem_psa.id),
-            # email validation result
-            email_psa_validated_task.si(nsem_psa.id),
-            # ingest the psa
-            ingest_nsem_psa_task.si(nsem_psa.id),
-            # email psa ingest completion
-            email_psa_ingested_task.si(nsem_psa.id),
-            # execute these final tasks in parallel
-            group(
-                # cache geo json for this psa
-                cache_psa_contour_task.si(nsem_psa.named_storm_id),
-                # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
-                extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
-            ),
-        ).apply_async()
+            # post-process the validation and email validation result
+            postprocess_psa_validated_task.si(nsem_psa.id),
+            # ingest the psa in parallel by creating tasks for each dataset/variable/date
+            chord(
+                header=self.get_ingest_psa_dataset_tasks(nsem_psa.id),
+                # then run the following sequentially
+                body=chain(
+                    # save psa as processed and send confirmation email
+                    postprocess_psa_ingest_task.si(nsem_psa.id, True),  # success
+                    # execute these final tasks in parallel
+                    group(
+                        # cache geo json for this psa
+                        cache_psa_contour_task.si(nsem_psa.named_storm_id),
+                        # download and extract covered data snapshot into file storage so they're available for discovery (i.e opendap)
+                        extract_named_storm_covered_data_snapshot_task.si(nsem_psa.id),
+                    ),
+                )
+            ).on_error(postprocess_psa_ingest_task.si(nsem_psa.id, False))  # header failure (ingestion failed)
+        )()
 
 
 class NsemPsaBaseViewSet(viewsets.ReadOnlyModelViewSet):
@@ -223,8 +253,6 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
             *fields_values
         )
 
-        logger.info(str(time_series_query.query))
-
         results = []
 
         # time-series variables
@@ -262,8 +290,8 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaData.objects.all()  # defined in list()
 
     def get_serializer_class(self):
-        # TODO - define serializer for api docs
-        return Serializer
+        # dummy serializer class
+        return NsemPsaWindBarbsSerializer
 
     def list(self, request, *args, date=None, **kwargs):
 
@@ -328,20 +356,19 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_serializer_class(self):
-        # TODO - define serializer for api docs
-        return Serializer
+        # dummy serializer class
+        return NsemPsaContourSerializer
 
     def get_queryset(self):
         """
         - group all geometries together (st_collect) by same variable & value
-        - clip psa to storm's geo (st_intersection)
         """
         qs = NsemPsaContour.objects.filter(nsem_psa_variable__nsem=self.nsem)
         qs = qs.values(*[
             'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__data_type',
             'nsem_psa_variable__display_name', 'nsem_psa_variable__units',
         ])
-        qs = qs.annotate(geom=Intersection(MakeValid(Collect(Cast('geo', GeometryField()))), self.storm.geo))
+        qs = qs.annotate(geom=Collect(Cast('geo', GeometryField())))
         qs = qs.order_by('nsem_psa_variable__name')
         return qs
 
@@ -451,3 +478,9 @@ class NsemPsaUserExportNestedViewSet(NsemPsaBaseViewSet, NsemPsaUserExportViewSe
         context = super().get_serializer_context()
         context['nsem'] = self.nsem
         return context
+
+
+class NsemPsaManifestDatasetViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = NsemPsaManifestDatasetSerializer
+    queryset = NsemPsaManifestDataset.objects.all()
+    filterset_fields = ('nsem', 'nsem__named_storm')

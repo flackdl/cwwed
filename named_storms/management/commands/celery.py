@@ -19,12 +19,13 @@ def restart_celery():
     env = os.environ.copy()
 
     # start celery
-    cmd = 'celery worker -A cwwed -l info'
+    cmd = 'celery -A cwwed worker -l info'
     subprocess.Popen(shlex.split(cmd), env=env)
 
-    # start flower
-    cmd = 'celery flower -A cwwed --port=5555'
-    subprocess.Popen(shlex.split(cmd), env=env)
+    # TODO - need to wait until flower is compatible with celery 5.x
+    ## start flower
+    #cmd = 'celery -A cwwed flower --port=5555'
+    #subprocess.Popen(shlex.split(cmd), env=env)
 
 
 class Command(BaseCommand):

@@ -13,8 +13,8 @@ from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.contrib.gis.db.models import Collect, GeometryField
-from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML
+from django.contrib.gis.db.models import Collect, GeometryField, Func, F
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash, Distance
 from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
 from django.db import connection
@@ -29,10 +29,10 @@ from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.data.processors import ProcessorData
-from named_storms.psa import PsaDataset
+from named_storms.psa import PsaDatasetProcessor
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
-    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot)
+    NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset, NsemPsaData)
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -43,7 +43,7 @@ from named_storms.utils import (
 logger = get_task_logger(__name__)
 
 
-TASK_ARGS = dict(
+TASK_ARGS_RETRY = dict(
     autoretry_for=(Exception,),
     default_retry_delay=5,
     max_retries=10,
@@ -57,7 +57,7 @@ TASK_ARGS_ACK_LATE = dict(
 )
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def fetch_url_task(url, verify=True, write_to_path=None):
     """
     :param url: URL to fetch
@@ -79,7 +79,7 @@ def fetch_url_task(url, verify=True, write_to_path=None):
     return response.content.decode()  # must return bytes for serialization
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def process_covered_data_dataset_task(data: list):
     """
     Run the covered data dataset processor
@@ -100,7 +100,7 @@ def process_covered_data_dataset_task(data: list):
     return processor.to_dict()
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_id):
     """
     Archives a covered data collection and sends it to object storage
@@ -143,7 +143,7 @@ def archive_named_storm_covered_data_task(named_storm_id, covered_data_id, log_i
     return log.snapshot
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snapshot_id):
     """
     - Creates a snapshot of a storm's covered data and archives in object storage
@@ -182,7 +182,7 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     return covered_data_snapshot.id
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def extract_named_storm_covered_data_snapshot_task(nsem_psa_id):
     """
     Downloads and extracts a named storm covered data snapshot into file storage
@@ -245,7 +245,7 @@ class ExtractNSEMTaskBase(app.Task):
                 )
 
 
-EXTRACT_NSEM_TASK_ARGS = TASK_ARGS.copy()  # type: dict
+EXTRACT_NSEM_TASK_ARGS = TASK_ARGS_RETRY.copy()  # type: dict
 EXTRACT_NSEM_TASK_ARGS.update({
     'base': ExtractNSEMTaskBase,
 })
@@ -316,7 +316,7 @@ def extract_nsem_psa_task(nsem_id):
     return storage.url(storage_path)
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot_id: int):
     """
     Email the "nsem" user indicating the Covered Data for a particular storm is complete and ready for download.
@@ -355,10 +355,11 @@ def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot
     return named_storm_covered_data_snapshot.id
 
 
-@app.task(**TASK_ARGS)
-def email_psa_validated_task(nsem_psa_id):
+@app.task
+def postprocess_psa_validated_task(nsem_psa_id):
     """
     Email the "nsem" user indicating whether the PSA has been validated or not
+    Raise exception if the PSA wasn't validated
     """
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
@@ -394,27 +395,26 @@ def email_psa_validated_task(nsem_psa_id):
         recipient_list=recipients,
         html_message=html_body,
     )
-    return nsem_psa.id
+
+    if not nsem_psa.validated:
+        raise Exception('PSA {} was not validated'.format(nsem_psa))
 
 
-@app.task(**EXTRACT_NSEM_TASK_ARGS)
+@app.task
 def validate_nsem_psa_task(nsem_id):
     """
-    Validates the PSA model product output from file storage with the following:
+    Validates the PSA from file storage with the following:
     - cf conventions - http://cfconventions.org/
-    - expected coordinates
+    - ugrid conventions - http://ugrid-conventions.github.io/ugrid-conventions/
+    - expected coordinates in dataset
+    - supplied dates exist in dataset
+    - supplied variables exist in dataset
     - proper time dimension & timezone (xarray throws ValueError if it can't decode it automatically)
     - duplicate dimension & scalar values (xarray throws ValueError if encountered)
     - netcdf only
-    - no NaNs
-
-    TODO
-        validate all required variables exist
-        validate dataset has all dates required by the psa
-        validate the dataset is structured so we can create contours correctly
-        * validate null values (do we want to do this?)
-        validate wind barb requirements (needs wind speed and wind direction)
     """
+
+    # TODO - validate expected units per variable
 
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
@@ -446,21 +446,40 @@ def validate_nsem_psa_task(nsem_id):
                 if result['FATAL'] or result['ERROR']:
                     variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
+            # dates
+            for date in nsem_psa.dates:
+                try:
+                    ds.sel(time=date.isoformat())
+                except KeyError:
+                    file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
+
             # coordinates
             if not required_coords.issubset(list(ds.coords)):
                 file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
 
-            # variables in the manifest dataset must exist in the actual dataset
+            # variables
             if not set(dataset.variables).issubset(list(ds.data_vars)):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # TODO - verify if we actually want to validate against null values
-            ## nulls
-            #for variable in dataset.variables:
-            #    if ds[variable].isnull().any():
-            #        if variable not in variable_exceptions:
-            #            variable_exceptions[variable] = []
-            #        variable_exceptions[variable].append('has null values')
+            # structured grid
+            if dataset.structured:
+                # make sure variables have the right dimension for a structured grid
+                for variable in NsemPsaVariable.get_time_series_variables():
+                    # choose first time and make sure it has at least 2 dimensions (x, y)
+                    if variable in ds:
+                        shape = len(ds[variable].isel(time=0).shape)
+                        if shape < 2:
+                            file_exceptions.append(
+                                'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+            # unstructured grid - http://ugrid-conventions.github.io/ugrid-conventions/
+            else:
+                # validate the specified topology name is present in the dataset
+                if dataset.topology_name not in ds:
+                    file_exceptions.append('topology_name "{}" missing from dataset'.format(dataset.topology_name))
+                    # 0-based vs 1-based indexing for mesh connectivity
+                    # http://ugrid-conventions.github.io/ugrid-conventions/#zero-or-one-based-indexing
+                elif 'start_index' not in ds[dataset.topology_name].attrs:
+                    file_exceptions.append('start_index attribute missing from topology name "{}"'.format(dataset.topology_name))
 
         if file_exceptions or variable_exceptions:
             e = {'file': file_exceptions, 'variables': variable_exceptions}
@@ -477,18 +496,19 @@ def validate_nsem_psa_task(nsem_id):
     # success
     else:
         nsem_psa.validated = True
+
     nsem_psa.date_validation = datetime.utcnow().replace(tzinfo=pytz.utc)
     nsem_psa.save()
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
+    nsem_psa = nsem_psa_user_export.nsem
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
-    psa_path = named_storm_nsem_version_path(nsem_psa_user_export.nsem)
     tmp_user_export_path = os.path.join(
         root_data_path(),
         settings.CWWED_NSEM_TMP_USER_EXPORT_DIR_NAME,
@@ -502,71 +522,138 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # create temporary directory
     create_directory(tmp_user_export_path)
 
-    # netcdf/csv - extract low level data from netcdf files
-    # TODO - extract data from NsemPsaData now that we're storing every data point
+    # netcdf/csv - extract raw point data
     if nsem_psa_user_export.format in [NsemPsaUserExport.FORMAT_NETCDF, NsemPsaUserExport.FORMAT_CSV]:
+
+        # csv exports to a specific date while netcdf includes all
+        dates_to_export = [nsem_psa_user_export.date_filter] if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV else nsem_psa.dates
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
-            ds_file_path = os.path.join(psa_path, psa_dataset.path)
+            # create export dataset including any supplied metadata from the manifest
+            ds_out = xr.Dataset(attrs=psa_dataset.meta)
 
-            # open dataset
-            ds = xr.open_dataset(ds_file_path)
+            ds_out_path = os.path.join(tmp_user_export_path, psa_dataset.path)  # dataset extension is expected to already be .nc
 
-            # subset using user-defined bounding box
-            ds = ds.where(
-                (ds.lon >= nsem_psa_user_export.bbox.extent[0]) &  # xmin
-                (ds.lat >= nsem_psa_user_export.bbox.extent[1]) &  # ymin
-                (ds.lon <= nsem_psa_user_export.bbox.extent[2]) &  # xmax
-                (ds.lat <= nsem_psa_user_export.bbox.extent[3]),   # ymax
-                drop=True)
+            # filter points within the user's bounding box
+            all_data = NsemPsaData.objects.annotate(
+                geo_hash=GeoHash('point'),
+                geom_point=Cast('point', GeometryField()),
+            ).filter(
+                nsem_psa_variable__name__in=psa_dataset.variables,
+                nsem_psa_variable__nsem=nsem_psa,
+                geom_point__within=nsem_psa_user_export.bbox,
+            ).distinct(
+                'geo_hash',
+            ).order_by(
+                'geo_hash',
+            ).only(
+                'point',
+            )
 
-            # skip dataset if there is missing data on any dimensions (ie. bounding box could have been too small)
-            if not all([len(ds[d]) for d in list(ds.dims)]):
+            # export's bounding box didn't contain any points/data
+            if not all_data.exists():
                 continue
+
+            all_points = [d.point for d in all_data]
+
+            # build the dataset coordinates
+            coords = np.array([p.coords for p in all_points])
+            ds_coords = {
+                'time': (['time'], dates_to_export),
+                'lon': (['node'], coords[:, 0]),
+                'lat': (['node'], coords[:, 1]),
+            }
+
+            # add every time-series variable to the out dataset for this psa dataset
+            variable_kwargs = dict(
+                data_type=NsemPsaVariable.DATA_TYPE_TIME_SERIES,
+                name__in=psa_dataset.variables,
+            )
+            for psa_variable in psa_dataset.nsem.nsempsavariable_set.filter(**variable_kwargs):
+
+                # build results for data in each date in the psa
+                results = []
+                for date in dates_to_export:
+                    variable_data = psa_variable.nsempsadata_set.annotate(
+                        geo_hash=GeoHash('point'),
+                    ).filter(
+                        geo_hash__in=[d.geo_hash for d in all_data],
+                        date=date,
+                    ).only(
+                        'value',
+                        'point',
+                    ).order_by(
+                        'geo_hash',
+                    )
+                    variable_data = list(variable_data)
+                    variable_points = [d.point for d in variable_data]
+                    result = []
+
+                    # iterate over point/data list and insert NaN for absent values
+                    for point in all_points:
+                        try:
+                            idx = variable_points.index(point)
+                        # no value at this point
+                        except ValueError:
+                            result.append(np.nan)
+                        # insert value for this located point
+                        else:
+                            result.append(variable_data[idx].value)
+                            # remove found object from lists
+                            variable_data.pop(idx)
+                            variable_points.pop(idx)
+
+                    results.append(result)
+
+                # add the data array to the dataset
+                ds_out[psa_variable.name] = xr.DataArray(
+                    np.array(results),
+                    coords=ds_coords,
+                    dims=['time', 'node'],
+                    attrs=psa_variable.meta,
+                )
+
+            # include metadata for space and time
+            ds_out.time.attrs = psa_dataset.meta_time
+            ds_out.lat.attrs = psa_dataset.meta_lat
+            ds_out.lon.attrs = psa_dataset.meta_lon
 
             # netcdf
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_NETCDF:
-                # use xarray to create the netcdf export
-                ds.to_netcdf(os.path.join(tmp_user_export_path, psa_dataset.path))
+                ds_out.to_netcdf(ds_out_path)
 
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
 
-                # verify this dataset has the export date requested
-                if not ds.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
-                    continue
-
-                # subset by export date filter
-                ds = ds.sel(time=np.datetime64(nsem_psa_user_export.date_filter))
-
                 # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
 
+                # multi index of date/lon/lat
+                index = pd.MultiIndex.from_arrays([
+                    np.full(len(ds_out.node),nsem_psa_user_export.date_filter),
+                    ds_out['lon'],
+                    ds_out['lat'],
+                ])
+
                 # insert a new column for each variable to df_out
-                for i, variable in enumerate(psa_dataset.variables):
+                for variable in ds_out.data_vars:
 
-                    # verify this variable exists in the dataset
-                    if variable in list(ds.data_vars):
+                    # convert data array to a panda dataframe
+                    df = ds_out[variable].to_dataframe()
 
-                        df = ds[variable].to_dataframe()
+                    # set the multi index
+                    df.set_index(index, inplace=True)
 
-                        # initialize df_out DataFrame on first iteration
-                        if i == 0:
-                            df_out = df
-                        # insert df Series as a new column
-                        else:
-                            df_out.insert(len(df_out.columns), variable, df[variable])
+                    # insert df as a new column
+                    df_out.insert(len(df_out.columns), variable, df[variable])
 
-                # NOTE: due to the "crooked" shape of the structured grid
-                # this is necessary because the above xarray "where" bbox/extent
-                # filter is including coords _just_ outside the requested extent with no values present,
-                # so this simply guarantees those rows are removed
-                df_out = df_out.dropna()
+                # drop rows without any data (could contain non time-series variables)
+                df_out.dropna(how='all', inplace=True)
 
                 # write csv
                 df_out.to_csv(
-                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)))
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
@@ -596,12 +683,20 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             data_ids = [r['id'] for r in qs.values('id')]
 
             # group all intersecting geometries together by value and clip the result using the export's bbox intersection
-            # also, it's necessary to finally cast to CharField for GeoPandas
-            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # cast to CharField for GeoPandas
+            # use ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # use ST_CollectionHomogenize to guarantee we only get (multi)geometries
             qs = NsemPsaContour.objects.filter(id__in=data_ids)
             qs = qs.values('value')
             qs = qs.annotate(
-                geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
+                geom=Cast(
+                        Func(
+                            Collect(Intersection(MakeValid(Cast('geo', GeometryField())), nsem_psa_user_export.bbox)),
+                            function='ST_CollectionHomogenize',
+                        ),
+                        CharField()
+                ),
+            )
 
             # create GeoDataFrame from query
             try:
@@ -627,17 +722,21 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
             # group all intersecting geometries together by variable & value and
             # only return the export's bbox intersection
-            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # NOTE: using ST_MakeValid to fix any ring self-intersections which ST_Intersection chokes on
             qs = psa_variable.nsempsacontour_set.filter(**data_kwargs)
             qs = qs.values(*[
                 'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name',
                 'nsem_psa_variable__units', 'nsem_psa_variable__data_type',
             ])
-            qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
+            qs = qs.annotate(geom=Collect(Intersection(MakeValid(Cast('geo', GeometryField())), nsem_psa_user_export.bbox)))
+
+            # export's bounding box didn't contain any points/data
+            if not qs.exists():
+                continue
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
-                # annotate with AsKML
-                qs = qs.annotate(kml=AsKML('geom'))
+                # annotate with "AsKML" to get kml and "ST_CollectionHomogenize" to guarantee we only get (multi)geometries
+                qs = qs.annotate(kml=AsKML(Func(F('geom'), function='ST_CollectionHomogenize')))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
                     fh.write(render_to_string('psa_export.kml', context={"results": qs, "psa_variable": psa_variable}))
@@ -645,6 +744,16 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # write geojson to file
                 with open(os.path.join(tmp_user_export_path, '{}.json'.format(psa_variable.name)), 'w') as fh:
                     fh.write(get_geojson_feature_collection_from_psa_qs(qs))
+
+    # no data found in the export's bounding box
+    if len(os.listdir(tmp_user_export_path)) == 0:
+        msg = "No data found in the export's bounding box."
+        logger.warning(msg)
+        # update export instance
+        nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
+        nsem_psa_user_export.exception = msg
+        nsem_psa_user_export.save()
+        return
 
     # create tar in local storage
     tar = tarfile.open(tar_path, mode=settings.CWWED_NSEM_ARCHIVE_WRITE_MODE)
@@ -664,8 +773,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
         config=BotoCoreConfig(signature_version='s3v4'))
 
     # user export key name (using the export_id enforces uniqueness)
-    key_name = '{dir}/{storm_name}-{export_id}.{extension}'.format(
-        dir=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
+    key_name = '{path}/{storm_name}-{export_id}.{extension}'.format(
+        path=settings.CWWED_NSEM_S3_USER_EXPORT_DIR_NAME,
         export_id=nsem_psa_user_export.id,
         storm_name=nsem_psa_user_export.nsem.named_storm,
         extension=settings.CWWED_ARCHIVE_EXTENSION,
@@ -701,19 +810,24 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
     # remove temporary directory
     shutil.rmtree(tmp_user_export_path)
 
+    nsem_psa_user_export.success = True
     nsem_psa_user_export.date_expires = date_expires
     nsem_psa_user_export.date_completed = pytz.utc.localize(datetime.utcnow())
     nsem_psa_user_export.url = presigned_url
     nsem_psa_user_export.save()
 
-    return nsem_psa_user_export.id
 
-
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def email_psa_user_export_task(nsem_psa_user_export_id: int):
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
 
+    if nsem_psa_user_export.success:
+        msg = 'Your Post Storm Assessment export is complete.'
+    else:
+        msg = nsem_psa_user_export.exception or 'There was no data found within the specified selection.'
+
     context = dict(
+        msg=msg,
         storm=nsem_psa_user_export.nsem.named_storm,
         bbox=nsem_psa_user_export.bbox.wkt,
         date_filter=nsem_psa_user_export.date_filter,
@@ -722,7 +836,7 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
     text_body = """
-        Your Post Storm Assessment export is complete.
+        {msg}
         
         Storm: {storm}
         Date: {date_filter}
@@ -744,7 +858,7 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
 
-@app.task(**TASK_ARGS)
+@app.task(**TASK_ARGS_RETRY)
 def cache_psa_contour_task(storm_id: int):
     """
     Automatically creates cached responses for a storm's PSA contour results by crawling every api endpoint
@@ -786,57 +900,61 @@ def cache_psa_contour_task(storm_id: int):
             logger.info(r.status_code)
 
 
-@app.task(**TASK_ARGS, **TASK_ARGS_ACK_LATE)
-def ingest_nsem_psa_task(nsem_psa_id):
+@app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE)
+def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, date: datetime = None):
     """
-    Ingests an NSEM PSA into the CWWED database
+    Ingests an NSEM PSA Dataset variable into CWWED
     """
-
-    nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
-
-    # only process if the psa was validated
-    if not nsem_psa.validated:
-        msg = '{} was not validated so skipping ingestion'.format(nsem_psa)
-        logger.warning(msg)
-        raise Exception(msg)
-
-    # process each dataset
-    for dataset in nsem_psa.nsempsamanifestdataset_set.all():
-        psa_dataset = PsaDataset(psa_manifest_dataset=dataset)
-        psa_dataset.ingest()
-
-    # save psa as processed
-    nsem_psa.processed = True
-    nsem_psa.date_processed = timezone.now()
-    nsem_psa.save()
-
-    logger.info('PSA {} has been successfully ingested'.format(nsem_psa))
+    dataset_manifest = get_object_or_404(NsemPsaManifestDataset, pk=psa_dataset_id)
+    assert variable in dataset_manifest.variables, 'Variable not found in {}'.format(dataset_manifest)
+    PsaDatasetProcessor(psa_manifest_dataset=dataset_manifest).ingest_variable(variable, date)
+    logger.info('{}: {} variable (date={}) has been successfully ingested'.format(dataset_manifest, variable, date))
 
 
-@app.task(**TASK_ARGS)
-def email_psa_ingested_task(nsem_psa_id):
+@app.task(**TASK_ARGS_RETRY)
+def postprocess_psa_ingest_task(nsem_psa_id: int, success: bool):
     """
-    Email the "nsem" user indicating the PSA has been ingested
+    Update the psa as processed and email the "nsem" user indicating the PSA has been ingested
     """
     nsem_psa = get_object_or_404(NsemPsa, pk=nsem_psa_id)
     nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
     nsem_psa_api_url = "{}://{}:{}{}".format(
         settings.CWWED_SCHEME, settings.CWWED_HOST, settings.CWWED_PORT, reverse('nsempsa-detail', args=[nsem_psa.id]))
 
-    body = """
-        PSA has been ingested.
+    # save the dataset's metadata in the psa manifest dataset
+    for psa_manifest_dataset in nsem_psa.nsempsamanifestdataset_set.all():
+        psa_processor = PsaDatasetProcessor(psa_manifest_dataset)
+        psa_manifest_dataset.meta = psa_processor.get_metadata()
+        psa_manifest_dataset.meta_time = psa_processor.get_variable_metadata('time')
+        psa_manifest_dataset.meta_lat = psa_processor.get_variable_metadata('lat')
+        psa_manifest_dataset.meta_lon = psa_processor.get_variable_metadata('lon')
+        psa_manifest_dataset.save()
 
-        API: {api_url}
-        """.format(
+    # save psa as processed
+    nsem_psa.processed = success
+    nsem_psa.date_processed = timezone.now()
+    nsem_psa.save()
+
+    msg = 'PSA {psa} {msg}'.format(
+        msg='has been successfully ingested' if success else 'failed during ingestion',
+        psa=nsem_psa,
+    )
+
+    logger.info(msg)
+
+    context = dict(
+        msg=msg,
+        nsem_psa=nsem_psa,
         api_url=nsem_psa_api_url,
     )
 
-    html_body = render_to_string(
-        'email_psa_ingested.html',
-        context={
-            "nsem_psa": nsem_psa,
-            "nsem_psa_api_url": nsem_psa_api_url,
-        })
+    body = """
+        {msg}.
+
+        API: {api_url}
+        """.format(**context)
+
+    html_body = render_to_string('email_psa_ingested.html', context=context)
 
     # include the "nsem" user and all super users
     recipients = get_superuser_emails()
@@ -844,7 +962,7 @@ def email_psa_ingested_task(nsem_psa_id):
         recipients.append(nsem_user.email)
 
     send_mail(
-        subject='PSA ingested ({psa_id})'.format(psa_id=nsem_psa.id),
+        subject=msg,
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=recipients,

@@ -11,9 +11,10 @@ from django.core.files import File
 
 from cwwed import slack
 from named_storms.models import (
-    CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP,
-    PROCESSOR_DATA_SOURCE_FILE_HDF,
-    NamedStormCoveredDataSnapshot, NsemPsaVariable)
+    CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC,
+    PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP, PROCESSOR_DATA_SOURCE_FILE_HDF,
+    NamedStormCoveredDataSnapshot,
+)
 
 
 def slack_channel(message: str, channel='#errors'):

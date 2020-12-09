@@ -41,5 +41,5 @@ class NsemPsaDataFilter(NsemPsaDataFilterBase):
         model = NsemPsaData
         fields = {
             'value': ['exact', 'gt', 'gte', 'lt', 'lte'],
-            'date': ['exact', 'gt', 'gte', 'lt', 'lte']
+            'date': ['exact', 'gt', 'gte', 'lt', 'lte'],
         }
