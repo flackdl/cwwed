@@ -626,30 +626,34 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             # csv
             elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV:
 
-                # verify this dataset has the export date requested
-                if not ds_out.time.isin([np.datetime64(nsem_psa_user_export.date_filter)]).any():
-                    continue
-
                 # create pandas DataFrame which makes a csv conversion very simple
                 df_out = pd.DataFrame()
-                df_out['date'] = np.full(len(ds_out.node), nsem_psa_user_export.date_filter)
-                df_out['lon'] = ds_out['lon']
-                df_out['lat'] = ds_out['lat']
+
+                # multi index of date/lon/lat
+                index = pd.MultiIndex.from_arrays([
+                    np.full(len(ds_out.node),nsem_psa_user_export.date_filter),
+                    ds_out['lon'],
+                    ds_out['lat'],
+                ])
 
                 # insert a new column for each variable to df_out
                 for variable in ds_out.data_vars:
 
                     # convert data array to a panda dataframe
                     df = ds_out[variable].to_dataframe()
-                    # drop any existing indexes and use default sequential index
-                    df.reset_index(drop=True, inplace=True)
+
+                    # set the multi index
+                    df.set_index(index, inplace=True)
 
                     # insert df as a new column
                     df_out.insert(len(df_out.columns), variable, df[variable])
 
+                # drop rows without any data (could contain non time-series variables)
+                df_out.dropna(how='all', inplace=True)
+
                 # write csv
                 df_out.to_csv(
-                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)), index=False)
+                    os.path.join(tmp_user_export_path, '{}.csv'.format(psa_dataset.path)))
 
     # shapefile - extract pre-processed contour data from db
     elif nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_SHAPEFILE:
