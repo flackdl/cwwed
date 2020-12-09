@@ -13,7 +13,7 @@ from botocore.client import Config as BotoCoreConfig
 from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.contrib.gis.db.models import Collect, GeometryField
+from django.contrib.gis.db.models import Collect, GeometryField, Func, F
 from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash, Distance
 from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
@@ -414,6 +414,8 @@ def validate_nsem_psa_task(nsem_id):
     - netcdf only
     """
 
+    # TODO - validate expected units per variable
+
     valid_files = []
     required_coords = {'time', 'lat', 'lon'}
     exceptions = {
@@ -677,12 +679,20 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
             data_ids = [r['id'] for r in qs.values('id')]
 
             # group all intersecting geometries together by value and clip the result using the export's bbox intersection
-            # also, it's necessary to finally cast to CharField for GeoPandas
-            # NOTE: using ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # cast to CharField for GeoPandas
+            # use ST_MakeValid due to ring self-intersections which ST_Intersection chokes on
+            # use ST_CollectionHomogenize to guarantee we only get (multi)geometries
             qs = NsemPsaContour.objects.filter(id__in=data_ids)
             qs = qs.values('value')
             qs = qs.annotate(
-                geom=Cast(Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox), CharField()))
+                geom=Cast(
+                        Func(
+                            Collect(Intersection(MakeValid(Cast('geo', GeometryField())), nsem_psa_user_export.bbox)),
+                            function='ST_CollectionHomogenize',
+                        ),
+                        CharField()
+                ),
+            )
 
             # create GeoDataFrame from query
             try:
@@ -714,15 +724,15 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 'value', 'color', 'date', 'nsem_psa_variable__name', 'nsem_psa_variable__display_name',
                 'nsem_psa_variable__units', 'nsem_psa_variable__data_type',
             ])
-            qs = qs.annotate(geom=Intersection(Collect(MakeValid(Cast('geo', GeometryField()))), nsem_psa_user_export.bbox))
+            qs = qs.annotate(geom=Collect(Intersection(MakeValid(Cast('geo', GeometryField())), nsem_psa_user_export.bbox)))
 
             # export's bounding box didn't contain any points/data
             if not qs.exists():
                 continue
 
             if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_KML:
-                # annotate with AsKML
-                qs = qs.annotate(kml=AsKML('geom'))
+                # annotate with AsKML and "ST_CollectionHomogenize" to guarantee we only get (multi)geometries
+                qs = qs.annotate(kml=AsKML(Func(F('geom'), function='ST_CollectionHomogenize')))
                 # write kml to file
                 with open(os.path.join(tmp_user_export_path, '{}.kml'.format(psa_variable.name)), 'w') as fh:
                     fh.write(render_to_string('psa_export.kml', context={"results": qs, "psa_variable": psa_variable}))
