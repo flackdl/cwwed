@@ -12,14 +12,14 @@ base_path = '/media/bucket/cwwed/OPENDAP/PSA_demo/florence/'
 out_full = os.path.join(base_path, 'water-demo.nc')
 out_minimal = os.path.join(base_path, 'water-demo-minimal.nc')
 
-water_level_dataset_path = os.path.join(base_path, 'ali/fort.63.nc')
+water_level_dataset_path = os.path.join(base_path, 'ali', 'fort.63.nc')
 # sandy
 #water_level_max_dataset_path = os.path.join(base_path, 'ali/maxele.63.nc')
 
 # sandy
-#wave_dataset_path = os.path.join(base_path, 'ali/ww3.ExplicitCD.2012_hs.nc')
+#wave_dataset_path = os.path.join(base_path, 'ali', 'ww3.ExplicitCD.2012_hs.nc')
 # florence
-wave_dataset_path = os.path.join(base_path, 'ali/ww3.FL_HWRFHRRRCFS_ADCIRC_BND.2018_hs.nc')
+wave_dataset_path = os.path.join(base_path, 'ali', 'ww3.FL_HWRFHRRRCFS_ADCIRC_BND.2018_hs.nc')
 
 dataset_water_level = xr.open_dataset(water_level_dataset_path, drop_variables=('max_nvdll', 'max_nvell'))
 # sandy
