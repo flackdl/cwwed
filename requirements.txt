@@ -1,6 +1,6 @@
 boto3==1.11.6
 bpython==0.18
-celery==5.0.2
+celery==5.0.4
 # chfchecker - updated version which supports the _Encoding attribute
 git+https://github.com/cedadev/cf-checker@4aff368aed350482e8827409ddc302bea95da876
 dj-database-url==0.5.0
