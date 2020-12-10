@@ -15,12 +15,15 @@ import sys
 import dj_database_url
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+
 
 # sentry/logging configuration
 sentry_sdk.init(
     dsn=os.getenv('SENTRY_DSN', ''),
-    integrations=[DjangoIntegration()],
+    integrations=[DjangoIntegration(), CeleryIntegration()],
     send_default_pii=True,
+    traces_sample_rate=1.0,
 )
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

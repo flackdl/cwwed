@@ -348,7 +348,7 @@ For example, log into the admin and create a site as `dev.cwwed-staging.com`.
 
 See [docs](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/deploy-container-insights-EKS.html).
 
-Attach the *CloudWatchAgentServerPolicy* policy to all node's IAM roles.  There should be a *nodes* and a *masters* role.
+Attach the *CloudWatchAgentServerPolicy* policy to all node's IAM roles.  There should be a *nodes* and *masters* role.
 
 Find their IAM roles:
 
