@@ -23,7 +23,7 @@ spec:
           claimName: !Var volume_claim_name
       containers:
       - name: redis
-        image: redis:5
+        image: redis:6
         # persistence - https://hub.docker.com/_/redis/
         args: ["--appendonly", "yes"]
         ports:
