@@ -121,7 +121,7 @@ class NsemPsaViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.
                 if NsemPsaVariable.get_variable_attribute(variable, 'data_type') == NsemPsaVariable.DATA_TYPE_MAX_VALUES:
                     tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable))
                 else:
-                    for date in nsem_psa.dates:
+                    for date in sorted(nsem_psa.dates):
                         tasks.append(ingest_nsem_psa_dataset_variable_task.si(dataset.id, variable, date))
         return tasks
 
