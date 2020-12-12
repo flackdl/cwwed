@@ -29,15 +29,17 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
-        # TODO - why is celery not recognizing the broker defined in the python package? manually specifying until resolved
+        # TODO - manually specify broker until I find out why celery is not using the configured broker
         args: ['--app', 'cwwed', '--broker', 'redis://redis-alpha', 'worker', '--loglevel', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "550M"
+            memory: "1500M"
             cpu: "200m"
+          limits:
+            cpu: "800m"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings

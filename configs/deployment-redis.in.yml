@@ -4,14 +4,15 @@ deployment_name: !Format "redis-deployment-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: !Var deployment_name
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: !Var app
+  serviceName: !Var app
+  replicas: 1
   template:
     metadata:
       labels:
@@ -21,17 +22,21 @@ spec:
       - name: cwwed-volume-storage
         persistentVolumeClaim:
           claimName: !Var volume_claim_name
-      terminationGracePeriodSeconds: 180
       containers:
       - name: redis
         image: redis:6
-        # persistence - https://hub.docker.com/_/redis/
+        # TODO - disabling persistence due to errors
+        # TODO - would a redis master/slave configuration help or is this an NFS issue?
+        #  - Bad file format reading the append only file: make a backup of your AOF file, then use ./redis-check-aof --fix <filename>
+        #  - Asynchronous AOF fsync is taking too long (disk is busy?). Writing the AOF buffer without waiting for fsync to complete, this may slow down Redis.
+        # https://redis.io/topics/persistence
         args: ["--appendonly", "yes"]
         ports:
         - containerPort: 6379
         resources:
           requests:
             memory: "100M"
+            cpu: "100m"
         volumeMounts:
         - mountPath: "/data"
           name: cwwed-volume-storage

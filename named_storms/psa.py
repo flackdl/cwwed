@@ -57,8 +57,6 @@ class PsaDatasetProcessor:
             )
         )
 
-        logger.info('{}: processing variable {} at {}'.format(self.psa_manifest_dataset, psa_variable, date))
-
         # delete any existing psa variable data in case we're reprocessing this psa
         psa_variable.nsempsacontour_set.filter(date=date).delete()
         psa_variable.nsempsadata_set.filter(date=date).delete()
