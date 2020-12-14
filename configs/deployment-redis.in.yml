@@ -34,10 +34,10 @@ spec:
         resources:
           requests:
             memory: "100M"
-            cpu: "500m"
+            cpu: "100m"
           limits:
             memory: "100M"
-            cpu: "500m"
+            cpu: "100m"
         volumeMounts:
         - mountPath: "/data"
           name: cwwed-volume-storage
