@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from datetime import datetime
 from io import StringIO
 from typing import List, Tuple
@@ -271,50 +272,61 @@ class PsaDatasetProcessor:
             NsemPsaData.date.field.attname,
         ]
 
-        # use default database connection
-        with connections['default'].cursor() as cursor:
+        # create pandas dataframe for csv output
+        df = da.to_dataframe()
 
-            # create pandas dataframe for csv output
-            df = da.to_dataframe()
+        # drop nulls
+        df = df.dropna()
 
-            # drop nulls
-            df = df.dropna()
+        # include empty date column placeholder if it doesn't exist
+        if date is None:
+            df['time'] = None
 
-            # include empty date column placeholder if it doesn't exist
-            if date is None:
-                df['time'] = None
+        # add psa variable column
+        df['psa_variable_id'] = psa_variable.id
 
-            # add psa variable column
-            df['psa_variable_id'] = psa_variable.id
+        # add point column in wkt format using the lat/lon coordinates and handle
+        # cases where the lat/lon are either indexes or column values
 
-            # add point column in wkt format using the lat/lon coordinates and handle
-            # cases where the lat/lon are either indexes or column values
+        start_time = time.time()
 
-            # coordinates are individual columns so zip them together
-            if set(df.columns).issuperset(['lat', 'lon']):
-                df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
-            # coordinates are a pandas MultiIndex so we can directly map them to points
-            elif set(df.index.names).issuperset(['lat', 'lon']):
-                df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
-            else:
-                raise Exception('Expected lat and lon coordinates either as index or columns')
+        # coordinates are individual columns so zip them together
+        if set(df.columns).issuperset(['lat', 'lon']):
+            df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
+        # coordinates are a pandas MultiIndex so we can directly map them to points
+        elif set(df.index.names).issuperset(['lat', 'lon']):
+            df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
+        else:
+            raise Exception('Expected lat and lon coordinates either as index or columns')
 
-            # create geopandas dataframe and filter to storm's geo
-            gdf = geopandas.GeoDataFrame(df)
-            gdf = gdf.set_geometry('point')
-            gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
+        elapsed_time_points = time.time() - start_time
 
-            # reorder gdf columns
-            gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
+        # create geopandas dataframe and filter to storm's geo
+        gdf = geopandas.GeoDataFrame(df)
+        gdf = gdf.set_geometry('point')
+        gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
 
-            with StringIO() as f:
+        # reorder gdf columns
+        gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
 
-                # write csv results to file-like object
-                gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
-                f.seek(0)  # set file read position back to beginning
+        with StringIO() as f:
+
+            # write csv results to file-like object
+            gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
+            f.seek(0)  # set file read position back to beginning
+
+            # use default database connection
+            with connections['default'].cursor() as cursor:
+
+                start_time = time.time()
 
                 # copy data into table using postgres COPY feature
                 cursor.copy_from(f, NsemPsaData._meta.db_table, columns=columns, sep=',', null=NULL_REPRESENT)
+
+                elapsed_time_copy = time.time() - start_time
+
+        logger.info('{dataset}: finished saving psa data for {variable} at {date} (points={time_points:.2f}, copy={time_copy:.2f})'.format(
+            dataset=self.psa_manifest_dataset, variable=psa_variable, date=date, time_points=elapsed_time_points, time_copy=elapsed_time_copy))
 
     def _color_bar_values(self, z_min: float, z_max: float):
         # build color bar values
