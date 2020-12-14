@@ -25,18 +25,19 @@ spec:
       containers:
       - name: redis
         image: redis:6
-        # TODO - disabling persistence due to errors
-        # TODO - would a redis master/slave configuration help or is this an NFS issue?
-        #  - Bad file format reading the append only file: make a backup of your AOF file, then use ./redis-check-aof --fix <filename>
-        #  - Asynchronous AOF fsync is taking too long (disk is busy?). Writing the AOF buffer without waiting for fsync to complete, this may slow down Redis.
         # https://redis.io/topics/persistence
         args: ["--appendonly", "yes"]
         ports:
         - containerPort: 6379
+        # defining the requests & limits equal to each other guarantees the pod will have a Quality of Service (QoS) of "Guaranteed"
+        # https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/
         resources:
           requests:
             memory: "100M"
-            cpu: "100m"
+            cpu: "500m"
+          limits:
+            memory: "100M"
+            cpu: "500m"
         volumeMounts:
         - mountPath: "/data"
           name: cwwed-volume-storage
