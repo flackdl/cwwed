@@ -36,7 +36,7 @@ spec:
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "1200M"
+            memory: "1000M"
             cpu: "200m"
           limits:
             # kubernetes will throttle beyond this value
