@@ -11,7 +11,7 @@ kind: Deployment
 metadata:
   name: !Var deployment_name
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: !Var app
@@ -30,17 +30,17 @@ spec:
         imagePullPolicy: Always
         command: ['celery']
         # TODO - manually specify broker until I find out why celery is not using the configured broker
-        args: ['--app', 'cwwed', '--broker', 'redis://redis-alpha', 'worker', '--loglevel', 'info']
+        args: ['--app', 'cwwed', '--broker', 'redis://redis-alpha', 'worker', '--concurrency', '1', '--loglevel', 'info']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "1500M"
+            memory: "1200M"
             cpu: "200m"
           limits:
             # kubernetes will throttle beyond this value
-            cpu: ".8"
+            cpu: "800m"
         env:
           - name: DJANGO_SETTINGS_MODULE
             value: cwwed.settings
