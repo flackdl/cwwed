@@ -54,6 +54,9 @@ TASK_ARGS_ACK_LATE = dict(
     # this guarantees the task will retry if the worker crashes which can happen during cluster auto scaling
     # https://docs.celeryproject.org/en/stable/reference/celery.app.task.html#celery.app.task.Task.acks_late
     acks_late=True,
+    # re-queue even if a child process is killed (kubernetes evicts pods for various reasons)
+    # https://docs.celeryproject.org/en/latest/userguide/configuration.html#std-setting-task_reject_on_worker_lost
+    task_reject_on_worker_lost=True,
 )
 
 
