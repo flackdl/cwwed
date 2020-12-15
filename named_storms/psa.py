@@ -1,8 +1,8 @@
 import os
-import logging
 import time
+import logging
+import tempfile
 from datetime import datetime
-from io import StringIO
 from typing import List, Tuple
 
 import geopandas
@@ -309,10 +309,10 @@ class PsaDatasetProcessor:
         # reorder gdf columns
         gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
 
-        with StringIO() as f:
+        with tempfile.NamedTemporaryFile() as f:
 
             # write csv results to file-like object
-            gdf.to_csv(f, header=False, index=False, na_rep=NULL_REPRESENT)
+            gdf.to_csv(f.name, header=False, index=False, na_rep=NULL_REPRESENT)
             f.seek(0)  # set file read position back to beginning
 
             # use default database connection
@@ -325,7 +325,7 @@ class PsaDatasetProcessor:
 
                 elapsed_time_copy = time.time() - start_time
 
-        logger.info('{dataset}: finished saving psa data for {variable} at {date} (points={time_points:.2f}, copy={time_copy:.2f})'.format(
+        logger.info('{dataset}: finished saving psa data for {variable} at {date} (seconds_points={time_points:.2f}, seconds_copy={time_copy:.2f})'.format(
             dataset=self.psa_manifest_dataset, variable=psa_variable, date=date, time_points=elapsed_time_points, time_copy=elapsed_time_copy))
 
     def _color_bar_values(self, z_min: float, z_max: float):
