@@ -8,14 +8,14 @@
   "manifest": {
     "datasets": [
       {
-        "path": "sandy-wind-demo.nc",
+        "path": "wind-demo-minimal.nc",
         "variables": [
           "wind_speed",
           "wind_direction"
         ]
       },
       {
-        "path": "sandy-water-demo.nc",
+        "path": "water-demo-minimal.nc",
         "variables": [
           "water_level",
           "wave_height"

@@ -325,8 +325,8 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
                         'wind_direction_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION, 'units'),
                         'wind_speed_value': result[2],
                         'wind_speed_units': NsemPsaVariable.get_variable_attribute(NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED, 'units'),
-                    }
-                ),
+                    },
+                )
             )
 
         return Response(geojson.FeatureCollection(features=features))
