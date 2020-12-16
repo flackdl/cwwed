@@ -42,6 +42,10 @@ class PsaDatasetProcessor:
             self.psa_manifest_dataset.path)
         )
 
+    def __del__(self):
+        # cleanup
+        self.dataset.close()
+
     def ingest_variable(self, variable: str, date: datetime = None):
 
         assert variable in NsemPsaVariable.VARIABLES, 'unknown variable "{}"'.format(variable)
@@ -288,8 +292,6 @@ class PsaDatasetProcessor:
         # add point column in wkt format using the lat/lon coordinates and handle
         # cases where the lat/lon are either indexes or column values
 
-        start_time = time.time()
-
         # coordinates are individual columns so zip them together
         if set(df.columns).issuperset(['lat', 'lon']):
             df['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
@@ -298,8 +300,6 @@ class PsaDatasetProcessor:
             df['point'] = df.index.map(lambda p: geometry.Point(p[1], p[0]))
         else:
             raise Exception('Expected lat and lon coordinates either as index or columns')
-
-        elapsed_time_points = time.time() - start_time
 
         # create geopandas dataframe and filter to storm's geo
         gdf = geopandas.GeoDataFrame(df)
@@ -325,8 +325,8 @@ class PsaDatasetProcessor:
 
                 elapsed_time_copy = time.time() - start_time
 
-        logger.info('{dataset}: finished saving psa data for {variable} at {date} (seconds_points={time_points:.2f}, seconds_copy={time_copy:.2f})'.format(
-            dataset=self.psa_manifest_dataset, variable=psa_variable, date=date, time_points=elapsed_time_points, time_copy=elapsed_time_copy))
+        logger.info('{dataset}: finished saving psa data for {variable} at {date} (copy time={time_copy:.2f}s)'.format(
+            dataset=self.psa_manifest_dataset, variable=psa_variable, date=date, time_copy=elapsed_time_copy))
 
     def _color_bar_values(self, z_min: float, z_max: float):
         # build color bar values

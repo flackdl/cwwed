@@ -11,7 +11,7 @@ kind: Deployment
 metadata:
   name: !Var deployment_name
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
       app: !Var app
