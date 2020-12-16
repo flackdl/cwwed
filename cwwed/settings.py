@@ -144,9 +144,9 @@ CACHES = {
         'BACKEND': 'redis_cache.RedisCache',
         'LOCATION': '{}:6379'.format(os.environ.get('CELERY_BROKER', 'localhost')),
     },
-    'psa_geojson': {
+    'psa_contours': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'cache_psa_geojson',
+        'LOCATION': 'cache_psa_contours',
         'TIMEOUT': None,  # never expire, but this only applies to low level cache operations whereas cache_page() requires a timeout
         'OPTIONS': {
             'MAX_ENTRIES': 5000,
@@ -330,7 +330,8 @@ CWWED_ARCHIVES_SECRET_ACCESS_KEY = os.environ['CWWED_ARCHIVES_SECRET_ACCESS_KEY'
 
 CWWED_PSA_USER_DATA_EXPORT_DAYS = 1
 
-CWWED_CACHE_PSA_GEOJSON_DAYS = 365
+CWWED_CACHE_PSA_CONTOURS_DAYS = 365
+CWWED_CACHE_PSA_CONTOURS_SECONDS = 60 * 60 * 24 * CWWED_CACHE_PSA_CONTOURS_DAYS
 
 OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 

@@ -13,7 +13,7 @@ from django.utils.decorators import method_decorator
 from django.conf import settings
 from django.contrib.gis import geos
 from django.views.decorators.gzip import gzip_page
-from django.views.decorators.cache import cache_control
+from django.views.decorators.cache import cache_control, cache_page
 from django.contrib.gis.db.models import Collect, GeometryField
 from rest_framework import viewsets, mixins
 from rest_framework import exceptions
@@ -333,10 +333,8 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
 
 
 @method_decorator(gzip_page, name='dispatch')
-@method_decorator(cache_control(
-    public=True,
-    max_age=3600,
-), name='dispatch')
+@method_decorator(cache_control(public=True, max_age=3600), name='dispatch')
+@method_decorator(cache_page(settings.CWWED_CACHE_PSA_CONTOURS_SECONDS, cache="psa_contours"), name='dispatch')
 class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     """
     #### Named Storm PSA Contour
@@ -353,7 +351,6 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
     queryset = NsemPsaContour.objects.all()
     filterset_class = NsemPsaContourFilter
     pagination_class = None
-    CACHE_TIMEOUT = 60 * 60 * 24 * settings.CWWED_CACHE_PSA_GEOJSON_DAYS
 
     def get_serializer_class(self):
         # dummy serializer class
@@ -374,36 +371,19 @@ class NsemPsaContourViewSet(NsemPsaBaseViewSet):
 
     def list(self, request, *args, **kwargs):
 
-        # return an empty list if no variable filter is supplied because
-        # the query is too expensive and we can benefit from the DRF filter being presented in the API view
+        # return an empty list if no variable filter is supplied because the query is
+        # too expensive and we can benefit from the DRF filter being presented in the API view
         if 'nsem_psa_variable' not in request.query_params:
             return Response([])
-
-        # return cached data if it exists
-        cache = caches['psa_geojson']  # type: BaseCache
-        cache_key = get_cache_key(request, method='GET', cache=cache)
-        if cache_key:
-            cached_response = cache.get(cache_key)
-            if cached_response:
-                logger.info('returning cached response for {}'.format(request.query_params))
-                return HttpResponse(cached_response, content_type='application/json')
-            else:
-                logger.warning('No data for cache key {}'.format(cache_key))
-        else:
-            logger.warning('Missing cache key for {}'.format(request.query_params))
 
         self._validate()
 
         queryset = self.filter_queryset(self.get_queryset())
+
+        # get geo json from queryset
         geo_json = get_geojson_feature_collection_from_psa_qs(queryset)
-        response = HttpResponse(geo_json, content_type='application/json')
 
-        # cache result
-        cache_key = learn_cache_key(
-            request, response, cache_timeout=self.CACHE_TIMEOUT, cache=cache)
-        cache.set(cache_key, geo_json, self.CACHE_TIMEOUT)
-
-        return response
+        return HttpResponse(geo_json, content_type='application/json')
 
     def _validate(self):
 
