@@ -333,6 +333,9 @@ CWWED_PSA_USER_DATA_EXPORT_DAYS = 1
 CWWED_CACHE_PSA_CONTOURS_DAYS = 365
 CWWED_CACHE_PSA_CONTOURS_SECONDS = 60 * 60 * 24 * CWWED_CACHE_PSA_CONTOURS_DAYS
 
+# separate queue to handle processing PSAs so they don't interfere with the default queue
+CWWED_QUEUE_PROCESS_PSA = 'process-psa'
+
 OPENDAP_URL = 'http://{}:9000/opendap/'.format(os.environ.get('OPENDAP_HOST', 'localhost'))
 
 SLACK_BOT_TOKEN = os.environ['SLACK_BOT_TOKEN']

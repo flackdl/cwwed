@@ -5,6 +5,10 @@ app: !Format "celery-{deploy_stage}"
 deployment_name: !Format "celery-deployment-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
+queues: "celery"
+request_cpu: "100m"
+request_memory: "200M"
+concurrency: 4
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -29,15 +33,23 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
-        # TODO - manually specify broker until I find out why celery is not using the configured broker
-        args: ['--app', 'cwwed', '--broker', 'redis://redis-alpha', 'worker', '--concurrency', '1', '--loglevel', 'info']
+        args:
+          - --app
+          - cwwed
+          - worker
+          - --concurrency
+          - !Var concurrency
+          - --loglevel
+          - info
+          - --queues
+          - !Var queues
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
         resources:
           requests:
-            memory: "1000M"
-            cpu: "200m"
+            memory: !Var request_memory
+            cpu: !Var request_cpu
           limits:
             # kubernetes will throttle beyond this value
             cpu: "800m"
@@ -59,9 +71,6 @@ spec:
               - celery
               - -A
               - cwwed
-              - -b
-              # TODO - manually specify broker until I find out why celery is not using the configured broker
-              - redis://redis-alpha
               - inspect
               - ping
           periodSeconds: 10
@@ -73,9 +82,6 @@ spec:
               - celery
               - -A
               - cwwed
-              - -b
-              # TODO - manually specify broker until I find out why celery is not using the configured broker
-              - redis://redis-alpha
               - inspect
               - ping
           periodSeconds: 60
@@ -86,9 +92,6 @@ spec:
               - celery
               - -A
               - cwwed
-              - -b
-              # TODO - manually specify broker until I find out why celery is not using the configured broker
-              - redis://redis-alpha
               - inspect
               - ping
           periodSeconds: 60

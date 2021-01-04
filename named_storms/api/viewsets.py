@@ -4,10 +4,8 @@ import logging
 import geojson
 from celery import chain, group, chord
 from django.contrib.gis.db.models.functions import Distance
-from django.core.cache import caches, BaseCache
 from django.db.models.functions import Cast
 from django.http import JsonResponse, HttpResponse
-from django.utils.cache import get_cache_key, learn_cache_key
 from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.conf import settings
@@ -20,7 +18,6 @@ from rest_framework import exceptions
 from rest_framework.decorators import action
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly
 from rest_framework.response import Response
-from rest_framework.serializers import Serializer
 from rest_framework.viewsets import GenericViewSet
 
 from named_storms.api.filters import NsemPsaContourFilter, NsemPsaDataFilter

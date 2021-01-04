@@ -185,7 +185,7 @@ def create_named_storm_covered_data_snapshot_task(named_storm_covered_data_snaps
     return covered_data_snapshot.id
 
 
-@app.task(**TASK_ARGS_RETRY)
+@app.task(**TASK_ARGS_RETRY, queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def extract_named_storm_covered_data_snapshot_task(nsem_psa_id):
     """
     Downloads and extracts a named storm covered data snapshot into file storage
@@ -254,7 +254,7 @@ EXTRACT_NSEM_TASK_ARGS.update({
 })
 
 
-@app.task(**EXTRACT_NSEM_TASK_ARGS)
+@app.task(**EXTRACT_NSEM_TASK_ARGS, queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def extract_nsem_psa_task(nsem_id):
     """
     Downloads the model product output from object storage and puts it in file storage
@@ -358,7 +358,7 @@ def email_nsem_user_covered_data_complete_task(named_storm_covered_data_snapshot
     return named_storm_covered_data_snapshot.id
 
 
-@app.task
+@app.task(queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def postprocess_psa_validated_task(nsem_psa_id):
     """
     Email the "nsem" user indicating whether the PSA has been validated or not
@@ -403,7 +403,7 @@ def postprocess_psa_validated_task(nsem_psa_id):
         raise Exception('PSA {} was not validated'.format(nsem_psa))
 
 
-@app.task
+@app.task(queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def validate_nsem_psa_task(nsem_id):
     """
     Validates the PSA from file storage with the following:
@@ -861,7 +861,7 @@ def email_psa_user_export_task(nsem_psa_user_export_id: int):
     )
 
 
-@app.task(**TASK_ARGS_RETRY)
+@app.task(**TASK_ARGS_RETRY, queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def cache_psa_contour_task(storm_id: int):
     """
     Automatically creates cached responses for a storm's PSA contour results by crawling every api endpoint
@@ -903,7 +903,7 @@ def cache_psa_contour_task(storm_id: int):
             logger.info(r.status_code)
 
 
-@app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE)
+@app.task(**TASK_ARGS_RETRY, **TASK_ARGS_ACK_LATE, queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, date: datetime = None):
     """
     Ingests an NSEM PSA Dataset variable into CWWED
@@ -914,7 +914,7 @@ def ingest_nsem_psa_dataset_variable_task(psa_dataset_id: int, variable: str, da
     logger.info('{}: {} variable (date={}) has been successfully ingested'.format(dataset_manifest, variable, date))
 
 
-@app.task(**TASK_ARGS_RETRY)
+@app.task(**TASK_ARGS_RETRY, queue=settings.CWWED_QUEUE_PROCESS_PSA)
 def postprocess_psa_ingest_task(nsem_psa_id: int, success: bool):
     """
     Update the psa as processed and email the "nsem" user indicating the PSA has been ingested
