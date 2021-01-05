@@ -184,7 +184,7 @@ See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ a
 
 Something like:
 
-	kubectl autoscale deployment cwwed-deployment-alpha --min=2 --max=5
+	kubectl autoscale deployment cwwed-alpha --min=2 --max=5
     
 ### Secrets
     
@@ -285,7 +285,7 @@ Create cache tables:
     emrichen --define deploy_stage=alpha --define tag=latest configs/job-collect-covered-data.in.yml | kubectl apply -f -
     
     # patch to force a rolling update (to re-pull images)
-    kubectl patch deployment cwwed-deployment-alpha -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
+    kubectl patch deployment cwwed-alpha -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
     # get pod name
     CWWED_POD=$(kubectl get pods -l app=cwwed --no-headers -o custom-columns=:metadata.name)

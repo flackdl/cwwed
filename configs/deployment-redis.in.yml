@@ -1,6 +1,6 @@
 !Defaults
 app: !Format "redis-{deploy_stage}"
-deployment_name: !Format "redis-deployment-{deploy_stage}"
+deployment_name: !Format "redis-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 ---
 apiVersion: apps/v1

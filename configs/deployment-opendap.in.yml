@@ -1,6 +1,6 @@
 !Defaults
 app: !Format "opendap-{deploy_stage}"
-deployment_name: !Format "opendap-deployment-{deploy_stage}"
+deployment_name: !Format "opendap-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 ---
 apiVersion: apps/v1
