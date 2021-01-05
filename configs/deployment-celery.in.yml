@@ -1,14 +1,13 @@
 !Defaults
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
-app: !Format "celery-{deploy_stage}"
-deployment_name: !Format "celery-deployment-{deploy_stage}"
+app: !Format "celery-{deploy_stage}-{queues}"
+deployment_name: !Format "celery-{deploy_stage}-{queues}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
-queues: "celery"
 request_cpu: "100m"
 request_memory: "200M"
-concurrency: 4
+concurrency: "4"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -34,7 +33,7 @@ spec:
         imagePullPolicy: Always
         command: ['celery']
         args:
-          - --app
+          - -A
           - cwwed
           - worker
           - --concurrency

@@ -2,7 +2,7 @@
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
 app: !Format "cwwed-{deploy_stage}"
-deployment_name: !Format "cwwed-deployment-{deploy_stage}"
+deployment_name: !Format "cwwed-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
 opendap_service: !Format "opendap-{deploy_stage}"
