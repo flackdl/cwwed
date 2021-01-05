@@ -29,10 +29,11 @@ from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.data.processors import ProcessorData
-from named_storms.psa import PsaDatasetProcessor
+from named_storms.psa.processor import PsaDatasetProcessor
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset, NsemPsaData)
+from named_storms.psa.validator import PsaDatasetValidator
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -420,7 +421,6 @@ def validate_nsem_psa_task(nsem_id):
     # TODO - validate expected units per variable
 
     valid_files = []
-    required_coords = {'time', 'lat', 'lon'}
     exceptions = {
         'global': [],
         'files': {},
@@ -449,21 +449,22 @@ def validate_nsem_psa_task(nsem_id):
                 if result['FATAL'] or result['ERROR']:
                     variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
+            validator = PsaDatasetValidator(ds)
+
             # dates
             for date in nsem_psa.dates:
-                try:
-                    ds.sel(time=date.isoformat())
-                except KeyError:
+                if not validator.is_valid_date(date):
                     file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
 
             # coordinates
-            if not required_coords.issubset(list(ds.coords)):
-                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+            if not validator.is_valid_coords():
+                file_exceptions.append('Missing required coordinates: {}'.format(validator.required_coords))
 
             # variables
-            if not set(dataset.variables).issubset(list(ds.data_vars)):
+            if not validator.is_valid_variables(dataset.variables):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
+            # TODO - move logic into PsaDatasetValidator
             # structured grid
             if dataset.structured:
                 # make sure variables have the right dimension for a structured grid

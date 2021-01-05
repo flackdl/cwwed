@@ -25,6 +25,32 @@
             "AbortIncompleteMultipartUpload": {
                 "DaysAfterInitiation": 7
             }
+        },
+        {
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "User Exports (alpha)",
+            "Filter": {
+                "Prefix": "alpha/User Exports/"
+            },
+            "Status": "Enabled",
+            "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+            }
+        },
+        {
+            "Expiration": {
+                "Days": 1
+            },
+            "ID": "User Exports (dev)",
+            "Filter": {
+                "Prefix": "dev/User Exports/"
+            },
+            "Status": "Enabled",
+            "AbortIncompleteMultipartUpload": {
+                "DaysAfterInitiation": 7
+            }
         }
     ]
 }
