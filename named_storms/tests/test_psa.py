@@ -59,6 +59,21 @@ class PSATest(BaseTest):
         self.assertTrue(validator.is_valid_date(valid_date), 'Invalid date')
         self.assertFalse(validator.is_valid_date(invalid_date), 'Valid date')
 
+    def test_structured(self):
+        # structured
+        ds = xr.Dataset(
+            {
+                'water_level': (['time', 'x', 'y'], np.random.rand(len(self.nsem_psa.dates), 1, 3)),
+            },
+            coords={"time": self.nsem_psa.dates},
+        )
+        validator = PsaDatasetValidator(ds)
+        self.assertTrue(validator.is_valid_structured())
+
+    def test_unstructured(self):
+        # TODO
+        pass
+
     def _cf_check_results(self, ds_path: str):
         cf_check = cfchecks.CFChecker(silent=True)
         cf_check.checker(ds_path)

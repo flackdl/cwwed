@@ -464,25 +464,16 @@ def validate_nsem_psa_task(nsem_id):
             if not validator.is_valid_variables(dataset.variables):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
-            # TODO - move logic into PsaDatasetValidator
             # structured grid
             if dataset.structured:
-                # make sure variables have the right dimension for a structured grid
-                for variable in NsemPsaVariable.get_time_series_variables():
-                    # choose first time and make sure it has at least 2 dimensions (x, y)
-                    if variable in ds:
-                        shape = len(ds[variable].isel(time=0).shape)
-                        if shape < 2:
-                            file_exceptions.append(
-                                'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+                if not validator.is_valid_structured():
+                    file_exceptions.append(
+                        'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
             # unstructured grid - http://ugrid-conventions.github.io/ugrid-conventions/
             else:
-                # validate the specified topology name is present in the dataset
-                if dataset.topology_name not in ds:
+                if not validator.is_valid_unstructured_topology(dataset.topology_name):
                     file_exceptions.append('topology_name "{}" missing from dataset'.format(dataset.topology_name))
-                    # 0-based vs 1-based indexing for mesh connectivity
-                    # http://ugrid-conventions.github.io/ugrid-conventions/#zero-or-one-based-indexing
-                elif 'start_index' not in ds[dataset.topology_name].attrs:
+                elif not validator.is_valid_unstructured_start_index(dataset.topology_name):
                     file_exceptions.append('start_index attribute missing from topology name "{}"'.format(dataset.topology_name))
 
         if file_exceptions or variable_exceptions:
