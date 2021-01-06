@@ -347,7 +347,6 @@ class PsaDatasetProcessor:
     @staticmethod
     def _get_color_map(psa_variable: NsemPsaVariable):
         color_map_name = psa_variable.get_attribute('color_map')
-        logger.info('Using color map {} for variable {}'.format(color_map_name, psa_variable))
         return matplotlib.cm.get_cmap(color_map_name)
 
     @staticmethod
