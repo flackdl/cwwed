@@ -29,10 +29,11 @@ from geopandas import GeoDataFrame
 from cwwed.celery import app
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.data.processors import ProcessorData
-from named_storms.psa import PsaDatasetProcessor
+from named_storms.psa.processor import PsaDatasetProcessor
 from named_storms.models import (
     NamedStorm, CoveredDataProvider, CoveredData, NamedStormCoveredDataLog, NsemPsa, NsemPsaUserExport,
     NsemPsaContour, NsemPsaVariable, NamedStormCoveredDataSnapshot, NsemPsaManifestDataset, NsemPsaData)
+from named_storms.psa.validator import PsaDatasetValidator
 from named_storms.utils import (
     processor_class, copy_path_to_default_storage, get_superuser_emails,
     named_storm_nsem_version_path, root_data_path, create_directory,
@@ -420,7 +421,6 @@ def validate_nsem_psa_task(nsem_id):
     # TODO - validate expected units per variable
 
     valid_files = []
-    required_coords = {'time', 'lat', 'lon'}
     exceptions = {
         'global': [],
         'files': {},
@@ -449,39 +449,31 @@ def validate_nsem_psa_task(nsem_id):
                 if result['FATAL'] or result['ERROR']:
                     variable_exceptions[variable] = result['FATAL'] + result['ERROR']
 
+            validator = PsaDatasetValidator(ds)
+
             # dates
             for date in nsem_psa.dates:
-                try:
-                    ds.sel(time=date.isoformat())
-                except KeyError:
+                if not validator.is_valid_date(date):
                     file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
 
             # coordinates
-            if not required_coords.issubset(list(ds.coords)):
-                file_exceptions.append('Missing required coordinates: {}'.format(required_coords))
+            if not validator.is_valid_coords():
+                file_exceptions.append('Missing required coordinates: {}'.format(validator.required_coords))
 
             # variables
-            if not set(dataset.variables).issubset(list(ds.data_vars)):
+            if not validator.is_valid_variables(dataset.variables):
                 file_exceptions.append('Manifest dataset variables were not found in actual dataset')
 
             # structured grid
             if dataset.structured:
-                # make sure variables have the right dimension for a structured grid
-                for variable in NsemPsaVariable.get_time_series_variables():
-                    # choose first time and make sure it has at least 2 dimensions (x, y)
-                    if variable in ds:
-                        shape = len(ds[variable].isel(time=0).shape)
-                        if shape < 2:
-                            file_exceptions.append(
-                                'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+                if not validator.is_valid_structured():
+                    file_exceptions.append(
+                        'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
             # unstructured grid - http://ugrid-conventions.github.io/ugrid-conventions/
             else:
-                # validate the specified topology name is present in the dataset
-                if dataset.topology_name not in ds:
+                if not validator.is_valid_unstructured_topology(dataset.topology_name):
                     file_exceptions.append('topology_name "{}" missing from dataset'.format(dataset.topology_name))
-                    # 0-based vs 1-based indexing for mesh connectivity
-                    # http://ugrid-conventions.github.io/ugrid-conventions/#zero-or-one-based-indexing
-                elif 'start_index' not in ds[dataset.topology_name].attrs:
+                elif not validator.is_valid_unstructured_start_index(dataset.topology_name):
                     file_exceptions.append('start_index attribute missing from topology name "{}"'.format(dataset.topology_name))
 
         if file_exceptions or variable_exceptions:

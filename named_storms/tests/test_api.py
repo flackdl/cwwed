@@ -1,37 +1,17 @@
-from django.core.management import call_command
-from django.test import TestCase, Client
 from django.urls import reverse
 from rest_framework.status import HTTP_403_FORBIDDEN, HTTP_200_OK
 
 from coastal_act.models import CoastalActProject
-from named_storms.data.factory import ProcessorBaseFactory
-from named_storms.models import NamedStorm
+from named_storms.tests.base import BaseTest
 
 
-class DataFactoryTestCase(TestCase):
-    def setUp(self):
-        pass
-
-    def test_decorator(self):
-        """Data processors should automatically be registered via decorator"""
-        self.assertTrue(len(ProcessorBaseFactory.registered_factories.keys()) > 0, 'Registered processor factories')
-
-
-class ApiPermissionTestCase(TestCase):
-    client = None
+class ApiPermissionTestCase(BaseTest):
 
     def setUp(self):
-        # load dev data
-        call_command('loaddata', 'dev-db.json')
-
-        # get the first named storm
-        self.named_storm = NamedStorm.objects.all().first()  # type: NamedStorm
+        super().setUp()
 
         # get the first coastal act project
         self.coastal_act_project = CoastalActProject.objects.all().first()  # type: CoastalActProject
-
-        # get the request client
-        self.client = Client()
 
     def test_coastal_act_projects(self):
         # list
