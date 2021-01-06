@@ -244,6 +244,13 @@ class NsemPsaVariable(models.Model):
         GEO_TYPE_WIND_BARB,
     )
 
+    COLOR_MAP_GREYS = 'Greys'
+    COLOR_MAP_BLUES = 'Blues'
+    COLOR_MAP_PURPLES = 'Purples'
+    COLOR_MAP_REDS = 'Reds'
+    COLOR_MAP_GREENS = 'Greens'
+    COLOR_MAP_ORANGES = 'Oranges'
+
     VARIABLE_WATER_LEVEL = 'Water Level'
     VARIABLE_WAVE_HEIGHT = 'Wave Height'
     VARIABLE_WIND_SPEED = 'Wind Speed'
@@ -282,6 +289,7 @@ class NsemPsaVariable(models.Model):
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WATER,
             'auto_displayed': True,
+            'color_map': COLOR_MAP_BLUES,
         },
         VARIABLE_DATASET_WATER_LEVEL_MAX: {
             'display_name': VARIABLE_WATER_LEVEL,
@@ -290,6 +298,7 @@ class NsemPsaVariable(models.Model):
             'data_type': DATA_TYPE_MAX_VALUES,
             'element_type': ELEMENT_WATER,
             'auto_displayed': False,
+            'color_map': COLOR_MAP_BLUES,
         },
         VARIABLE_DATASET_WAVE_HEIGHT: {
             'display_name': VARIABLE_WAVE_HEIGHT,
@@ -298,6 +307,7 @@ class NsemPsaVariable(models.Model):
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WATER,
             'auto_displayed': True,
+            'color_map': COLOR_MAP_GREENS,
         },
         VARIABLE_DATASET_WIND_SPEED: {
             'display_name': VARIABLE_WIND_SPEED,
@@ -306,6 +316,7 @@ class NsemPsaVariable(models.Model):
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WIND,
             'auto_displayed': True,
+            'color_map': COLOR_MAP_REDS,
         },
         VARIABLE_DATASET_WIND_GUST: {
             'display_name': VARIABLE_WIND_GUST,
@@ -314,6 +325,7 @@ class NsemPsaVariable(models.Model):
             'data_type': DATA_TYPE_TIME_SERIES,
             'element_type': ELEMENT_WIND,
             'auto_displayed': False,
+            'color_map': COLOR_MAP_REDS,
         },
         VARIABLE_DATASET_WIND_DIRECTION: {
             'display_name': VARIABLE_WIND_BARBS,

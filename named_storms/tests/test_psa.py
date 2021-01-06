@@ -9,8 +9,6 @@ from named_storms.psa.validator import PsaDatasetValidator
 
 
 class PSATest(BaseTest):
-    def setUp(self):
-        super().setUp()
 
     def test_cf_conventions(self):
         ds = xr.Dataset()

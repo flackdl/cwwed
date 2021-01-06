@@ -31,7 +31,6 @@ NULL_REPRESENT = r'\N'
 
 
 class PsaDatasetProcessor:
-    cmap = matplotlib.cm.get_cmap('jet')
     dataset: xr.Dataset
     psa_manifest_dataset: NsemPsaManifestDataset
 
@@ -94,7 +93,7 @@ class PsaDatasetProcessor:
                 # save raw data
                 self._save_psa_data(psa_variable, data_array, date)
 
-            psa_variable.color_bar = self._color_bar_values(self.dataset[variable].min(), self.dataset[variable].max())
+            psa_variable.color_bar = self._color_bar_values(psa_variable, self.dataset[variable].min(), self.dataset[variable].max())
 
         # wind barbs - only saving point data with wind directions
         elif psa_variable.name == NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION:
@@ -122,7 +121,7 @@ class PsaDatasetProcessor:
 
         # structured grid
         if self.psa_manifest_dataset.structured:
-            contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self.cmap, levels=CONTOUR_LEVELS)
+            contourf = plt.contourf(self.dataset['lon'], self.dataset['lat'], z, cmap=self._get_color_map(nsem_psa_variable), levels=CONTOUR_LEVELS)
             self._process_contours_gridded(nsem_psa_variable, contourf, dt)
 
         # unstructured grid - use provided triangulation to contour
@@ -147,7 +146,7 @@ class PsaDatasetProcessor:
 
             # replace nulls with an arbitrary fill value and then only contour valid levels
             levels = np.linspace(z.min(), z.max(), num=CONTOUR_LEVELS)
-            tricontourf = plt.tricontourf(triangulation, z.fillna(NULL_FILL_VALUE), levels=levels, cmap=self.cmap)
+            tricontourf = plt.tricontourf(triangulation, z.fillna(NULL_FILL_VALUE), levels=levels, cmap=self._get_color_map(nsem_psa_variable))
 
             self._process_contours_triangulation(nsem_psa_variable, tricontourf, dt)
 
@@ -160,7 +159,7 @@ class PsaDatasetProcessor:
 
             # contour level value and color
             value = contourf.levels[i]
-            color = matplotlib.colors.to_hex(self.cmap(contourf.norm(value)))
+            color = matplotlib.colors.to_hex(self._get_color_map(nsem_psa_variable)(contourf.norm(value)))
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -185,7 +184,7 @@ class PsaDatasetProcessor:
 
             # contour level value and color
             value = tricontourf.levels[collection_idx]
-            color = matplotlib.colors.to_hex(self.cmap(tricontourf.norm(value)))
+            color = matplotlib.colors.to_hex(self._get_color_map(nsem_psa_variable)(tricontourf.norm(value)))
 
             # loop through all polygons that have the same intensity level
             for path in collection.get_paths():
@@ -328,7 +327,7 @@ class PsaDatasetProcessor:
         logger.info('{dataset}: finished saving psa data for {variable} at {date} (copy time={time_copy:.2f}s)'.format(
             dataset=self.psa_manifest_dataset, variable=psa_variable, date=date, time_copy=elapsed_time_copy))
 
-    def _color_bar_values(self, z_min: float, z_max: float):
+    def _color_bar_values(self, nsem_psa_variable: NsemPsaVariable, z_min: float, z_max: float):
         # build color bar values
 
         color_values = []
@@ -340,10 +339,16 @@ class PsaDatasetProcessor:
             # round the step value for ranges greater than COLOR_STEPS
             if z_max - z_min >= COLOR_STEPS:
                 step_value = np.math.ceil(step_value)
-            hex_value = matplotlib.colors.to_hex(self.cmap(color_norm(step_value)))
+            hex_value = matplotlib.colors.to_hex(self._get_color_map(nsem_psa_variable)(color_norm(step_value)))
             color_values.append((step_value, hex_value))
 
         return color_values
+
+    @staticmethod
+    def _get_color_map(psa_variable: NsemPsaVariable):
+        color_map_name = psa_variable.get_attribute('color_map')
+        logger.info('Using color map {} for variable {}'.format(color_map_name, psa_variable))
+        return matplotlib.cm.get_cmap(color_map_name)
 
     @staticmethod
     def _to_python_values(data: dict) -> dict:
