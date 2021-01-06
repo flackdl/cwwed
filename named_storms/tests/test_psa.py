@@ -59,20 +59,24 @@ class PSATest(BaseTest):
         self.assertTrue(validator.is_valid_date(valid_date), 'Invalid date')
         self.assertFalse(validator.is_valid_date(invalid_date), 'Valid date')
 
-    def test_structured(self):
+    def test_grid_structure(self):
+
         # structured
-        ds = xr.Dataset(
-            {
-                'water_level': (['time', 'x', 'y'], np.random.rand(len(self.nsem_psa.dates), 1, 3)),
-            },
-            coords={"time": self.nsem_psa.dates},
-        )
-        validator = PsaDatasetValidator(ds)
-        self.assertTrue(validator.is_valid_structured())
+        ds_structured = self._get_structured_dataset()
+        validator = PsaDatasetValidator(ds_structured)
+        self.assertTrue(validator.is_valid_structured(), 'Unstructured')
+
+        # unstructured
+        ds_unstructured = self._get_unstructured_dataset()
+        validator = PsaDatasetValidator(ds_unstructured)
+        self.assertFalse(validator.is_valid_structured(), 'Should be unstructured')
 
     def test_unstructured(self):
-        # TODO
-        pass
+        # validate for the grid variable and the u-grid convention for the "start index"
+        ds = self._get_unstructured_dataset()
+        validator = PsaDatasetValidator(ds)
+        self.assertTrue(validator.is_valid_unstructured_topology('element'), 'missing element')
+        self.assertTrue(validator.is_valid_unstructured_start_index('element'), 'missing start_index')
 
     def _cf_check_results(self, ds_path: str):
         cf_check = cfchecks.CFChecker(silent=True)
@@ -83,5 +87,26 @@ class PSATest(BaseTest):
         with tempfile.NamedTemporaryFile(suffix='.nc', delete=False) as fh:
             ds.to_netcdf(fh.name)
             return fh.name
+
+    def _get_unstructured_dataset(self) -> xr.Dataset:
+        return xr.Dataset(
+            {
+                'water_level': (['time', 'node'], np.random.rand(len(self.nsem_psa.dates), 3)),
+                'element': (['node'], np.random.rand(3), {'start_index': 0}),
+            },
+            coords={
+                "time": self.nsem_psa.dates,
+            },
+        )
+
+    def _get_structured_dataset(self) -> xr.Dataset:
+        return xr.Dataset(
+            {
+                'water_level': (['time', 'x', 'y'], np.random.rand(len(self.nsem_psa.dates), 3, 3)),
+            },
+            coords={
+                "time": self.nsem_psa.dates,
+            },
+        )
 
 
