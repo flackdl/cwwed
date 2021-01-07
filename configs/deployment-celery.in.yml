@@ -40,6 +40,8 @@ spec:
           - !Var concurrency
           - --loglevel
           - info
+          - --max-memory-per-child
+          - '1000000'  # kb
           - --queues
           - !Var queues
         volumeMounts:
