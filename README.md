@@ -304,6 +304,20 @@ Create cache tables:
     
     # list all pods and the nodes they're on
     kubectl get pod -o=custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName --all-namespaces
+
+Delete PSAs:
+
+    # excluding PSA 49, 50
+    delete from named_storms_nsempsamanifestdataset where nsem_id not in (49, 50);
+    delete from named_storms_nsempsavariable where nsem_id not in (49, 50);
+    delete from named_storms_nsempsauserexport where nsem_id not in (49, 50);
+    delete from named_storms_nsempsacontour where nsem_psa_variable_id in (
+        select id from named_storms_nsempsavariable where nsem_id not in (49, 50)
+    );
+    delete from named_storms_nsempsadata where nsem_psa_variable_id in (
+        select id from named_storms_nsempsavariable where nsem_id not in (49, 50)
+    );
+    delete from named_storms_nsempsa where id not in (49, 50);
     
 ### Celery dashboard (Flower)
 
