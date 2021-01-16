@@ -178,13 +178,15 @@ Test the results after a couple minutes:
 
     kubectl top node
 
-##### Horizontal Pod Autoscaler
+##### Horizontal Pod Autoscaler (hpa)
 
 See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ and https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/.
 
-Something like:
+Define autoscaling rules for the following deployments:
 
 	kubectl autoscale deployment cwwed-alpha --min=2 --max=5
+	kubectl autoscale deployment celery-celery-alpha --min=2 --max=5
+	kubectl autoscale deployment celery-process-psa-alpha --min=2 --max=5
     
 ### Secrets
     
