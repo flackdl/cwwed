@@ -77,6 +77,7 @@ spec:
           periodSeconds: 10
           failureThreshold: 30
           initialDelaySeconds: 30
+          timeoutSeconds: 20
         livenessProbe:
           exec:
             command:
@@ -85,8 +86,9 @@ spec:
               - cwwed
               - inspect
               - ping
-          periodSeconds: 60
+          periodSeconds: 180
           failureThreshold: 5
+          timeoutSeconds: 20
         readinessProbe:
           exec:
             command:
@@ -95,5 +97,6 @@ spec:
               - cwwed
               - inspect
               - ping
-          periodSeconds: 60
+          periodSeconds: 180
           failureThreshold: 5
+          timeoutSeconds: 20
