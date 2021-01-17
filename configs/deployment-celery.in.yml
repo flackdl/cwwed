@@ -86,7 +86,7 @@ spec:
               - cwwed
               - inspect
               - ping
-          periodSeconds: 180
+          periodSeconds: 300
           failureThreshold: 5
           timeoutSeconds: 20
         readinessProbe:
