@@ -186,7 +186,6 @@ Define autoscaling rules for the following deployments:
 
 	kubectl autoscale deployment cwwed-alpha --min=2 --max=5
 	kubectl autoscale deployment celery-celery-alpha --min=2 --max=5
-	kubectl autoscale deployment celery-process-psa-alpha --min=2 --max=5
     
 ### Secrets
     
@@ -227,7 +226,7 @@ For instance, deploy cwwed by defining the *deploy_stage* and cwwed image *tag*:
     # celery default queue
     emrichen --define deploy_stage=alpha --define tag=latest --define queues=celery configs/deployment-celery.in.yml | kubectl apply -f -
     # celery process-psa queue: single process, higher resource usage
-    emrichen --define deploy_stage=alpha --define tag=latest --define queues=process-psa --define request_cpu=200m --define request_memory=1200m  --define concurrency=1 configs/deployment-celery.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=latest --define queues=process-psa --define request_cpu=200m --define request_memory=1200M  --define concurrency=1 configs/deployment-celery.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/service-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/deployment-redis.in.yml | kubectl apply -f -

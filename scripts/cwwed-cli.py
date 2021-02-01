@@ -115,7 +115,10 @@ def create_psa(args):
         sys.exit(str(e))
 
     # upload the psa
-    upload_psa(file=args['file'], path=data.get('path'))
+    if args['fake-upload']:
+        print('Skip uploading psa data...')
+    else:
+        upload_psa(file=args['file'], path=data.get('path'))
 
     # request a new post-storm assessment from the api
     response = requests.post(url, json=data, headers=get_auth_headers(args['api_token']))
@@ -374,6 +377,9 @@ parser_psa_create = subparsers_psa.add_parser('create', help='Create a new PSA v
 parser_psa_create.add_argument("--body", help='The body json file describing the post storm assessment', required=True)
 parser_psa_create.add_argument("--file", help='The ".tgz" (tar+gzipped) post-storm assessment file to upload', required=True)
 parser_psa_create.add_argument("--api-token", help='API token', required=True)
+parser_psa_create.add_argument(
+    "--fake-upload", help="Don't actually upload the psa file.  Good for resubmitting without having to upload the data again",
+    dest='fake-upload', action='store_true', default=False)
 parser_psa_create.set_defaults(func=create_psa)
 
 # psa - get
