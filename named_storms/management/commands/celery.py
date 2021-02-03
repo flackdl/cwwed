@@ -19,7 +19,7 @@ def restart_celery():
     env = os.environ.copy()
 
     # start celery
-    cmd = 'celery -A cwwed worker -l info'
+    cmd = 'celery -A cwwed worker -l info --queues celery,process-psa'
     subprocess.Popen(shlex.split(cmd), env=env)
 
     # start flower

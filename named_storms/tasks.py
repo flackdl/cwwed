@@ -878,6 +878,7 @@ def cache_psa_contour_task(storm_id: int):
         if psa_variable.data_type == NsemPsaVariable.DATA_TYPE_TIME_SERIES:
             data = {
                 'nsem_psa_variable': psa_variable.name,
+                '_cacheId': nsem.id,  # using psa as cache busting parameter
             }
             for nsem_date in nsem.dates:  # type: datetime
                 data['date'] = nsem_date.strftime('%Y-%m-%dT%H:%M:%SZ')  # uses "Z" for zulu/UTC

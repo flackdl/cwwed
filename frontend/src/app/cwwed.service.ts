@@ -133,10 +133,11 @@ export class CwwedService {
   // static methods
   //
 
-  public static getPsaVariableGeoUrl(namedStormId: number, variableName: string, date?: string) {
+  public static getPsaVariableGeoUrl(namedStormId: number, nsemPsaId: number, variableName: string, date?: string) {
     const url = `${API_NAMED_STORMS}${namedStormId}/psa/contour/`;
     const params = {
       nsem_psa_variable: variableName,
+      _cacheId: nsemPsaId.toString(),  // using psa id as cache busting parameter
     };
     if (date) {
       params['date'] = date;

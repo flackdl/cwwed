@@ -421,7 +421,7 @@ export class PsaComponent implements OnInit {
       }
       url = CwwedService.getPsaVariableWindBarbsUrl(this.namedStorm.id, psaVariable.name, date, centerWKT, step);
     } else {
-      url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, psaVariable.name, date);
+      url = CwwedService.getPsaVariableGeoUrl(this.namedStorm.id, this.nsemPsa.id, psaVariable.name, date);
     }
 
     const format = new GeoJSON();
