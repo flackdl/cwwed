@@ -7,4 +7,4 @@ python manage.py migrate
 python manage.py createcachetable
 
 # run application on ipv4 and ipv6
-gunicorn cwwed.wsgi --worker-class gthread --workers 4 --threads 4 --bind [::]:80
+gunicorn cwwed.wsgi --max-requests 1000 --worker-class gthread --workers 4 --threads 4 --bind [::]:80
