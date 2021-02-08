@@ -1,9 +1,16 @@
+@import "~bootstrap/scss/bootstrap";
+@import "~bootstrap/scss/variables";
+
 #router-outlet {
   width: 100%;
   min-height: 200px;
 }
 nav .navbar-nav {
-   .nav-link.active {
-     text-decoration: underline;
+   .nav-link {
+     &.active {
+       text-decoration: underline;
+     }
+     color: $dark!important;
    }
 }
+

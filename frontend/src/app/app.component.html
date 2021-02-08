@@ -2,10 +2,10 @@
   <header class="py-3">
     <div class="row flex-nowrap justify-content-between align-items-center">
       <div class="col-12 col-md-8">
-        <img class="img-fluid" src="assets/header.png" />
+        <img class="img-fluid" src="assets/header.png" alt="cwwed header"/>
       </div>
       <div class="col-md-4 text-right">
-        <img class="img-fluid" src="assets/header_doc.png" />
+        <img class="img-fluid" src="assets/header_doc.png" alt="cwwed header corner"/>
       </div>
     </div>
     <div class="row border-bottom m-0"></div>
@@ -30,15 +30,15 @@
           </li>
         </ul>
         <div ngbDropdown class="d-inline-block">
-          <button class="btn btn-outline-secondary" id="dropdownBasic1" ngbDropdownToggle>
+          <button class="btn btn-outline-secondary" aria-label="User login" id="dropdownBasic1" ngbDropdownToggle>
             <span class="oi oi-person"></span>
           </button>
           <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
             <li *ngIf="isLoggedIn()" class="dropdown-item disabled">{{ userName() }}</li>
-            <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item">
+            <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item" title="Log in">
               Sign In
             </a>
-            <a *ngIf="isLoggedIn()" href="/accounts/logout" class="dropdown-item">
+            <a *ngIf="isLoggedIn()" href="/accounts/logout" class="dropdown-item" title="Log out">
               Sign Out
             </a>
           </div>
@@ -55,11 +55,11 @@
   <footer class="pt-4 my-md-5 pt-md-5 border-top">
     <div class="row">
       <div class="col-12 col-md">
-        <img class="mb-2" src="assets/noaa-logo.svg" alt="" width="24" height="24">
+        <img class="mb-2" src="assets/noaa-logo.svg" alt="noaa logo" width="24" height="24">
         <small class="d-block mb-3 text-muted">CWWED</small>
       </div>
       <div class="col-6 col-md">
-        <h5>About</h5>
+        <p class="h5">About</p>
         <ul class="list-unstyled text-small">
           <li><a class="text-muted" routerLink="home">CWWED</a></li>
           <li><a class="text-muted" routerLink="coastal-act">The COASTAL Act</a></li>
@@ -67,7 +67,7 @@
         </ul>
       </div>
       <div class="col-6 col-md">
-        <h5>Features</h5>
+        <p class="h5">Features</p>
         <ul class="list-unstyled text-small">
           <li><a class="text-muted" routerLink="covered-data">Covered Data</a></li>
           <li><a class="text-muted" routerLink="post-storm-assessment">Post Storm Assessment</a></li>
