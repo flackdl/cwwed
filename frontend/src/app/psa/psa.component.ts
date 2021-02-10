@@ -225,7 +225,7 @@ export class PsaComponent implements OnInit {
 
   public getColorBarVariables() {
     return this.psaVariables.filter((variable) => {
-      return variable.geo_type === 'polygon';
+      return variable.geo_type === 'polygon' && variable.data_type === 'time-series';
     });
   }
 

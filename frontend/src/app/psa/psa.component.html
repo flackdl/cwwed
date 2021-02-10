@@ -57,7 +57,7 @@
             <ngb-panel title="Legends">
               <ng-template ngbPanelContent>
                 <div *ngFor="let variable of getColorBarVariables()">
-                  <h6>{{ variable.display_name }}<span *ngIf="variable.data_type == 'max-values'" class="badge badge-secondary ml-2">Max</span></h6>
+                  <h6>{{ variable.display_name }}</h6>
                   <div class="d-flex justify-content-center color-bar">
                     <div class="color-bar-legend">
                       <div class="color-bar-color" *ngFor="let color_values of variable.color_bar" [style.background-color]="color_values[1]">
