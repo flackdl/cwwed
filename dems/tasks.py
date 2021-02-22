@@ -7,5 +7,5 @@ from dems.processor import DemSourceProcessor
 def update_dems_task():
     for dem_source in DemSource.objects.all():
         processor = DemSourceProcessor(dem_source)
-        processor.update()
+        processor.update_list()
 
