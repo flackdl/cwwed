@@ -12,8 +12,10 @@ class DemSourceViewSet(viewsets.ReadOnlyModelViewSet):
 class DemSourceLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DemSourceLog.objects.all()
     serializer_class = DemSourceLogSerializer
+    filterset_fields = ('source',)
 
 
 class DemViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dem.objects.all()
     serializer_class = DemSerializer
+    filterset_fields = ('source',)

@@ -56,7 +56,7 @@ class Dem(models.Model):
         return os.path.join(self.source.get_path(), self.path)
 
     def get_url(self):
-        return os.path.join(self.source.get_host(), self.source.get_path(), self.path)
+        return 'ftp://{}{}'.format(self.source.get_host(), os.path.join(self.source.get_host(), self.source.get_path(), self.path))
 
     @staticmethod
     def get_sub_path(dem_path: str, dem_source: DemSource):

@@ -87,7 +87,7 @@ class DemSourceProcessor:
         logger.info('added: {}, updated: {}, removed: {}'.format(len(dems_added), len(dems_updated), len(dems_removed)))
 
     @staticmethod
-    def update_dem(dem: Dem):
+    def update_dem_data(dem: Dem):
         # update dem metadata
         with rasterio.open(dem.get_url()) as dataset:  # type: rasterio.io.DatasetReader
             bbox = geos.Polygon.from_bbox(dataset.bounds)
