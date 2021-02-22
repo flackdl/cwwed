@@ -21,14 +21,21 @@ class DemSourceLog(models.Model):
     dems_updated = ArrayField(base_field=models.CharField(max_length=1000))
     dems_removed = ArrayField(base_field=models.CharField(max_length=1000))
 
+    class Meta:
+        ordering = ('-date_scanned',)
+
     def __str__(self):
         return '{} <{}>'.format(self.source, self.date_scanned)
 
 
 class Dem(models.Model):
     source = models.ForeignKey(DemSource, on_delete=models.CASCADE)
-    path = models.CharField(max_length=1000, unique=True)
+    path = models.CharField(max_length=1000)
     date_updated = models.DateTimeField()
+
+    class Meta:
+        unique_together = ('source', 'path')
+        ordering = ('-date_updated',)
 
     def __str__(self):
         return self.path

@@ -11,6 +11,11 @@ from dems.models import DemSource, Dem
 logger = get_task_logger(__name__)
 
 
+"""
+Scan for updates to DEMs
+"""
+
+
 @dataclass
 class DemSourceProcessor:
     dem_source: DemSource
@@ -26,7 +31,6 @@ class DemSourceProcessor:
 
         # get all dem files
         dem_files = self._dem_files(path)
-        logger.info(dem_files)
 
         # added & updated dems
         dems_added = []
@@ -35,15 +39,19 @@ class DemSourceProcessor:
             modified_result = self.ftp.voidcmd("MDTM {}".format(dem_file))
             modified_stamp = modified_result[4:]  # ie. '213 20191031195737'
             date_modified = timezone.utc.localize(parser.parse(modified_stamp))  # utc
-            logger.info('{} was modified: {}'.format(dem_file, date_modified))
-            dem, was_created = Dem.objects.update_or_create(
+            logger.info('{} modified: {}'.format(dem_file, date_modified))
+            dem, was_created = Dem.objects.get_or_create(
                 source=self.dem_source,
                 path=dem_file,
-                date_updated=date_modified,
+                defaults=dict(
+                    date_updated=date_modified,
+                ),
             )
+            # added
             if was_created:
                 dems_added.append(dem.path)
-            else:
+            # updated
+            elif date_modified != dem.date_updated:
                 dems_updated.append(dem.path)
 
         # removed dems
@@ -57,6 +65,7 @@ class DemSourceProcessor:
             dems_updated=dems_updated,
             dems_removed=dems_removed,
         )
+        logger.info('added: {}, updated: {}, removed: {}'.format(len(dems_added), len(dems_updated), len(dems_removed)))
 
     @staticmethod
     def _is_dir(path: str) -> bool:
@@ -78,4 +87,3 @@ class DemSourceProcessor:
             elif self._is_dem(path):
                 dem_files.append(path)
         return list(set(dem_files))
-
