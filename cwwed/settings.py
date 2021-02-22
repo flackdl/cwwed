@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.gis',
     'named_storms.apps.NamedStormsConfig',  # specify AppConfig to include custom signals
+    'dems',  # digital elevation models
     'coastal_act',
     'audit',
     'rest_framework',
