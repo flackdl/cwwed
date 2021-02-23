@@ -15,16 +15,8 @@ from named_storms.utils import get_superuser_emails
 logger = get_task_logger(__name__)
 
 
-app.conf.beat_schedule = {
-    'DEM updater': {
-        'task': 'dems.tasks.update_dems',
-        'schedule': 60 * 60 * 24,
-    },
-}
-
-
 @app.task()
-def update_dems():
+def update_dems_task():
     chain(
         # update dems from their sources
         update_dems_list_task.si(),

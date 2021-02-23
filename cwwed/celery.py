@@ -21,3 +21,11 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
+
+# scheduled jobs
+app.conf.beat_schedule = {
+    'DEM updater': {
+        'task': 'dems.tasks.update_dems_task',
+        'schedule': 60 * 60 * 24,
+    },
+}
