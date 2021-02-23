@@ -42,3 +42,4 @@ slacker==0.13.0
 uritemplate==3.0.1
 whitenoise==5.0.1
 xarray==0.14.1
+rasterio==1.2.0

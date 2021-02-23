@@ -11,7 +11,6 @@ app = Celery(
     'cwwed',
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=['named_storms.tasks'],
 )
 
 # Using a string here means the worker doesn't have to serialize

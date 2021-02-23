@@ -1,0 +1,57 @@
+<h1>DEMs have been updated</h1>
+
+<h3>Summary</h3>
+{% for log in updated_dem_source_logs %}
+	<div>
+		<div><a href="{{ scheme_and_host }}{% url 'demsourcelog-detail' log.id %}">{{ log }}</a></div>
+		<div><a href="{{ scheme_and_host }}{% url 'dem-list' %}?source={{ log.source.id }}">Dems</a></div>
+	</div>
+{% endfor %}
+
+<h3>Details</h3>
+
+<h4>Added</h4>
+{% for log in updated_dem_source_logs %}
+	<div>{{ log }}</div>
+	{% if log.dems_added %}
+		<ul>
+			{% for dem in log.dems_added %}
+				<li>{{ dem }}</li>
+			{% endfor %}
+		</ul>
+		{% else %}
+		<i>none</i>
+	{% endif %}
+{% endfor %}
+
+<hr>
+
+<h4>Updated</h4>
+{% for log in updated_dem_source_logs %}
+	<div>{{ log }}</div>
+	{% if log.dems_updated %}
+		<ul>
+		{% for dem in log.dems_updated %}
+			<li>{{ dem }}</li>
+		{% endfor %}
+		</ul>
+	{% else %}
+		<i>none</i>
+	{% endif %}
+{% endfor %}
+
+<hr>
+
+<h4>Removed</h4>
+{% for log in updated_dem_source_logs %}
+	<div>{{ log }}</div>
+	{% if log.dems_removed %}
+		<ul>
+			{% for dem in log.dems_removed %}
+				<li>{{ dem }}</li>
+			{% endfor %}
+		</ul>
+	{% else %}
+		<i>none</i>
+	{% endif %}
+{% endfor %}

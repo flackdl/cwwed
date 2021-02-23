@@ -4,6 +4,7 @@ from ratelimit.decorators import ratelimit
 from rest_framework import routers
 from named_storms.api import urls as named_storms_urls
 from coastal_act.api import urls as coastal_act_urls
+from dems.api import urls as dems_urls
 from rest_framework.authtoken import views as drf_views
 
 router = routers.DefaultRouter()
@@ -11,6 +12,7 @@ router = routers.DefaultRouter()
 # extend router to include app's routers
 router.registry.extend(named_storms_urls.router.registry)
 router.registry.extend(coastal_act_urls.router.registry)
+router.registry.extend(dems_urls.router.registry)
 
 
 urlpatterns = [
