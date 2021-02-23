@@ -4,7 +4,10 @@
 {% for log in updated_dem_source_logs %}
 	<div>
 		<div><a href="{{ scheme_and_host }}{% url 'demsourcelog-detail' log.id %}">{{ log }}</a></div>
+		<br>
 		<div><a href="{{ scheme_and_host }}{% url 'dem-list' %}?source={{ log.source.id }}">Dems</a></div>
+		<br>
+		<br>
 	</div>
 {% endfor %}
 
