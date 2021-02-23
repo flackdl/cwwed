@@ -36,7 +36,13 @@ class DemSourceLog(models.Model):
         ordering = ('-date_scanned',)
 
     def __str__(self):
-        return '{} <{}>'.format(self.source, self.date_scanned)
+        return '{source} scanned {date} <added: {added}, updated: {updated}, removed: {removed}>'.format(
+            source=self.source,
+            date=self.date_scanned,
+            added=len(self.dems_added),
+            updated=len(self.dems_updated),
+            removed=len(self.dems_removed),
+        )
 
 
 class Dem(models.Model):
