@@ -44,6 +44,7 @@ spec:
           - '1000000'  # kb
           - --queues
           - !Var queues
+          - --beat
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
