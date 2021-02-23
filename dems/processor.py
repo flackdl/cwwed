@@ -14,13 +14,6 @@ logger = get_task_logger(__name__)
 
 """
 Scan for updates to DEMs
-
-Include geographical extent of the tile and its resolution.
-We use the date of generation and resolution of a given tile as a criteria to give higher or lower priority to be included in the mesh generation process.
-
-TODO:
-    - notifications
-    - api
 """
 
 

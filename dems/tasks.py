@@ -36,13 +36,12 @@ def update_dems_list_task():
 
 @app.task()
 def update_dems_data_task():
-    # update any dems that changed
+    # update dem geo data for any dem that has changed
     for dem_source in DemSource.objects.all():
         processor = DemSourceProcessor(dem_source)
         logger.info('updating dem data for source {}'.format(dem_source))
         # use log from most recent scan
         dem_source_log = dem_source.demsourcelog_set.order_by('-date_scanned').first()  # type: DemSourceLog
-        logger.info('found dems that were updated from log {}'.format(dem_source_log))
         for dem in dem_source.dem_set.filter(path__in=dem_source_log.dems_updated + dem_source_log.dems_added):
             logger.info('updating dem data for {}'.format(dem))
             processor.update_dem_data(dem)
