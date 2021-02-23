@@ -14,4 +14,4 @@ class DemSourceLogAdmin(admin.GeoModelAdmin):
 
 @admin.register(Dem)
 class DemAdmin(admin.GeoModelAdmin):
-    list_display = ('path', 'date_updated', 'crs', 'resolution')
+    list_display = ('path', 'date_updated', 'resolution')

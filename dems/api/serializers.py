@@ -18,6 +18,10 @@ class DemSourceLogSerializer(serializers.ModelSerializer):
 
 
 class DemSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    def get_url(self, dem: Dem):
+        return dem.get_url()
 
     class Meta:
         model = Dem

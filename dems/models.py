@@ -45,7 +45,6 @@ class Dem(models.Model):
     date_updated = models.DateTimeField()
     boundary = models.PolygonField(geography=True, null=True, blank=True)  # populated after creation
     resolution = models.FloatField(null=True, blank=True)  # populated after creation
-    crs = models.CharField(max_length=50, null=True, blank=True)  # populated after creation
 
     class Meta:
         unique_together = ('source', 'path')

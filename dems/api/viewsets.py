@@ -19,3 +19,4 @@ class DemViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Dem.objects.all()
     serializer_class = DemSerializer
     filterset_fields = ('source',)
+    search_fields = ('path',)

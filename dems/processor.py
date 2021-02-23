@@ -92,11 +92,9 @@ class DemSourceProcessor:
         with rasterio.open(dem.get_url()) as dataset:  # type: rasterio.io.DatasetReader
             bbox = geos.Polygon.from_bbox(dataset.bounds)
             resolution = dataset.res[0]
-            crs = str(dataset.crs)
-            # update dem
+            logger.info('updating {} with resolution: {}'.format(dem, resolution))
             dem.boundary = bbox
             dem.resolution = resolution
-            dem.crs = crs
             dem.save()
 
     @staticmethod
