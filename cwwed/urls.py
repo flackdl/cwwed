@@ -31,7 +31,8 @@ urlpatterns = [
     path('admin/login/', ratelimit(key='ip', rate='5/m', method=['POST'], block=True)(admin.site.login)),
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
-    re_path('^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
+    re_path(r'^invitations/', include('invitations.urls', namespace='invitations')),
+    re_path(r'^assets/', AngularStaticAssetsRedirectView.as_view()),  # static assets redirect for angular
     re_path(r'^opendap/(?P<path>.*)$', OpenDapProxy.as_view(upstream=settings.OPENDAP_URL)),
 
     # api

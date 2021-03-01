@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.google',
     'crispy_forms',
+    'invitations',  # django-invitations https://github.com/bee-keeper/django-invitations
 ]
 
 MIDDLEWARE = [
@@ -180,6 +181,10 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 ACCOUNT_AUTHENTICATION_METHOD = 'username_email'  # username or email
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 60
+
+# https://github.com/bee-keeper/django-invitations
+ACCOUNT_ADAPTER = 'invitations.models.InvitationsAdapter'
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.0/topics/i18n/
