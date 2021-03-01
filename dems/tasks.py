@@ -10,6 +10,7 @@ from dems.models import DemSource, DemSourceLog
 from dems.processor import DemSourceProcessor
 
 # celery logger
+from dems.utils import get_dem_user_emails
 from named_storms.utils import get_superuser_emails
 
 logger = get_task_logger(__name__)
@@ -56,9 +57,9 @@ def email_updated_dems_task():
         if any([dem_source_log.dems_added, dem_source_log.dems_updated, dem_source_log.dems_removed]):
             updated_dem_source_logs.append(dem_source_log)
 
-    # has updates so send email
+    # has updates so send email to relevant parties
     if updated_dem_source_logs:
-        recipients = get_superuser_emails()
+        recipients = get_superuser_emails() + get_dem_user_emails()
         nsem_user = User.objects.get(username=settings.CWWED_NSEM_USER)
         if nsem_user.email:
             recipients.append(nsem_user.email)
