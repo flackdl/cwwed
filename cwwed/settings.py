@@ -184,6 +184,7 @@ ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 60
 
 # https://github.com/bee-keeper/django-invitations
 ACCOUNT_ADAPTER = 'invitations.models.InvitationsAdapter'
+INVITATIONS_ACCEPT_INVITE_AFTER_SIGNUP = True
 
 
 # Internationalization
