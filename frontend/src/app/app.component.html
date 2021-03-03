@@ -30,10 +30,10 @@
           </li>
         </ul>
         <div ngbDropdown class="d-inline-block">
-          <button class="btn btn-outline-secondary" aria-label="User login" id="dropdownBasic1" ngbDropdownToggle>
+          <button class="btn btn-outline-secondary" aria-label="User login" id="authenticateButton" ngbDropdownToggle>
             <span class="oi oi-person"></span>
           </button>
-          <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+          <div ngbDropdownMenu aria-labelledby="authenticateButton">
             <li *ngIf="isLoggedIn()" class="dropdown-item disabled">{{ userName() }}</li>
             <a *ngIf="!isLoggedIn()" href="/accounts/login" class="dropdown-item" title="Log in">
               Sign In

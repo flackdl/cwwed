@@ -6,7 +6,7 @@
 </nav>
 <div class="card" *ngIf="getUser()">
   <div class="card-header">
-      Post Storm Assessment Export
+    <h3>Post Storm Assessment Export</h3>
   </div>
   <div class="card-body">
     <div class="card-text">
@@ -20,7 +20,7 @@
       <div>
         <form [formGroup]="form" (ngSubmit)="submit()" *ngIf="!isComplete">
           <div class="form-group my-2 d-flex justify-content-center">
-            <button class="btn btn-primary position-relative" [disabled]="isLoading">
+            <button class="btn btn-primary position-relative" [disabled]="isLoading" aria-label="Create Export">
               <ngx-loading [show]="isLoading"></ngx-loading>
               Create Export
             </button>

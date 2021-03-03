@@ -1,8 +1,8 @@
-import { ActivatedRoute, Router } from "@angular/router";
-import { HttpClient } from "@angular/common/http";
+import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import { CwwedService } from "../cwwed.service";
-import { FormBuilder, FormControl, FormGroup } from "@angular/forms";
+import { CwwedService } from '../cwwed.service';
+import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
 import { debounceTime, tap } from 'rxjs/operators';
 import { ajax } from 'rxjs/ajax';
 import Point from 'ol/geom/Point';
@@ -18,16 +18,16 @@ import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Stroke, Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import * as _ from 'lodash';
-import * as Geocoder from "ol-geocoder/dist/ol-geocoder.js";
-import { DecimalPipe } from "@angular/common";
+import * as Geocoder from 'ol-geocoder/dist/ol-geocoder.js';
+import { DecimalPipe } from '@angular/common';
 import { ChartOptions } from 'chart.js';
 import { ToastrService } from 'ngx-toastr';
 import { GoogleAnalyticsService } from '../google-analytics.service';
-import { Subscription } from "rxjs";
+import { Subscription } from 'rxjs';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
-const hexToRgba = require("hex-to-rgba");
+const hexToRgba = require('hex-to-rgba');
 const randomColor = require('randomcolor');
 
 
@@ -101,7 +101,7 @@ export class PsaComponent implements OnInit {
   ngOnInit() {
 
     this.namedStorm = _.find(this.cwwedService.namedStorms, (storm) => {
-      return this.route.snapshot.params['id'] == storm.id;
+      return parseInt(this.route.snapshot.params['id'], 10) === storm.id;
     });
 
     if (this.namedStorm) {
@@ -174,17 +174,17 @@ export class PsaComponent implements OnInit {
 
   public timeSeriesVariables() {
     return _.filter(this.psaVariables, (psaVariable) => {
-      return psaVariable.data_type === 'time-series' && psaVariable.geo_type == 'polygon';
+      return psaVariable.data_type === 'time-series' && psaVariable.geo_type === 'polygon';
     });
   }
 
   public hasTimeSeriesVariablesDisplayed(): boolean {
-    let displayedVariables = [];
-    let timeSeriesVariables = this.timeSeriesVariables();
+    const displayedVariables = [];
+    const timeSeriesVariables = this.timeSeriesVariables();
     _.each(this.form.get('variables').value, (enabled, name) => {
       if (enabled) {
-        let psaVariable = _.find(timeSeriesVariables, (variable) => {
-          return variable.name == name;
+        const psaVariable = _.find(timeSeriesVariables, (variable) => {
+          return variable.name === name;
         });
         if (psaVariable) {
           displayedVariables.push(psaVariable);
@@ -243,8 +243,8 @@ export class PsaComponent implements OnInit {
   }
 
   public isLoadingVariable(psaVariable) {
-    const variableLayer = this.availableMapLayers.find((variableLayer) => {
-      return variableLayer['variable'].name === psaVariable.name;
+    const variableLayer = this.availableMapLayers.find((layer) => {
+      return layer['variable'].name === psaVariable.name;
     });
     if (!variableLayer) {
       return false;
@@ -321,15 +321,15 @@ export class PsaComponent implements OnInit {
           if (!variablesValues[availableLayer['variable']['name']]) {
             // verify it's populated before trying to remove it
             if (availableLayer['layer']) {
-              this._removeVariableVectorLayer(availableLayer)
+              this._removeVariableVectorLayer(availableLayer);
             }
           } else {  // variable toggled on
             // layer isn't present so add it
             if (!availableLayer['layer']) {
-              this._addVariableVectorLayer(availableLayer)
+              this._addVariableVectorLayer(availableLayer);
             }
           }
-        })
+        });
       }
     );
 
@@ -373,7 +373,8 @@ export class PsaComponent implements OnInit {
   protected _addVariableVectorLayer(availableLayer) {
     availableLayer['layer'] = new VectorLayer({
       style: (feature) => {
-        return availableLayer['variable']['geo_type'] === 'wind-barb' ? this._getWindBarbLayerStyle(feature) : this._getContourLayerStyle(feature);
+        return availableLayer['variable']['geo_type'] === 'wind-barb' ?
+          this._getWindBarbLayerStyle(feature) : this._getContourLayerStyle(feature);
       },
       source: this._getVariableVectorSource(availableLayer['variable']),
     });
@@ -386,8 +387,8 @@ export class PsaComponent implements OnInit {
   }
 
   protected _refreshWindBarbs() {
-    const variableLayer = this.availableMapLayers.find((variableLayer) => {
-      return variableLayer['variable'].geo_type == 'wind-barb';
+    const variableLayer = this.availableMapLayers.find((layer) => {
+      return layer['variable'].geo_type === 'wind-barb';
     });
     // wind barbs are enabled
     if (variableLayer && this.form.get('variables').value['wind_direction']) {
@@ -404,7 +405,7 @@ export class PsaComponent implements OnInit {
 
   protected _getVariableVectorSource(psaVariable: any): VectorSource {
     // only time-series variables have dates
-    let date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
+    const date = psaVariable.data_type === 'time-series' ? this.getDateInputFormatted(this.form.get('date').value) : null;
     const isWindBarbSource = psaVariable.geo_type === 'wind-barb';
     let url;
 
@@ -451,10 +452,10 @@ export class PsaComponent implements OnInit {
     });
 
     // listen for layer ready
-    let sourceListener = vectorSource.on('change', () => {
-      if (vectorSource.getState() == 'ready') {
-        const variableLayer = this.availableMapLayers.find((variableLayer) => {
-          return variableLayer['variable'].name === psaVariable.name;
+    const sourceListener = vectorSource.on('change', () => {
+      if (vectorSource.getState() === 'ready') {
+        const variableLayer = this.availableMapLayers.find((layer) => {
+          return layer['variable'].name === psaVariable.name;
         });
         if (variableLayer) {
           variableLayer.isLoading = false;
@@ -545,7 +546,7 @@ export class PsaComponent implements OnInit {
           this.psaVariables = data;
 
           // create and populate variables form group
-          let psaVariablesFormGroup = this.fb.group({});
+          const psaVariablesFormGroup = this.fb.group({});
           this.psaVariables.forEach((psaVariable) => {
             psaVariablesFormGroup.addControl(psaVariable.name, new FormControl(psaVariable.auto_displayed));
           });
@@ -573,7 +574,7 @@ export class PsaComponent implements OnInit {
         color: hexToRgba('#ffffff',  this.form.get('opacity').value),
         size: .3,
       })
-    })
+    });
   }
 
   protected _buildMap() {
@@ -591,7 +592,7 @@ export class PsaComponent implements OnInit {
 
     this.availableMapLayers = this.psaVariables.map((variable) => {
       let layer;
-      let source = this._getVariableVectorSource(variable);
+      const source = this._getVariableVectorSource(variable);
 
       //
       // only populate the layers which are set as "auto displayed"
@@ -621,7 +622,7 @@ export class PsaComponent implements OnInit {
         variable: variable,
         layer: layer,
         isLoading: true,
-      }
+      };
     });
 
     let zoom = this._getDefaultZoom();
@@ -631,7 +632,7 @@ export class PsaComponent implements OnInit {
       zoom = parseFloat(this.route.snapshot.queryParams['zoom']) || zoom;
     }
     if (this.route.snapshot.queryParams['center']) {
-      let centerParams = this.route.snapshot.queryParams['center'].map((coord) => {
+      const centerParams = this.route.snapshot.queryParams['center'].map((coord) => {
         return parseFloat(coord);
       });
       center = fromLonLat(centerParams);
@@ -677,7 +678,7 @@ export class PsaComponent implements OnInit {
         }),
         // only include the variable layers that are "auto displayed"
         ...this.availableMapLayers.filter((ml) => {
-          return ml.variable.auto_displayed
+          return ml.variable.auto_displayed;
         }).map((l) => {
           return l.layer;
         }),
@@ -919,7 +920,7 @@ export class PsaComponent implements OnInit {
         borderColor: color,
         backgroundColor: color,
         fill: false,
-      }
+      };
     });
 
     this.lineChartData = lineChartData;

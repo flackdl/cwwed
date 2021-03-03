@@ -39,8 +39,8 @@
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>Layer Opacity</label>
-                  <input type="range" step=".1" min=".1" max="1" formControlName="opacity" class="w-100">
+                  <label for="layer-opacity">Layer Opacity</label>
+                  <input type="range" step=".1" min=".1" max="1" formControlName="opacity" class="w-100" id="layer-opacity">
                 </div>
                 <div class="form-group">
                   <label>Date: <small>{{ getDateInputFormatted(form.get('date').value) }}</small></label>
@@ -130,7 +130,7 @@
 
               <!-- no relevant variables are selected -->
               <div *ngIf="!hasTimeSeriesVariablesDisplayed()">
-                <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
+                <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer" aria-label="Close popup"><span class="oi oi-x"></span></button>
                 <div class="mt-4">
                   <div class="text-info"><small>Please enable one of the following variables for a time series graph:</small></div>
                   <ul>
@@ -141,7 +141,7 @@
 
               <!-- time-series graph -->
               <div *ngIf="hasTimeSeriesVariablesDisplayed() && lineChartData.length">
-                <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer"><span class="oi oi-x"></span></button>
+                <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer" aria-label="Close popup"><span class="oi oi-x"></span></button>
                 <canvas baseChart
                         [datasets]="lineChartData"
                         [labels]="psaDatesFormatted"
@@ -167,8 +167,8 @@
               <small class="d-block"><sup>3</sup>Enable selection tool to download data for a specific location</small>
             </div>
             <div>
-              <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-info">Enable selection tool <span class="oi oi-pencil"></span></button>
-              <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning">Disable selection tool <span class="oi oi-x"></span></button>
+              <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-info" aria-label="Enable Selection Tool">Enable selection tool <span class="oi oi-pencil"></span></button>
+              <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning" aria-label="Disable selection tool">Disable selection tool <span class="oi oi-x"></span></button>
             </div>
           </div>
 

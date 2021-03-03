@@ -7,9 +7,9 @@
           Covered Data
         </button>
         <div class="collapse navbar-collapse" [ngbCollapse]="!isNavCollapsed">
-          <ul class="navbar-nav flex-column">
+          <nav class="navbar-nav flex-column">
             <a class="nav-link" *ngFor="let data of coveredDataList" (click)="navCollapse()" [routerLink]="[data.id]" routerLinkActive="active">{{ data.name }}</a>
-          </ul>
+          </nav>
         </div>
       </nav>
     </div>

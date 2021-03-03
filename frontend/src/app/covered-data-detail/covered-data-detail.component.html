@@ -10,8 +10,8 @@
       </div>
       <div>
         <div ngbDropdown class="d-inline-block">
-          <button class="btn btn-outline-primary" id="dropdownBasic1" ngbDropdownToggle>Storm Snapshot</button>
-          <div ngbDropdownMenu aria-labelledby="dropdownBasic1">
+          <button class="btn btn-outline-primary" id="snapshotButton" ngbDropdownToggle aria-label="Storm Snapshot">Storm Snapshot</button>
+          <div ngbDropdownMenu aria-labelledby="snapshotButton">
             <div *ngFor="let storm of namedStorms" class="dropdown-item">
               <a [href]="stormCoveredDataUrl(storm)" target="_blank" *ngIf="stormCoveredDataUrl(storm)">
                 <span class="oi oi-cloud-download"></span>
