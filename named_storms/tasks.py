@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.gis.db.models import Collect, GeometryField, Func, F
-from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash, Distance
+from django.contrib.gis.db.models.functions import Intersection, MakeValid, AsKML, GeoHash
 from django.core.exceptions import EmptyResultSet
 from django.core.mail import send_mail
 from django.db import connection
@@ -468,7 +468,7 @@ def validate_nsem_psa_task(nsem_id):
             if dataset.structured:
                 if not validator.is_valid_structured():
                     file_exceptions.append(
-                        'dataset is identified as structured but variable {} does not have the right shape = {}'.format(variable, shape))
+                        'dataset is identified as structured but variable does not have the right shape')
             # unstructured grid - http://ugrid-conventions.github.io/ugrid-conventions/
             else:
                 if not validator.is_valid_unstructured_topology(dataset.topology_name):
@@ -626,7 +626,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
                 # multi index of date/lon/lat
                 index = pd.MultiIndex.from_arrays([
-                    np.full(len(ds_out.node),nsem_psa_user_export.date_filter),
+                    np.full(len(ds_out.node), nsem_psa_user_export.date_filter),
                     ds_out['lon'],
                     ds_out['lat'],
                 ])
