@@ -79,9 +79,6 @@ INSTALLED_APPS = [
     'storages',  # django-storages
     'allauth',
     'allauth.account',
-    # TODO - setup social accounts?
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
     'crispy_forms',
     'invitations',  # django-invitations https://github.com/bee-keeper/django-invitations
 ]

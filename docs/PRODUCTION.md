@@ -299,15 +299,11 @@ Celery's monitoring dashboard, Flower, isn't publicly exposed so you can port-fo
 
     kubectl port-forward celery-flower-deployment-644fd6d758-882nv 5556:5555
 
-### Social auth
-
-**TODO**
-
 ### Django Site
 
 Configure a Django "Site" in admin so all messages refer to the appropriate server name and domain.
 
-For example, log into the admin and create a site as `dev.cwwed-staging.com`.
+For example, log into the admin and create a site as `alpha.cwwed-staging.com`.
 
 ### Monitoring
 
