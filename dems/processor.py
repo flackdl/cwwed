@@ -92,8 +92,8 @@ class DemSourceProcessor:
 
     @staticmethod
     def _is_dir(path: str) -> bool:
-        # doesn't end with common extension (3-4 chars after period)
-        return path and not re.search(r'\.\w{3,4}$', path)
+        # doesn't end with common extension (2-4 chars after period)
+        return path and not re.search(r'\.\w{2,4}$', path)
 
     @staticmethod
     def _is_dem(path: str) -> bool:
@@ -105,6 +105,9 @@ class DemSourceProcessor:
         # recursively retrieves files
         paths = self.ftp.nlst(root_path)
         for path in paths:
+            # skip path if it matches the nlst root path since nlst returns the same path if it's a file
+            if path == root_path:
+                continue
             if self._is_dir(path):
                 dem_files += self._dem_files(path)
             elif self._is_dem(path):
