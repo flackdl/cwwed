@@ -3,7 +3,6 @@
 {% load crispy_forms_tags %}
 {% load static %}
 {% load i18n %}
-{% load account socialaccount %}
 
 {% block extra_head %}
 	<link rel="stylesheet" href="{% static 'coastal_act/login.css' %}">
@@ -14,25 +13,10 @@
 
 {% block content %}
 
-	{% get_providers as socialaccount_providers %}
-
 	<div class="row">
 
 		<form class="form-signin col-12 col-md-8 offset-md-3" method="POST" action="{% url 'account_login' %}">
 			{% csrf_token %}
-
-			<!-- TODO - third party auth providers
-			{% if socialaccount_providers %}
-				<p>Sign in with one of your existing third party accounts</p>
-				<div class="socialaccount_ballot">
-					<ul class="socialaccount_providers">
-						{% include "socialaccount/snippets/provider_list.html" with process="login" %}
-					</ul>
-					<div class="login-or">{% trans 'or' %}</div>
-				</div>
-				{% include "socialaccount/snippets/login_extra.html" %}
-			{% endif %}
-			-->
 
 			<h1 class="h3 mb-3 font-weight-normal">Sign In</h1>
 
