@@ -8,12 +8,16 @@ from django.template.loader import render_to_string
 from cwwed.celery import app
 from dems.models import DemSource, DemSourceLog
 from dems.processor import DemSourceProcessor
-
-# celery logger
 from dems.utils import get_dem_user_emails
 from named_storms.utils import get_superuser_emails
 
+# celery logger
 logger = get_task_logger(__name__)
+
+
+# TODO - there may be a bug.  There are multiple dem logs per day (2 per source) which shouldn't happen
+#      - I think the issue actually lies in the fact there are 2 replicas of the celery service which each would have it's own "beat"
+#      - SOLUTION: run a separate/single/replica pod for celery for the beat/scheduler
 
 
 @app.task()
