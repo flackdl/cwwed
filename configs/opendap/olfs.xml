@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- https://github.com/OPENDAP/hyrax_guide/blob/master/Hyrax_OLFS_Configuration.adoc -->
+<OLFSConfig>
+    <BESManager>
+        <BES>
+            <prefix>/</prefix>
+            <host>localhost</host>
+            <port>10022</port>
+        </BES>
+    </BESManager>
+    <ForceDataRequestFormLinkToHttps/>
+    <AllowDirectDataSourceAccess/>
+</OLFSConfig>

@@ -34,7 +34,7 @@ spec:
          claimName: !Var volume_claim_name
       containers:
       - name: opendap
-        image: opendap/hyrax:1.15.4
+        image: opendap/hyrax:1.16.4-16
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
@@ -43,6 +43,9 @@ spec:
           name: cwwed-volume-storage
           subPath: OPENDAP
           readOnly: true
+        - mountPath: "/usr/share/olfs"
+          name: cwwed-volume-storage
+          subPath: OPENDAP-olfs
         resources:
           requests:
             memory: "350M"
