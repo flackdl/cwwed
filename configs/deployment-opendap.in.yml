@@ -3,15 +3,6 @@ app: !Format "opendap-{deploy_stage}"
 deployment_name: !Format "opendap-{deploy_stage}"
 volume_claim_name: !Format "efs-{deploy_stage}"
 ---
-# TODO - Google Chrome is now blocking insecure downloads that were generated from secure pages.  This is due to the fact
-# that hyrax is running insecure as a container, but is behind a secure proxy (django), and hyrax is generating insecure download links as a result, which
-# Cloudflare is trying to redirect to https but Chrome blocks it.
-#
-# Chrome error:
-# - https://blog.chromium.org/2020/02/protecting-users-from-insecure.html
-# Hyrax/apache configuration:
-# - https://docs.opendap.org/index.php/Hyrax_-_Apache_Integration
-# - https://tomcat.apache.org/tomcat-5.5-doc/config/http.html
 apiVersion: apps/v1
 kind: Deployment
 metadata:

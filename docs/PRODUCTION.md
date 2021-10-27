@@ -178,7 +178,7 @@ Deploy *dev* using *v1.0* image tag:
 ##### OPeNDAP
 
 CWWED is using the stock OPeNDAP docker image, but we need to specify some custom configurations.
-Copy the [olfs.xml](../configs/opendap/olfs.xml) to the EFS mount at `/usr/share/olfs/` by ssh'ing into an EC2 instance, mounting the EFS drive, and copy it over.
+Copy the [olfs.xml](../configs/opendap/olfs.xml) to the EFS mount at (`OPENDAP-olfs` => `/usr/share/olfs/`) by ssh'ing into an EC2 instance, mounting the EFS drive, and copy it over.
 
 ##### Ingress
     kubectl apply -f configs/ingress.yml
