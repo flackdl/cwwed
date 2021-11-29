@@ -41,6 +41,8 @@ spec:
         #  - -A
         #  - cwwed
         #  - beat
+        #  - --loglevel
+        #  - info
         args:
           - -A
           - cwwed
