@@ -1,12 +1,14 @@
 !Defaults
 image: !Format "flackdl/cwwed:{tag}"
 secret_name: !Format "cwwed-secrets-{deploy_stage}"
-app: !Format "celery-{queues}-{deploy_stage}"
-deployment_name: !Format "celery-{queues}-{deploy_stage}"
+app: !Format "celery-{queues}-{celery_type}-{deploy_stage}"
+deployment_name: !Format "celery-{queues}-{celery_type}-{deploy_stage}"
+celery_type: !Format "worker"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
 request_cpu: "100m"
 request_memory: "200M"
+queues: "celery"
 concurrency: "2"
 ---
 apiVersion: apps/v1
@@ -14,6 +16,8 @@ kind: Deployment
 metadata:
   name: !Var deployment_name
 spec:
+  # TODO - celery beat
+  #replicas: 1
   replicas: 2
   selector:
     matchLabels:
@@ -32,6 +36,11 @@ spec:
         image: !Var image
         imagePullPolicy: Always
         command: ['celery']
+        # TODO - arguments for celery beat
+        #args:
+        #  - -A
+        #  - cwwed
+        #  - beat
         args:
           - -A
           - cwwed
@@ -44,7 +53,6 @@ spec:
           - '1000000'  # kb
           - --queues
           - !Var queues
-          - --beat
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
