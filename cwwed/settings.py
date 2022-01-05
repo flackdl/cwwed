@@ -18,6 +18,9 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.celery import CeleryIntegration
 
 
+# TODO - sentry will stop posting errors to slack Jan 10th 2022
+# TODO - "sentry integrations are only available on our Team and Business Plans. Unfortunately, on January 10th, 2022, your Slack integration will be disabled."
+
 # sentry/logging configuration
 sentry_sdk.init(
     dsn=os.getenv('SENTRY_DSN', ''),
