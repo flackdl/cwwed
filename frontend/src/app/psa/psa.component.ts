@@ -15,7 +15,7 @@ import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
 import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
-import { Stroke, Fill, Style, Icon } from 'ol/style.js';
+import { Stroke, Fill, Style, Icon, Circle as CircleStyle } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
 import Feature from 'ol/Feature';
 import * as _ from 'lodash';
@@ -289,6 +289,15 @@ export class PsaComponent implements OnInit {
     });
     const markerVectorLayer = new VectorLayer({
       source: vectorSource,
+      style: new Style({
+        image: new CircleStyle({
+          radius: 20,
+          stroke: new Stroke({
+            color: 'green',
+            width: 3,
+          }),
+        }),
+      }),
     });
     this.map.addLayer(markerVectorLayer);
     // center and zoom to point
