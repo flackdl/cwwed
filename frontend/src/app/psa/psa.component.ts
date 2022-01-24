@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from '../cwwed.service';
 import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
-import { debounceTime, tap } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, tap, map, switchMap, catchError } from 'rxjs/operators';
 import { ajax } from 'rxjs/ajax';
 import Point from 'ol/geom/Point';
 import WKT from 'ol/format/WKT';
@@ -17,18 +17,23 @@ import { Tile as TileLayer, Vector as VectorLayer } from 'ol/layer.js';
 import { OSM, XYZ, Vector as VectorSource } from 'ol/source.js';
 import { Stroke, Fill, Style, Icon } from 'ol/style.js';
 import Overlay from 'ol/Overlay.js';
+import Feature from 'ol/Feature';
 import * as _ from 'lodash';
-import * as Geocoder from 'ol-geocoder/dist/ol-geocoder.js';
 import { DecimalPipe } from '@angular/common';
 import { ChartOptions } from 'chart.js';
 import { ToastrService } from 'ngx-toastr';
 import { GoogleAnalyticsService } from '../google-analytics.service';
-import { Subscription } from 'rxjs';
+import { Observable, of, Subscription } from 'rxjs';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
 const hexToRgba = require('hex-to-rgba');
 const randomColor = require('randomcolor');
+
+
+// TODO - fix address-to-point issue where pin is dropped way off when zoomed out far
+// TODO - fix address-to-point issue where clicking on address opens time-graph
+// TODO - move hover details to outside of map so it's not so obtrusive
 
 
 @Component({
@@ -43,6 +48,7 @@ export class PsaComponent implements OnInit {
   public MAP_LAYER_MAPBOX_STREETS = 'mapbox-streets';
   public MAP_LAYER_MAPBOX_SATELLITE = 'mapbox-satellite';
   public MAP_LAYER_MAPBOX_LIGHT = 'mapbox-light';
+  public API_TOKEN_MAPBOX = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
 
   public DEFAULT_ZOOM_LEVEL = 8;
 
@@ -71,7 +77,6 @@ export class PsaComponent implements OnInit {
     isLoading: boolean,
   }[];
   public popupOverlay: Overlay;
-  public tooltipOverlay: Overlay;
   public lineChartData: any[] = [];
   public lineChartColors: any[] = [];
   public lineChartOptions: ChartOptions;
@@ -79,12 +84,27 @@ export class PsaComponent implements OnInit {
   public initError: string;
 
   @ViewChild('popup', {static: false}) popupEl: ElementRef;
-  @ViewChild('tooltip', {static: false}) tooltipEl: ElementRef;
   @ViewChild('map', {static: false}) mapEl: ElementRef;
 
   protected _extentInteraction: ExtentInteraction;
   protected _lineChartDataAll: any[] = [];
   protected _windBarbRequest: Subscription;
+
+  geocodeSearch: Function = (text$: Observable<string>) =>
+    text$.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      switchMap((term: string) =>
+        this._fetchGeocodeResults(term).pipe(
+          map((result: any) => result.features),
+          catchError((error) => {
+            console.error(error);
+            this.toastr.error('An unknown geocoding error occurred');
+            return of([]);
+          })
+        )
+      ),
+    )
 
   constructor(
     private http: HttpClient,
@@ -255,6 +275,34 @@ export class PsaComponent implements OnInit {
 
   public isVariableDisplayed(variableName: string): boolean {
     return this.form.get('variables').value[variableName];
+  }
+
+  public geocodeSelect(event) {
+    // chosen result's coordinates
+    const coordinates = fromLonLat(event.item.geometry.coordinates);
+    // create a new point/marker
+    const marker = new Feature({
+      geometry: new Point(coordinates),
+    });
+    const vectorSource = new VectorSource({
+      features: [marker]
+    });
+    const markerVectorLayer = new VectorLayer({
+      source: vectorSource,
+    });
+    this.map.addLayer(markerVectorLayer);
+    // center and zoom to point
+    this.map.getView().setCenter(coordinates);
+    this.map.getView().setZoom(18);
+  }
+
+  public geocodeFormat(item: any) {
+    return item.place_name;
+  }
+
+  protected _fetchGeocodeResults(search: string): Observable<any> {
+    // TODO - search types
+    return this.http.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${search}.json?types=address&access_token=${this.API_TOKEN_MAPBOX}`);
   }
 
   protected _listenForInputChanges() {
@@ -579,8 +627,6 @@ export class PsaComponent implements OnInit {
 
   protected _buildMap() {
 
-    const mapBoxToken = 'pk.eyJ1IjoiZmxhY2thdHRhY2siLCJhIjoiY2l6dGQ2MXp0MDBwMzJ3czM3NGU5NGRsMCJ9.5zKo4ZGEfJFG5ph6QlaDrA';
-
     // create an overlay to anchor the address specific popup to the map
     this.popupOverlay = new Overlay({
       element: this.popupEl.nativeElement,
@@ -652,21 +698,21 @@ export class PsaComponent implements OnInit {
           mapName: this.MAP_LAYER_MAPBOX_LIGHT,
           visible: false,
           source: new XYZ({
-            url: `https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+            url: `https://api.mapbox.com/styles/v1/mapbox/light-v9/tiles/256/{z}/{x}/{y}?access_token=${this.API_TOKEN_MAPBOX}`,
           })
         }),
         new TileLayer({
           mapName: this.MAP_LAYER_MAPBOX_SATELLITE,
           visible: false,
           source: new XYZ({
-            url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+            url: `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/256/{z}/{x}/{y}?access_token=${this.API_TOKEN_MAPBOX}`,
           })
         }),
         // DEFAULT
         new TileLayer({
           mapName: this.MAP_LAYER_MAPBOX_STREETS,
           source: new XYZ({
-            url: `https://api.mapbox.com/styles/v1/mapbox/streets-v10/tiles/256/{z}/{x}/{y}?access_token=${mapBoxToken}`,
+            url: `https://api.mapbox.com/styles/v1/mapbox/streets-v10/tiles/256/{z}/{x}/{y}?access_token=${this.API_TOKEN_MAPBOX}`,
           })
         }),
         new TileLayer({
@@ -690,26 +736,6 @@ export class PsaComponent implements OnInit {
         zoom: zoom,
       })
     });
-
-    this.tooltipOverlay = new Overlay({
-      element: this.tooltipEl.nativeElement,
-      offset: [10, 0],
-      positioning: 'bottom-left'
-    });
-    this.map.addOverlay(this.tooltipOverlay);
-
-    // instantiate geocoder
-    const geocoder = new Geocoder('nominatim', {
-      provider: 'osm',
-      lang: 'en-US',
-      placeholder: 'Search ...',
-      targetType: 'glass-button',
-      limit: 5,
-      keepOpen: true,
-      autoComplete: true,
-      countrycodes: 'us',
-    });
-    this.map.addControl(geocoder);
 
     // flag we're finished loading the map
     this.map.on('rendercomplete', (x) => {
@@ -823,8 +849,6 @@ export class PsaComponent implements OnInit {
       // include the current coordinates
       currentFeature['coordinate'] = toLonLat(event.coordinate).reverse();
 
-      this.tooltipOverlay.setPosition(event.coordinate);
-
       this.currentFeature = currentFeature;
     });
   }
@@ -834,7 +858,7 @@ export class PsaComponent implements OnInit {
 
     // verify there is data at this location
     const features = this.map.getFeaturesAtPixel(event.pixel);
-    if (!features) {
+    if (!features || features.length === 0) {
       this.closeOverlayPopup();
       this.isLoadingOverlayPopup = false;
       return;

@@ -11,17 +11,12 @@
 #map-container {
   height: 45vh;
 
-  .hover-tooltip {
-    position: relative;
-    background: white;
-    color: black;
-    opacity: 0.9;
-    white-space: nowrap;
-    font-size: 14px;
-    border-radius: 15px;
-    padding: 15px;
-  }
-  .high-confidence .confidence {
+}
+.hover-tooltip {
+  white-space: nowrap;
+  min-height: 100px;
+  font-size: 14px;
+  &.high-confidence .confidence {
     border-bottom: 3px dotted green;
   }
 }

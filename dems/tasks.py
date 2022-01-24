@@ -15,11 +15,6 @@ from named_storms.utils import get_superuser_emails
 logger = get_task_logger(__name__)
 
 
-# TODO - there may be a bug.  There are multiple dem logs per day (2 per source) which shouldn't happen
-#      - I think the issue actually lies in the fact there are 2 replicas of the celery service which each would have it's own "beat"
-#      - SOLUTION: run a separate/single/replica pod for celery for the beat/scheduler
-
-
 @app.task()
 def update_dems_task():
     chain(

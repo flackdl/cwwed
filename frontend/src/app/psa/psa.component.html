@@ -110,19 +110,6 @@
           <div #map class="position-relative" id="map-container">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
-            <!-- feature info -->
-            <div class="hover-tooltip" #tooltip [hidden]="!currentFeature || isExtentActive() || isOverlayVisible()" [class.high-confidence]="currentConfidence >= 90">
-              <div *ngFor="let feature of currentFeature | keyvalue">
-                <!-- manually display coordinate value at bottom -->
-                <span *ngIf="feature.key !== 'coordinate'">
-                  {{ feature.key }}: {{ feature.value }}
-                  (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
-                </span>
-              </div>
-              <div><hr></div>
-              <div><small><em>{{ currentFeature?.coordinate }}</em></small></div>
-            </div>
-
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!isOverlayVisible()">
 
@@ -142,12 +129,13 @@
               <!-- time-series graph -->
               <div *ngIf="hasTimeSeriesVariablesDisplayed() && lineChartData.length">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer" aria-label="Close popup"><span class="oi oi-x"></span></button>
-                <canvas baseChart
-                        [datasets]="lineChartData"
-                        [labels]="psaDatesFormatted"
-                        [options]="lineChartOptions"
-                        [colors]="lineChartColors"
-                        chartType="line"
+                <canvas
+                  baseChart
+                  [datasets]="lineChartData"
+                  [labels]="psaDatesFormatted"
+                  [options]="lineChartOptions"
+                  [colors]="lineChartColors"
+                  chartType="line"
                 >
                 </canvas>
                 <div class="d-flex justify-content-between">
@@ -155,6 +143,36 @@
                   <a class="btn btn-sm btn-info" [href]="lineChartExportURL" target="_blank">csv <span class="oi oi-data-transfer-download"></span></a>
                 </div>
               </div>
+            </div>
+
+          </div>
+
+          <div class="d-flex justify-content-between mt-2">
+
+            <!-- geocoder input -->
+            <div class="form-group">
+              <input type="text" class="form-control" aria-describedby="geocoder" placeholder="Search address, city, zip"
+                     [ngbTypeahead]="geocodeSearch"
+                     (selectItem)="geocodeSelect($event)"
+                     [resultTemplate]="geocodeTemplate"
+                     [inputFormatter]="geocodeFormat"
+            >
+            </div>
+            <!-- geocoder template results -->
+            <ng-template #geocodeTemplate let-r="result" let-t="term">
+              <ngb-highlight [result]="r.place_name" [term]="t"></ngb-highlight>
+            </ng-template>
+
+            <!-- feature info -->
+            <div class="hover-tooltip alert alert-info" [ngClass]="{'alert alert-info': currentFeature, 'high-confidence': currentConfidence >= 90}">
+              <div *ngFor="let feature of currentFeature | keyvalue">
+                <!-- manually display coordinate value at bottom -->
+                <span *ngIf="feature.key !== 'coordinate'">
+                  {{ feature.key }}: {{ feature.value }}
+                  (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
+                </span>
+              </div>
+              <div><small><em>{{ currentFeature?.coordinate }}</em></small></div>
             </div>
 
           </div>
