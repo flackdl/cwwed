@@ -83,14 +83,16 @@
               <ng-template ngbPanelContent>
                 <dl class="row">
                   <dt class="col-sm-6">OPeNDAP</dt>
-                  <dd class="col-sm-6">
+                  <dd class="col-sm-6 text-center">
                     <a [href]="getOpenDapUrl()" target="_blank">
                       <span class="oi oi-external-link"></span>
                     </a>
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
                   <dd class="col-sm-6">
-                    <i *ngIf="!getExtentCoords()">(none selected)</i>
+                    <i>
+                      <button *ngIf="!isExtentActive() && !getExtentCoords()" type="button" class="btn btn-link" (click)="enableBoxSelection()">(enable selection)</button>
+                    </i>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', this.namedStorm.name.toLowerCase(), this.namedStorm.id, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'geojson', 'date': getDateCurrent()}">GeoJSON</a>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', this.namedStorm.name.toLowerCase(), this.namedStorm.id, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'kml', 'date': getDateCurrent()}">KML</a>
                     <a *ngIf="getExtentCoords()" class="d-block" [routerLink]="['/post-storm-assessment', this.namedStorm.name.toLowerCase(), this.namedStorm.id, 'export']" [queryParams]="{'extent': getExtentCoords(), 'format': 'shapefile', 'date': getDateCurrent()}">Shapefile</a>
@@ -109,19 +111,6 @@
           <!-- map -->
           <div #map class="position-relative" id="map-container">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
-
-            <!-- feature info -->
-            <div class="hover-tooltip" #tooltip [hidden]="!currentFeature || isExtentActive() || isOverlayVisible()" [class.high-confidence]="currentConfidence >= 90">
-              <div *ngFor="let feature of currentFeature | keyvalue">
-                <!-- manually display coordinate value at bottom -->
-                <span *ngIf="feature.key !== 'coordinate'">
-                  {{ feature.key }}: {{ feature.value }}
-                  (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
-                </span>
-              </div>
-              <div><hr></div>
-              <div><small><em>{{ currentFeature?.coordinate }}</em></small></div>
-            </div>
 
             <!-- overlay graph -->
             <div #popup class="ol-popup" [class.invisible]="!isOverlayVisible()">
@@ -142,12 +131,13 @@
               <!-- time-series graph -->
               <div *ngIf="hasTimeSeriesVariablesDisplayed() && lineChartData.length">
                 <button (click)="closeOverlayPopup()" class="btn btn-sm btn-light ol-popup-closer" aria-label="Close popup"><span class="oi oi-x"></span></button>
-                <canvas baseChart
-                        [datasets]="lineChartData"
-                        [labels]="psaDatesFormatted"
-                        [options]="lineChartOptions"
-                        [colors]="lineChartColors"
-                        chartType="line"
+                <canvas
+                  baseChart
+                  [datasets]="lineChartData"
+                  [labels]="psaDatesFormatted"
+                  [options]="lineChartOptions"
+                  [colors]="lineChartColors"
+                  chartType="line"
                 >
                 </canvas>
                 <div class="d-flex justify-content-between">
@@ -159,16 +149,56 @@
 
           </div>
 
+          <div class="row mt-2 map-info">
+
+            <!-- geocoder -->
+            <div class="col">
+              <!-- geocoder input -->
+              <div class="form-group">
+                <input type="text" class="form-control" aria-describedby="geocoder" placeholder="Search by address or zip code"
+                       [ngbTypeahead]="geocodeSearch"
+                       (selectItem)="geocodeSelect($event)"
+                       [resultTemplate]="geocodeTemplate"
+                       [inputFormatter]="geocodeFormat"
+                >
+              </div>
+              <!-- geocoder template results -->
+              <ng-template #geocodeTemplate let-r="result" let-t="term">
+                <ngb-highlight [result]="r.place_name" [term]="t"></ngb-highlight>
+              </ng-template>
+            </div>
+
+            <!-- selection tool -->
+            <div class="col">
+              <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-info" aria-label="Enable Selection Tool">Enable selection tool <span class="oi oi-pencil"></span></button>
+              <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning" aria-label="Disable selection tool">Disable selection tool <span class="oi oi-x"></span></button>
+            </div>
+
+            <!-- feature info -->
+            <div class="col hover-tooltip alert alert-info" [ngClass]="{'alert alert-info': currentFeature, 'high-confidence': currentConfidence >= 90}">
+              <div *ngFor="let feature of currentFeature | keyvalue">
+                <!-- manually display coordinate value at bottom -->
+                <span *ngIf="feature.key !== 'coordinate'">
+                  {{ feature.key }}: {{ feature.value }}
+                  (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
+                </span>
+              </div>
+              <!-- coordinates -->
+              <small class="d-block" *ngIf="currentFeature && currentFeature.coordinate">
+                <hr/>
+                <em>{{ currentFeature.coordinate[0] | number: '1.5' }}</em>,
+                <em>{{ currentFeature.coordinate[1] | number: '1.5' }}</em>
+              </small>
+            </div>
+
+          </div>
+
           <!-- instructions -->
           <div class="d-flex justify-content-between mt-2">
             <div>
               <small class="d-block"><sup>1</sup>Hover to see feature information</small>
               <small class="d-block"><sup>2</sup>Click on a feature to see a time series graph for a specific location</small>
               <small class="d-block"><sup>3</sup>Enable selection tool to download data for a specific location</small>
-            </div>
-            <div>
-              <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-info" aria-label="Enable Selection Tool">Enable selection tool <span class="oi oi-pencil"></span></button>
-              <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning" aria-label="Disable selection tool">Disable selection tool <span class="oi oi-x"></span></button>
             </div>
           </div>
 
