@@ -1,0 +1,51 @@
+name: cwwed ci/cd
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Set tag name
+        id: tag_name
+        shell: bash
+        run: |
+          # get and sanitize branch name
+          branch=${GITHUB_REF#refs/heads/}
+          branch=${branch//\//-}
+          # derive the docker image tag name from the git branch name
+          if [[ $branch == 'master' ]]; then
+            tag='latest'
+          else
+            tag="$branch"
+          fi
+          echo "##[set-output name=tag;]$(echo ${tag})"
+      - name: Run tests, build & push
+        run: |
+          set -e
+
+          # get tag name
+          tag=${{ steps.tag_name.outputs.tag }}
+
+          # create docker network to link containers
+          docker network create tests
+
+          # run postgis in the background
+          docker run --network tests --name postgis --rm -d mdillon/postgis
+
+          # build image
+          docker build -t flackdl/cwwed:$tag .
+
+          # run tests
+          docker run --network tests -e DATABASE_URL=postgis://postgres@postgis:5432/postgres --entrypoint python flackdl/cwwed:$tag manage.py test
+
+          # push to docker hub
+          docker push flackdl/cwwed:$tag
