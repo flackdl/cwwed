@@ -1,5 +1,5 @@
 import { ActivatedRoute, Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CwwedService } from '../cwwed.service';
 import { FormBuilder, FormControl, FormGroup } from '@angular/forms';
@@ -23,7 +23,7 @@ import { DecimalPipe } from '@angular/common';
 import { ChartOptions } from 'chart.js';
 import { ToastrService } from 'ngx-toastr';
 import { GoogleAnalyticsService } from '../google-analytics.service';
-import { Observable, of, Subscription } from 'rxjs';
+import { EMPTY, Observable, Subscription } from 'rxjs';
 
 const moment = require('moment');
 const seedrandom = require('seedrandom');
@@ -94,16 +94,19 @@ export class PsaComponent implements OnInit {
     text$.pipe(
       debounceTime(250),
       distinctUntilChanged(),
-      switchMap((term: string) =>
-        this._fetchGeocodeResults(term).pipe(
+      switchMap((term: string) => {
+        if (!term || term.length === 0) {
+          return EMPTY;
+        }
+        return this._fetchGeocodeResults(term).pipe(
           map((result: any) => result.features),
           catchError((error) => {
             console.error(error);
             this.toastr.error('An unknown geocoding error occurred');
-            return of([]);
+            return EMPTY;
           })
-        )
-      ),
+        );
+      }),
     )
 
   constructor(
@@ -310,8 +313,15 @@ export class PsaComponent implements OnInit {
   }
 
   protected _fetchGeocodeResults(search: string): Observable<any> {
-    // TODO - search types
-    return this.http.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${search}.json?types=address&access_token=${this.API_TOKEN_MAPBOX}`);
+    const params = new HttpParams({
+      fromObject: {
+        types: ['address', 'postcode'],
+        access_token: this.API_TOKEN_MAPBOX,
+        country: 'us',
+        language: 'en',
+      }
+    });
+    return this.http.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${search}.json`, {params: params});
   }
 
   protected _listenForInputChanges() {
@@ -785,7 +795,7 @@ export class PsaComponent implements OnInit {
     });
   }
 
-  protected _getConfidenceValueAtPixel(pixel) {
+  protected _getConfidenceValueAtPixel(pixel): number {
     // TODO - generating random confidence using a consistent seed of the current pixel
     const rand = seedrandom(pixel.reduce(
       (p1, p2) => {

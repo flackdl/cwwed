@@ -12,9 +12,11 @@
   height: 45vh;
 
 }
+.map-info {
+  min-height: 160px;
+}
 .hover-tooltip {
   white-space: nowrap;
-  min-height: 100px;
   font-size: 14px;
   &.high-confidence .confidence {
     border-bottom: 3px dotted green;
