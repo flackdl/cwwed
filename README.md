@@ -2,7 +2,8 @@
 
 https://www.weather.gov/sti/coastalact_cwwed
 
-[![Build Status](https://travis-ci.com/flackdl/cwwed.svg?branch=master)](https://travis-ci.com/flackdl/cwwed)
+![build](https://github.com/flackdl/cwwed/actions/workflows/build.yml/badge.svg)
+
 
 **CWWED** serves as an interactive GIS database for hosting and disseminating post-storm assessment data created by the Named Storm Event Model (**NSEM**) as mandated by the **COASTAL Act**.
 
