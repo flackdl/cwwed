@@ -31,11 +31,6 @@ const hexToRgba = require('hex-to-rgba');
 const randomColor = require('randomcolor');
 
 
-// TODO - fix address-to-point issue where pin is dropped way off when zoomed out far
-// TODO - fix address-to-point issue where clicking on address opens time-graph
-// TODO - move hover details to outside of map so it's not so obtrusive
-
-
 @Component({
   selector: 'app-psa',
   templateUrl: './psa.component.html',
@@ -82,6 +77,7 @@ export class PsaComponent implements OnInit {
   public lineChartOptions: ChartOptions;
   public lineChartExportURL: string;
   public initError: string;
+  public geocodeMarkerLayer: VectorLayer;
 
   @ViewChild('popup', {static: false}) popupEl: ElementRef;
   @ViewChild('map', {static: false}) mapEl: ElementRef;
@@ -95,6 +91,10 @@ export class PsaComponent implements OnInit {
       debounceTime(250),
       distinctUntilChanged(),
       switchMap((term: string) => {
+        // remove previous marker
+        if (this.geocodeMarkerLayer) {
+          this.map.removeLayer(this.geocodeMarkerLayer);
+        }
         if (!term || term.length === 0) {
           return EMPTY;
         }
@@ -281,17 +281,15 @@ export class PsaComponent implements OnInit {
   }
 
   public geocodeSelect(event) {
-    // chosen result's coordinates
+    // set chosen result's coordinates
     const coordinates = fromLonLat(event.item.geometry.coordinates);
-    // create a new point/marker
-    const marker = new Feature({
-      geometry: new Point(coordinates),
-    });
-    const vectorSource = new VectorSource({
-      features: [marker]
-    });
-    const markerVectorLayer = new VectorLayer({
-      source: vectorSource,
+    // create a new point/marker with coordinates
+    this.geocodeMarkerLayer = new VectorLayer({
+      source: new VectorSource({
+        features: [new Feature({
+          geometry: new Point(coordinates),
+        })]
+      }),
       style: new Style({
         image: new CircleStyle({
           radius: 20,
@@ -302,8 +300,8 @@ export class PsaComponent implements OnInit {
         }),
       }),
     });
-    this.map.addLayer(markerVectorLayer);
-    // center and zoom to point
+    this.map.addLayer(this.geocodeMarkerLayer);
+    // center and zoom to coordinates
     this.map.getView().setCenter(coordinates);
     this.map.getView().setZoom(18);
   }

@@ -89,8 +89,6 @@
                     </a>
                   </dd>
                   <dt class="col-sm-6">Selected Data</dt>
-                  <!-- TODO - remove circle after new search -->
-                  <!-- TODO - variable details in table -->
                   <dd class="col-sm-6">
                     <i>
                       <button *ngIf="!isExtentActive() && !getExtentCoords()" type="button" class="btn btn-link" (click)="enableBoxSelection()">(enable selection)</button>
@@ -185,9 +183,9 @@
                   (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
                 </span>
               </div>
-              <hr/>
               <!-- coordinates -->
               <small class="d-block" *ngIf="currentFeature && currentFeature.coordinate">
+                <hr/>
                 <em>{{ currentFeature.coordinate[0] | number: '1.5' }}</em>,
                 <em>{{ currentFeature.coordinate[1] | number: '1.5' }}</em>
               </small>
