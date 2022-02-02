@@ -3,6 +3,7 @@ import tempfile
 import shutil
 import ssl
 import logging
+import pandas as pd
 from ftplib import FTP
 from urllib.parse import urlparse, ParseResult
 import h5py
@@ -50,7 +51,6 @@ class BaseProcessor:
     _named_storm_covered_data: NamedStormCoveredData = None
     _label: str = None
     _group: str = None
-    _file_extension: str = None
     _dimension_time: str = None
     _dimension_latitude: str = None
     _dimension_longitude: str = None
@@ -101,7 +101,7 @@ class BaseProcessor:
             self._fetch()
         except Exception as e:
             self._success = False
-            raise
+            raise e
 
     def _fetch(self):
         raise NotImplementedError
@@ -114,7 +114,7 @@ class BaseProcessor:
         )
 
     def _get_file_extension(self):
-        return self._file_extension
+        return None
 
     def _get_output_path(self):
         paths = [
@@ -176,6 +176,13 @@ class BaseProcessor:
 
 
 class GenericFileProcessor(BaseProcessor):
+    CONVERT_JSON_TO_CSV = 'convert_json_to_csv'
+
+    def _pre_process(self, tmp_file: str):
+        # conditionally convert json to csv
+        if self.CONVERT_JSON_TO_CSV in self._kwargs:
+            df = pd.read_json(tmp_file)
+            df.to_csv(tmp_file)
 
     def _post_process(self):
         pass
@@ -217,17 +224,23 @@ class GenericFileProcessor(BaseProcessor):
         tmp_file = self._get_tmp_file()
         ftp.retrbinary('RETR {}'.format(self._url_parsed.path), open(tmp_file, 'wb').write)
 
+        # run any pre process logic
+        self._pre_process(tmp_file)
+
         self._move_tmp_file_to_complete(tmp_file)
 
     def _fetch_http(self):
         # fetch the actual file
-        file_req = requests.get(self._url, stream=True, timeout=10)
+        file_req = requests.get(self._url, stream=True, timeout=30)
 
         # write to tmp space then move
         tmp_file = self._get_tmp_file()
         with open(tmp_file, 'wb') as f:
             for chunk in file_req.iter_content(chunk_size=1024):
                 f.write(chunk)
+
+        # run any pre process logic
+        self._pre_process(tmp_file)
 
         self._move_tmp_file_to_complete(tmp_file)
 

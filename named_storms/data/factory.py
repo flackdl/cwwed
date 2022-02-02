@@ -4,6 +4,7 @@ import celery
 import pytz
 import requests
 from ftplib import FTP
+from urllib.parse import urlencode
 from functools import cmp_to_key
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -14,7 +15,7 @@ from io import BytesIO
 from urllib import parse
 from named_storms.data.decorators import register_factory
 from named_storms import tasks
-from named_storms.data.processors import ProcessorData
+from named_storms.data.processors import ProcessorData, GenericFileProcessor
 from named_storms import models as storm_models
 from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
 
@@ -149,6 +150,21 @@ class USGSProcessorFactory(ProcessorCoreFactory):
                 group=self._sensor_deployment_type(file['instrument_id']),
                 kwargs=self._processor_kwargs(),
             ))
+            
+        # include "High Water Mark" (non-time series data without the use of sensors)
+        # e.g https://stn.wim.usgs.gov/STNServices/HWMs/FilteredHWMs.json?Event=312
+        hwm_url = 'https://stn.wim.usgs.gov/STNServices/HWMs/FilteredHWMs.json?{}'.format(
+            urlencode({'Event': self._named_storm_covered_data.external_storm_id})
+        )
+        processors_data.append(ProcessorData(
+            named_storm_id=self._named_storm.id,
+            provider_id=self._provider.id,
+            url=hwm_url,
+            label='hwm.csv',  # json data will be converted to csv in the processor
+            group='HWM',
+            # flag to convert json to csv
+            kwargs={GenericFileProcessor.CONVERT_JSON_TO_CSV: True},
+        ))
 
         return processors_data
 
