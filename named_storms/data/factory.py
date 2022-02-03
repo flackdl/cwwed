@@ -84,10 +84,6 @@ class USGSProcessorFactory(ProcessorCoreFactory):
     The usgs "event id" is stored in NamedStormCoveredDataProvider.external_storm_id
     """
 
-    # TODO - update to include High Water Mark (HWM).
-    #   See https://stn.wim.usgs.gov/STNDataPortal/#
-    #   Example: https://stn.wim.usgs.gov/STNServices/HWMs/FilteredHWMs.json?Event=283&EventType=2&EventStatus=0&States=&County=&HWMType=&HWMQuality=&HWMEnvironment=&SurveyComplete=&StillWater=
-
     FILE_TYPE_DATA = 2
     # some non-data files end up being tagged as "data" files so try and exclude the known offenders
     EXCLUDED_EXTENSIONS = ['PNG', 'png', 'MOV', 'JPG', 'jpg', 'jpeg', 'pdf']
@@ -96,6 +92,7 @@ class USGSProcessorFactory(ProcessorCoreFactory):
     sensors = []
 
     def _processors_data(self) -> List[ProcessorData]:
+        assert self._named_storm_covered_data.external_storm_id, 'USGS Processor Factor requires the external_storm_id to match their "Event ID"'
         processors_data = []
 
         # fetch deployment types
