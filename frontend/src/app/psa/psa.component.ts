@@ -9,7 +9,6 @@ import Point from 'ol/geom/Point';
 import WKT from 'ol/format/WKT';
 import Map from 'ol/Map.js';
 import View from 'ol/View.js';
-import { defaults as defaultControls, FullScreen } from 'ol/control.js';
 import GeoJSON from 'ol/format/GeoJSON.js';
 import { fromLonLat, toLonLat } from 'ol/proj.js';
 import ExtentInteraction from 'ol/interaction/Extent.js';
@@ -702,9 +701,6 @@ export class PsaComponent implements OnInit {
     }
 
     this.map = new Map({
-      controls: defaultControls().extend([
-        new FullScreen(),
-      ]),
       layers: [
         new TileLayer({
           mapName: this.MAP_LAYER_OSM_STANDARD,
@@ -864,7 +860,9 @@ export class PsaComponent implements OnInit {
       }
 
       // include the current coordinates
-      currentFeature['coordinate'] = toLonLat(event.coordinate).reverse();
+      currentFeature['coordinate'] = toLonLat(event.coordinate)
+        .reverse()
+        .map((c) => c.toFixed(4)).join(', ');
 
       this.currentFeature = currentFeature;
     });

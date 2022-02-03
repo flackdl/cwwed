@@ -2,7 +2,7 @@
 @import "~bootstrap/scss/mixins";
 @import "~bootstrap/scss/variables";
 
-#psa-container:fullscreen {
+#psa-container:fullscreen, #map-outer-container:fullscreen {
   /* necessary when entering full screen */
   background: white;
   overflow: scroll;
@@ -10,17 +10,9 @@
 
 #map-container {
   height: 45vh;
-
-}
-.map-info {
-  min-height: 160px;
 }
 .hover-tooltip {
-  white-space: nowrap;
-  font-size: 14px;
-  &.high-confidence .confidence {
-    border-bottom: 3px dotted green;
-  }
+  max-width: 60%;
 }
 
 .color-bar {

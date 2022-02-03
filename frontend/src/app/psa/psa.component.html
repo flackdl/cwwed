@@ -106,8 +106,7 @@
 
         </div>
 
-        <div class="col mt-3">
-
+        <div class="col mt-3" #mapOuterContainer id="map-outer-container">
           <!-- map -->
           <div #map class="position-relative" id="map-container">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
@@ -149,10 +148,9 @@
 
           </div>
 
-          <div class="row mt-2 map-info">
-
+          <div class="row mt-2">
             <!-- geocoder -->
-            <div class="col">
+            <div class="col col-6">
               <!-- geocoder input -->
               <div class="form-group">
                 <input type="text" class="form-control" aria-describedby="geocoder" placeholder="Search by address or zip code"
@@ -167,39 +165,60 @@
                 <ngb-highlight [result]="r.place_name" [term]="t"></ngb-highlight>
               </ng-template>
             </div>
-
             <!-- selection tool -->
             <div class="col">
               <button *ngIf="!isExtentActive()" (click)="enableBoxSelection()" class="btn btn-sm btn-info" aria-label="Enable Selection Tool">Enable selection tool <span class="oi oi-pencil"></span></button>
               <button *ngIf="isExtentActive()" (click)="disableExtentInteraction()" class="btn btn-sm btn-warning" aria-label="Disable selection tool">Disable selection tool <span class="oi oi-x"></span></button>
             </div>
-
-            <!-- feature info -->
-            <div class="col hover-tooltip alert alert-info" [ngClass]="{'alert alert-info': currentFeature, 'high-confidence': currentConfidence >= 90}">
-              <div *ngFor="let feature of currentFeature | keyvalue">
-                <!-- manually display coordinate value at bottom -->
-                <span *ngIf="feature.key !== 'coordinate'">
-                  {{ feature.key }}: {{ feature.value }}
-                  (<span class="confidence">{{ currentConfidence }}% accuracy</span>)
-                </span>
-              </div>
-              <!-- coordinates -->
-              <small class="d-block" *ngIf="currentFeature && currentFeature.coordinate">
-                <hr/>
-                <em>{{ currentFeature.coordinate[0] | number: '1.5' }}</em>,
-                <em>{{ currentFeature.coordinate[1] | number: '1.5' }}</em>
-              </small>
+            <!-- full screen -->
+            <div class="col-2 text-right">
+              <a class="btn btn-light fullscreen" (click)="toggleFullscreen(mapOuterContainer)" placement="left" ngbTooltip="Toggle fullscreen">
+                <span class="oi" [ngClass]="{'oi-fullscreen-enter': !isFullscreen(), 'oi-fullscreen-exit': isFullscreen()}"></span>
+              </a>
             </div>
-
           </div>
 
-          <!-- instructions -->
-          <div class="d-flex justify-content-between mt-2">
-            <div>
-              <small class="d-block"><sup>1</sup>Hover to see feature information</small>
-              <small class="d-block"><sup>2</sup>Click on a feature to see a time series graph for a specific location</small>
-              <small class="d-block"><sup>3</sup>Enable selection tool to download data for a specific location</small>
+          <div class="row mt-2">
+
+            <!-- feature info -->
+            <div class="col hover-tooltip">
+              <table class="table table-sm table-striped table-bordered">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>Value</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let feature of currentFeature | keyvalue" [ngClass]="{'table-success': currentConfidence >= 90}">
+                    <!-- variable's key, value, and confidence -->
+                    <ng-container *ngIf="feature.key !== 'coordinate' ">
+                      <td>{{ feature.key }}</td>
+                      <td>{{ feature.value }}</td>
+                      <td>{{ currentConfidence }}%</td>
+                    </ng-container>
+                    <!-- force coordinates as last row -->
+                    <ng-container *ngIf="feature.key === 'coordinate' ">
+                      <td>Coordinate</td>
+                      <td>{{ feature.value }}</td>
+                      <td></td>
+                    </ng-container>
+                  </tr>
+                </tbody>
+              </table>
             </div>
+
+            <!-- instructions -->
+            <div class="col">
+              <div>
+                <small class="d-block"><sup>1</sup>Search by address or zip code</small>
+                <small class="d-block"><sup>2</sup>Hover to see feature information</small>
+                <small class="d-block"><sup>3</sup>Click on a feature to see a time series graph for a specific location</small>
+                <small class="d-block"><sup>4</sup>Enable selection tool to download data for a specific location</small>
+              </div>
+            </div>
+
           </div>
 
         </div>
