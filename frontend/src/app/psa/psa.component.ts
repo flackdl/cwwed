@@ -254,10 +254,12 @@ export class PsaComponent implements OnInit {
   public toggleFullscreen(psaContainer: HTMLElement) {
     if (this.isFullscreen()) {
       document.exitFullscreen();
+    } else {
+      psaContainer.requestFullscreen();
+      // track event
+      this.googleAnalyticsService.psaFullScreen(this.namedStorm.name);
     }
-    psaContainer.requestFullscreen();
-    // track event
-    this.googleAnalyticsService.psaFullScreen(this.namedStorm.name);
+    this.map.updateSize();
   }
 
   public isFullscreen(): boolean {

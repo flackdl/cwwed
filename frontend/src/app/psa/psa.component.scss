@@ -9,6 +9,9 @@
 }
 
 #map-container {
+  &.fullscreen {
+    height: 75vh;
+  }
   height: 45vh;
 }
 .hover-tooltip {

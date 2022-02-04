@@ -108,7 +108,7 @@
 
         <div class="col mt-3" #mapOuterContainer id="map-outer-container">
           <!-- map -->
-          <div #map class="position-relative" id="map-container">
+          <div #map class="position-relative" id="map-container" [class.fullscreen]="isFullscreen()">
             <ngx-loading [show]="isLoadingMap"></ngx-loading>
 
             <!-- overlay graph -->
