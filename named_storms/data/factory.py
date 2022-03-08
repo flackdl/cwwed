@@ -493,7 +493,7 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
 
         # build a list of processors for all the relevant datasets
         for dataset_path in dataset_paths:
-            label, _ = os.path.splitext(os.path.basename(dataset_path))  # remove extension since it's handled later
+            label = os.path.basename(dataset_path)
             url = '{}://{}/{}/{}'.format(
                 self._provider_url_parsed.scheme,
                 self._provider_url_parsed.hostname,
@@ -559,8 +559,8 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
     """
     API_STATIONS_URL = 'https://tidesandcurrents.noaa.gov/mdapi/latest/webapi/stations.json'
     API_DATA_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter'
-    DATUM = 'MLLW'  # required for water level
-    FILE_TYPE = 'xml'
+    DATUM = 'MHHW'  # "Mean Higher High Water" - required for water level
+    FILE_TYPE = 'csv'
     DATE_FORMAT_STR = '%Y%m%d %H:%M'
 
     # products mapped via (api code name, name)
