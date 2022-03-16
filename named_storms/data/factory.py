@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import celery
@@ -557,30 +558,48 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
             format=xml
     Datum options: https://tidesandcurrents.noaa.gov/datum_options.html
     """
-    API_STATIONS_URL = 'https://tidesandcurrents.noaa.gov/mdapi/latest/webapi/stations.json'
+    API_STATIONS_URL_JSON = 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json'
+    API_STATIONS_URL_XML = 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.xml'
     API_DATA_URL = 'https://tidesandcurrents.noaa.gov/api/datagetter'
-    DATUM = 'MHHW'  # "Mean Higher High Water" - required for water level
+    # datums required for water level product
+    DATUMS = [
+        ('MHHW', 'MHHW'),  # "Mean Higher High Water"
+        ('NAVD88', 'NAVD'),  # North American Vertical Datum
+    ]
     FILE_TYPE = 'csv'
     DATE_FORMAT_STR = '%Y%m%d %H:%M'
 
     # products mapped via (api code name, name)
-    # example of stations products: https://tidesandcurrents.noaa.gov/mdapi/v0.6/webapi/stations/1611400/products.json
+    # example of stations products: https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108/products.json
     PRODUCT_WATER_LEVEL = ('water_level', 'Water Levels',)
     PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE = ('air_temperature', 'Meteorological')
     PRODUCT_METEOROLOGICAL_AIR_PRESSURE = ('air_pressure', 'Meteorological')
     PRODUCT_METEOROLOGICAL_WIND = ('wind', 'Meteorological')
+    PRODUCT_DATUMS = ('datums', 'Datums')
     PRODUCTS = [
         PRODUCT_WATER_LEVEL,
         PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE,
         PRODUCT_METEOROLOGICAL_AIR_PRESSURE,
         PRODUCT_METEOROLOGICAL_WIND,
+        PRODUCT_DATUMS,
     ]
 
     def _processors_data(self) -> List[ProcessorData]:
-        processors_data = []
+        # first save all stations' metadata
+        processors_data = [
+            ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=self.API_STATIONS_URL_XML,  # returns xml
+                label='stations.csv',  # will be converted to csv
+                kwargs={
+                    GenericFileProcessor.CONVERT_XML_TO_CSV: True,  # flag to convert xml to csv
+                    GenericFileProcessor.CONVERT_XML_XPATH: '//Station',  # flag to parse xml to specific nodes
+                },
+            )]
 
         # fetch and parse the station listings
-        stations_response = requests.get(self.API_STATIONS_URL, timeout=10)
+        stations_response = requests.get(self.API_STATIONS_URL_JSON, timeout=10)
         stations_response.raise_for_status()
         stations_json = stations_response.json()
         stations = stations_json['stations']
@@ -623,39 +642,56 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
                     format=self.FILE_TYPE,
                 )
 
-                # PRODUCT_WATER_LEVEL only
+                # water level specific args
                 if product[0] == self.PRODUCT_WATER_LEVEL[0]:
 
-                    # skip this station if it doesn't offer the right DATUM
+                    # get this product's datums
                     datum_request = requests.get(station['datums']['self'], timeout=10)
-                    if datum_request.ok:
-                        if not [d for d in datum_request.json()['datums'] if d['name'] == self.DATUM]:
-                            continue
-                    else:
+                    if not datum_request.ok:
                         continue
+                    product_datums = [d['name'] for d in datum_request.json()['datums']]
 
-                    # include "datum" in query args
-                    query_args.update({
-                        'datum': self.DATUM,
-                    })
+                    # query product for each datum
+                    queries = []
 
-                    # include "datum" in label
-                    label = '{}-{}'.format(label, self.DATUM)
+                    for top_level_datum, datum_to_query in self.DATUMS:
+                        # skip datum if it's not offered by the product
+                        if top_level_datum not in product_datums:
+                            continue
+                        kwargs = query_args.copy()
+                        # include "datum" in query args
+                        kwargs.update({
+                            'datum': datum_to_query,
+                        })
+                        queries.append({
+                            'args': kwargs,
+                            # include "datum" in label for water products
+                            'label': '{}-{}.{}'.format(label, datum_to_query, self.FILE_TYPE),
+                        })
+                else:
+                    queries = [
+                        {
+                            'args': query_args,
+                            'label': '{}.{}'.format(label, self.FILE_TYPE)
+                        }
+                    ]
 
                 #
-                # success - add station to list
+                # add to processors
                 #
 
-                url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(query_args))
+                for query in queries:
 
-                processors_data.append(ProcessorData(
-                    named_storm_id=self._named_storm.id,
-                    provider_id=self._provider.id,
-                    url=url,
-                    label='{}.{}'.format(label, self.FILE_TYPE),
-                    kwargs=self._processor_kwargs(),
-                    group=product[1],
-                ))
+                    url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(query['args']))
+
+                    processors_data.append(ProcessorData(
+                        named_storm_id=self._named_storm.id,
+                        provider_id=self._provider.id,
+                        url=url,
+                        label=query['label'],
+                        kwargs=self._processor_kwargs(),
+                        group=product[1],
+                    ))
 
         return processors_data
 

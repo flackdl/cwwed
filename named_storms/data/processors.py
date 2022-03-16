@@ -177,12 +177,25 @@ class BaseProcessor:
 
 class GenericFileProcessor(BaseProcessor):
     CONVERT_JSON_TO_CSV = 'convert_json_to_csv'
+    CONVERT_XML_TO_CSV = 'convert_xml_to_csv'
+    CONVERT_XML_XPATH = 'convert_xml_xpath'
 
     def _pre_process(self, tmp_file: str):
         # conditionally convert json to csv
         if self.CONVERT_JSON_TO_CSV in self._kwargs:
             df = pd.read_json(tmp_file)
             df.to_csv(tmp_file)
+        elif self.CONVERT_XML_TO_CSV in self._kwargs:
+            pd_kwargs = {}
+            # optionally include xpath string to parse specific nodes
+            if self.CONVERT_XML_XPATH in self._kwargs:
+                pd_kwargs.update(xpath=self._kwargs[self.CONVERT_XML_XPATH])
+            try:
+                df = pd.read_xml(tmp_file, **pd_kwargs)
+            except ValueError as e:
+                logger.exception(e)
+            else:
+                df.to_csv(tmp_file, index=False)
 
     def _post_process(self):
         pass

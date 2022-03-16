@@ -21,6 +21,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--storm_id', type=int)
         parser.add_argument('--covered_data_id', type=int)
+        parser.add_argument('--force', action='store_true')
 
     def handle(self, *args, **options):
         storm_filter_args = {'active': True}
@@ -45,7 +46,7 @@ class Command(BaseCommand):
             for covered_data in storm.covered_data.filter(**covered_data_filter_args):
 
                 storm_covered_data = NamedStormCoveredData.objects.filter(named_storm=storm, covered_data=covered_data).get()  # this has to exist
-                if storm_covered_data.date_collected:
+                if storm_covered_data.date_collected and not options['force']:
                     self.stdout.write(
                         self.style.SUCCESS('\tSkipping already collected Covered Data: %s on %s' % (covered_data, storm_covered_data.date_collected)))
                     continue
