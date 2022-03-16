@@ -360,8 +360,9 @@ class OpenDapProcessor(BaseProcessor):
             logger.info('Skipping dataset with no values for a dimension ({}): %s' % self._url)
             return
 
-        # store as netcdf and close dataset
+        # store as netcdf & csv
         self._dataset.to_netcdf(self._output_path)
+        self._dataset.to_dataframe().to_csv('{}.csv'.format(self._output_path))
         self._dataset.close()
 
     def _slice_dataset(self) -> xarray.Dataset:
