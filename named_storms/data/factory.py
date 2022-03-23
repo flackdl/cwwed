@@ -60,15 +60,6 @@ class ProcessorCoreFactory(ProcessorBaseFactory):
         self._verify_registered()
         return self._processors_data()
 
-    @staticmethod
-    def generic_filter(records: list):
-        # if DEBUG return a small subset of randomized records
-        if settings.DEBUG:
-            from random import shuffle
-            shuffle(records)
-            return records[:10]
-        return records
-
     def _processor_kwargs(self):
         return {}
 
@@ -119,9 +110,6 @@ class USGSProcessorFactory(ProcessorCoreFactory):
 
         # filter unique files
         files_json = self._filter_unique_files(files_json)
-
-        # filter
-        files_json = self.generic_filter(files_json)
 
         # build a list of data processors for all the files/sensors for this event
         for file in files_json:
@@ -373,9 +361,6 @@ class JPLProcessorBaseFactory(THREDDSCatalogBaseFactory):
                 if self._is_using_dataset(dataset.get('name')):
                     dataset_paths.append(dataset.get('ID'))
 
-        # filter datasets
-        dataset_paths = self.generic_filter(dataset_paths)
-
         # build a list of processors for all the relevant datasets
         for dataset_path in dataset_paths:
             label = os.path.basename(dataset_path)
@@ -480,7 +465,6 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
 
         # build catalogRefs and filter
         catalog_refs = self._catalog_ref_elements(self._provider.url)
-        catalog_refs = self.generic_filter(catalog_refs)
 
         # build list of catalog urls
         catalog_urls = [self._catalog_ref_href(ref) for ref in catalog_refs]
@@ -540,11 +524,13 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_TIDES_AND_CURRENTS)
 class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
     """
-    REST APIs:
+    REST API examples:
+      - API
+          https://api.tidesandcurrents.noaa.gov/api/prod/
       - List of stations
-          https://opendap.co-ops.nos.noaa.gov/axis/webservices/activestations/response.jsp?v=2&format=xml
-      - Station data
-          https://tidesandcurrents.noaa.gov/api
+          https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations.json
+      - Station's products
+          https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations/8729108/products.json
 
         - sample args:
             begin_date=20130101 10:00
@@ -614,6 +600,20 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
             # skip this station if it's outside our covered data's geo
             if not self._named_storm_covered_data.geo.contains(station_point):
                 continue
+
+            # add station's sensors to be processed
+            processors_data.append(ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=station['sensors']['self'].replace('.json', '.xml'),  # ask for xml
+                label='station-{}-sensors.csv'.format(station['id']),
+                # data is xml so include a flag to convert it to csv
+                kwargs={
+                    GenericFileProcessor.CONVERT_XML_TO_CSV: True,
+                    GenericFileProcessor.CONVERT_XML_XPATH: '//Sensor',
+                },
+                group='Sensors',
+            ))
 
             # get a list of products this station offers
             products_request = requests.get(station['products']['self'], timeout=10)
@@ -736,8 +736,5 @@ class NWMProcessorFactory(ProcessorCoreFactory):
                             kwargs=self._processor_kwargs(),
                             group=os.path.basename(directory_product),
                         ))
-
-        # filter
-        processors_data = self.generic_filter(processors_data)
 
         return processors_data

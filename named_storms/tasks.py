@@ -452,7 +452,7 @@ def validate_nsem_psa_task(nsem_id):
             validator = PsaDatasetValidator(ds)
 
             # dates
-            for date in nsem_psa.dates:
+            for date in nsem_psa.naive_dates():
                 if not validator.is_valid_date(date):
                     file_exceptions.append('Manifest date was not found in actual dataset: {}'.format(date))
 

@@ -179,6 +179,11 @@ class NsemPsa(models.Model):
     def __str__(self):
         return '{} ({})'.format(self.named_storm, self.id)
 
+    def naive_dates(self):
+        # return naive dates to help with populating xarray instances since it doesn't yet handle tz aware dates for indexes
+        # https://github.com/pydata/xarray/issues/5594
+        return [d.replace(tzinfo=None) for d in self.dates]
+
     @classmethod
     def get_last_valid_psa(cls, storm_id: int):
         qs = cls.objects.filter(

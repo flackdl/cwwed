@@ -29,7 +29,7 @@ class PSATest(BaseTest):
     def test_coordinates(self):
         ds_valid = xr.Dataset(
             coords={
-                "time": self.nsem_psa.dates,
+                "time": self.nsem_psa.naive_dates(),
                 "lat": [],
                 "lon": [],
             },
@@ -48,7 +48,7 @@ class PSATest(BaseTest):
         self.assertFalse(validator.is_valid_coords(), 'Should be missing coordinate variables')
 
     def test_dates(self):
-        ds = xr.Dataset(coords={"time": self.nsem_psa.dates})
+        ds = xr.Dataset(coords={"time": self.nsem_psa.naive_dates()})
 
         valid_date = parse_datetime('2012-10-29T13:00:00')
         invalid_date = parse_datetime('1800-01-01T01:00:00')
@@ -93,7 +93,7 @@ class PSATest(BaseTest):
                 'element': (['node'], np.random.rand(3), {'start_index': 0}),
             },
             coords={
-                "time": self.nsem_psa.dates,
+                "time": self.nsem_psa.naive_dates(),
             },
         )
 
@@ -103,7 +103,7 @@ class PSATest(BaseTest):
                 'water_level': (['time', 'x', 'y'], np.random.rand(len(self.nsem_psa.dates), 3, 3)),
             },
             coords={
-                "time": self.nsem_psa.dates,
+                "time": self.nsem_psa.naive_dates(),
             },
         )
 

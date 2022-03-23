@@ -20,9 +20,9 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
                     d1.nsem_psa_variable_id = v1.id
                 )
                 INNER JOIN named_storms_nsempsadata d2 ON (
-                        d1.point = d2.point AND
-                        d2.date = %(date)s AND
-                        d1.id != d2.id
+                    d1.point = d2.point AND
+                    d2.date = %(date)s AND
+                    d1.id != d2.id
                 )
                 INNER JOIN named_storms_nsempsavariable v2 ON (
                     v2.nsem_id = %(psa_id)s AND
