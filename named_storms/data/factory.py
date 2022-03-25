@@ -1,4 +1,3 @@
-import logging
 import os
 import re
 import celery
@@ -8,7 +7,6 @@ from ftplib import FTP
 from urllib.parse import urlencode
 from functools import cmp_to_key
 from datetime import datetime, timedelta
-from django.conf import settings
 from django.contrib.gis.geos import Point
 from lxml import etree
 from typing import List
@@ -18,7 +16,7 @@ from named_storms.data.decorators import register_factory
 from named_storms import tasks
 from named_storms.data.processors import ProcessorData, GenericFileProcessor
 from named_storms import models as storm_models
-from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData
+from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC
 
 
 class ProcessorBaseFactory:
@@ -444,13 +442,17 @@ class JPLQSCATL1CProcessorFactoryFactory(JPLProcessorBaseFactory):
 @register_factory(storm_models.PROCESSOR_DATA_FACTORY_NDBC)
 class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
     """
+    https://www.ndbc.noaa.gov/docs/ndbc_web_data_guide.pdf
     https://dods.ndbc.noaa.gov/
     The NDBC has a THREDDS catalog which includes datasets for each station where the station format is 5 characters, i.e "20cm4".
+    Metadata:
+        Stations: https://www.ndbc.noaa.gov/metadata/stationmetadata.xml
     The datasets inside each station includes historical data and real-time data (45 days).  There is no overlap.
         - Historical data is in the format "20cm4h2014.nc"
         - "Real-time" data is in the format "20cm4h9999.nc"
     NOTE: NDBC's SSL certs aren't validating, so let's just not verify.
     """
+    API_STATION_METADATA_URL = 'https://www.ndbc.noaa.gov/metadata/stationmetadata.xml'
     RE_PATTERN = re.compile(r'^(?P<station>\w{5})\w(?P<year>\d{4})\.nc$')
     # number of days "real-time" data is stored separately from the timestamped files
     REALTIME_DAYS = 45
@@ -461,7 +463,17 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
 
     def _processors_data(self) -> List[ProcessorData]:
         dataset_paths = []
-        processors_data = []
+        processors_data = [
+            # collection station's metadata
+            ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=self.API_STATION_METADATA_URL,
+                label='station-metadata.xml',
+                # override the processor just for this one-off request of xml metadata
+                override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_GENERIC,
+            )
+        ]
 
         # build catalogRefs and filter
         catalog_refs = self._catalog_ref_elements(self._provider.url)

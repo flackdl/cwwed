@@ -34,6 +34,7 @@ class ProcessorData(NamedTuple):
     dimension_time: str = None
     dimension_latitude: str = None
     dimension_longitude: str = None
+    override_provider_processor_class: str = None  # let's a covered data factory override the default processor class for this provider
     kwargs: dict = dict()
 
 
@@ -344,13 +345,8 @@ class OpenDapProcessor(BaseProcessor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # open the dataset url and create the dataset/processor while conditionally disabling ssl verification
-        session = self._session()
-        session.verify = self._verify_ssl()
-        store = xarray.backends.PydapDataStore.open(self._url, session=session)
-
         # fetch and subset the dataset
-        self._dataset = xarray.open_dataset(store, decode_times=False)
+        self._dataset = xarray.open_dataset(self._url, decode_times=False)
         self._dataset = self._slice_dataset()
 
     def _fetch(self):

@@ -32,7 +32,7 @@ def create_directory(path, remove_if_exists=False):
     return path
 
 
-def processor_class(provider: CoveredDataProvider):
+def processor_class(processor_source: str):
     """
     Returns a processor class from a provider instance
     """
@@ -43,7 +43,7 @@ def processor_class(provider: CoveredDataProvider):
         PROCESSOR_DATA_SOURCE_FILE_HDF: HierarchicalDataFormatProcessor,
         PROCESSOR_DATA_SOURCE_DAP: GridOpenDapProcessor,
     }
-    match = sources.get(provider.processor_source)
+    match = sources.get(processor_source)
     if match is None:
         raise Exception('Unknown processor source')
     return match

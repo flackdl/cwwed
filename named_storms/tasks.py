@@ -91,7 +91,15 @@ def process_covered_data_dataset_task(data: list):
     processor_data = ProcessorData(*data)
     named_storm = get_object_or_404(NamedStorm, pk=processor_data.named_storm_id)
     provider = get_object_or_404(CoveredDataProvider, pk=processor_data.provider_id)
-    processor_cls = processor_class(provider)
+
+    # use override if it exists
+    if processor_data.override_provider_processor_class is not None:
+        processor_cls = processor_class(processor_data.override_provider_processor_class)
+    # otherwise look up the processor source on the provider
+    else:
+        processor_cls = processor_class(provider.processor_source)
+
+    # build processor
     processor = processor_cls(
         named_storm=named_storm,
         provider=provider,
@@ -100,6 +108,7 @@ def process_covered_data_dataset_task(data: list):
         group=processor_data.group,
         **processor_data.kwargs,  # include any extra kwargs
     )
+    # fetch and return data
     processor.fetch()
     return processor.to_dict()
 
