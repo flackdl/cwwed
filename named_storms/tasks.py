@@ -47,7 +47,7 @@ logger = get_task_logger(__name__)
 TASK_ARGS_RETRY = dict(
     autoretry_for=(Exception,),
     default_retry_delay=5,
-    max_retries=10,
+    max_retries=3,
 )
 
 TASK_ARGS_ACK_LATE = dict(

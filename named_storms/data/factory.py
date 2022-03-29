@@ -233,17 +233,22 @@ class THREDDSCatalogBaseFactory(ProcessorCoreFactory):
         title_key = '{{{}}}title'.format(self.namespaces['xlink'])
         return catalog_ref.get(title_key)
 
-    def _catalog_ref_href(self, catalog_ref: etree.Element) -> str:
+    def _catalog_ref_href(self, catalog_ref: etree.Element, prefix_paths: List = None) -> str:
         """
         :return: absolute value from "href" attribute for a particular catalogRef element
         """
         dir_path = os.path.dirname(self._provider.url)
         href_key = '{{{}}}href'.format(self.namespaces['xlink'])
         catalog_path = catalog_ref.get(href_key)
-        return os.path.join(
+        paths = [
             dir_path,
+        ]
+        if prefix_paths:
+            paths.append(os.path.join(*prefix_paths))
+        paths.append(
             parse.urlparse(catalog_path).path,
         )
+        return os.path.join(*paths)
 
     def _is_using_dataset(self, dataset: str) -> bool:
         return True
@@ -475,35 +480,42 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
             )
         ]
 
-        # build catalogRefs and filter
-        catalog_refs = self._catalog_ref_elements(self._provider.url)
+        # build station catalogRefs
+        for station_catalog_ref in self._catalog_ref_elements(self._provider.url):
 
-        # build list of catalog urls
-        catalog_urls = [self._catalog_ref_href(ref) for ref in catalog_refs]
+            station_title = self._catalog_ref_title(station_catalog_ref)
+            station_url = self._catalog_ref_href(station_catalog_ref)
 
-        # build a list of relevant datasets for each station
-        catalogs = self._catalog_documents(catalog_urls)
-        for station in catalogs:
-            for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
-                if self._is_using_dataset(dataset.get('name')):
-                    dataset_paths.append(dataset.get('urlPath'))
+            # build catalogRefs for this station
+            catalog_refs = self._catalog_ref_elements(station_url)
 
-        # build a list of processors for all the relevant datasets
-        for dataset_path in dataset_paths:
-            label = os.path.basename(dataset_path)
-            url = '{}://{}/{}/{}'.format(
-                self._provider_url_parsed.scheme,
-                self._provider_url_parsed.hostname,
-                'thredds/dodsC',
-                dataset_path,
-            )
-            processors_data.append(ProcessorData(
-                named_storm_id=self._named_storm.id,
-                provider_id=self._provider.id,
-                url=url,
-                label=label,
-                kwargs=self._processor_kwargs(),
-            ))
+            # build list of catalog urls
+            catalog_urls = [self._catalog_ref_href(ref, prefix_paths=[station_title]) for ref in catalog_refs]
+
+            # build a list of relevant datasets for each station
+            catalogs = self._catalog_documents(catalog_urls)
+            for station in catalogs:
+                for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
+                    if self._is_using_dataset(dataset.get('name')):
+                        dataset_paths.append(dataset.get('urlPath'))
+
+            # build a list of processors for all the relevant datasets
+            for dataset_path in dataset_paths:
+                label = os.path.basename(dataset_path)
+                url = '{}://{}/{}/{}'.format(
+                    self._provider_url_parsed.scheme,
+                    self._provider_url_parsed.hostname,
+                    'thredds/dodsC',
+                    dataset_path,
+                )
+                processors_data.append(ProcessorData(
+                    named_storm_id=self._named_storm.id,
+                    provider_id=self._provider.id,
+                    url=url,
+                    label=label,
+                    group=station_title,
+                    kwargs=self._processor_kwargs(),
+                ))
 
         return processors_data
 
