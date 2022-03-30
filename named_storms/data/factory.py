@@ -585,13 +585,11 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
     PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE = ('air_temperature', 'Meteorological')
     PRODUCT_METEOROLOGICAL_AIR_PRESSURE = ('air_pressure', 'Meteorological')
     PRODUCT_METEOROLOGICAL_WIND = ('wind', 'Meteorological')
-    PRODUCT_DATUMS = ('datums', 'Datums')
     PRODUCTS = [
         PRODUCT_WATER_LEVEL,
         PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE,
         PRODUCT_METEOROLOGICAL_AIR_PRESSURE,
         PRODUCT_METEOROLOGICAL_WIND,
-        PRODUCT_DATUMS,
     ]
 
     def _processors_data(self) -> List[ProcessorData]:
@@ -600,12 +598,8 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
             ProcessorData(
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
-                url=self.API_STATIONS_URL_XML,  # returns xml
-                label='stations.csv',  # will be converted to csv
-                kwargs={
-                    GenericFileProcessor.CONVERT_XML_TO_CSV: True,  # flag to convert xml to csv
-                    GenericFileProcessor.CONVERT_XML_XPATH: '//Station',  # flag to parse xml to specific nodes
-                },
+                url=self.API_STATIONS_URL_JSON,
+                label='stations.json',
             )]
 
         # fetch and parse the station listings
@@ -625,19 +619,15 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
             if not self._named_storm_covered_data.geo.contains(station_point):
                 continue
 
-            # add station's sensors to be processed
-            processors_data.append(ProcessorData(
-                named_storm_id=self._named_storm.id,
-                provider_id=self._provider.id,
-                url=station['sensors']['self'].replace('.json', '.xml'),  # ask for xml
-                label='station-{}-sensors.csv'.format(station['id']),
-                # data is xml so include a flag to convert it to csv
-                kwargs={
-                    GenericFileProcessor.CONVERT_XML_TO_CSV: True,
-                    GenericFileProcessor.CONVERT_XML_XPATH: '//Sensor',
-                },
-                group='Sensors',
-            ))
+            for key in ['sensors', 'datums', 'supersededdatums']:
+                # add station's [key] to be processed
+                processors_data.append(ProcessorData(
+                    named_storm_id=self._named_storm.id,
+                    provider_id=self._provider.id,
+                    url=station[key]['self'],
+                    label='station-{}-{}.json'.format(station['id'], key),
+                    group=key.capitalize(),
+                ))
 
             # get a list of products this station offers
             products_request = requests.get(station['products']['self'], timeout=10)
