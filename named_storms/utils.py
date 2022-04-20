@@ -13,7 +13,7 @@ from cwwed import slack
 from named_storms.models import (
     CoveredDataProvider, NamedStorm, NsemPsa, CoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC,
     PROCESSOR_DATA_SOURCE_FILE_BINARY, PROCESSOR_DATA_SOURCE_DAP, PROCESSOR_DATA_SOURCE_FILE_HDF,
-    NamedStormCoveredDataSnapshot,
+    NamedStormCoveredDataSnapshot, PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
 )
 
 
@@ -36,12 +36,13 @@ def processor_class(processor_source: str):
     """
     Returns a processor class from a provider instance
     """
-    from named_storms.data.processors import GridOpenDapProcessor, GenericFileProcessor, BinaryFileProcessor, HierarchicalDataFormatProcessor
+    from named_storms.data.processors import GridOpenDapProcessor, GenericFileProcessor, BinaryFileProcessor, HierarchicalDataFormatProcessor, TempFileProcessor
     sources = {
         PROCESSOR_DATA_SOURCE_FILE_BINARY: BinaryFileProcessor,
         PROCESSOR_DATA_SOURCE_FILE_GENERIC: GenericFileProcessor,
         PROCESSOR_DATA_SOURCE_FILE_HDF: HierarchicalDataFormatProcessor,
         PROCESSOR_DATA_SOURCE_DAP: GridOpenDapProcessor,
+        PROCESSOR_DATA_SOURCE_FILE_TEMPORARY: TempFileProcessor,
     }
     match = sources.get(processor_source)
     if match is None:
@@ -107,11 +108,22 @@ def named_storm_covered_data_archive_path_root(named_storm: NamedStorm) -> str:
 
 def named_storm_covered_data_incomplete_path(named_storm: NamedStorm) -> str:
     """
-    Returns a path to a storm's temporary/incomplete covered data
+    Returns a path to a storm's incomplete covered data
     """
     return os.path.join(
         root_data_path(),
         settings.CWWED_COVERED_DATA_INCOMPLETE_DIR_NAME,
+        named_storm.name,
+    )
+
+
+def named_storm_covered_data_tmp_path(named_storm: NamedStorm) -> str:
+    """
+    Returns a path to a storm's temporary covered data path
+    """
+    return os.path.join(
+        root_data_path(),
+        settings.CWWED_COVERED_DATA_TMP_DIR_NAME,
         named_storm.name,
     )
 

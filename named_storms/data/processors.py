@@ -176,6 +176,16 @@ class BaseProcessor:
         return True
 
 
+class TempFileProcessor(BaseProcessor):
+    # `self._url` is expected to live in shared/nfs storage
+
+    def _fetch(self):
+        tmp_file = self._url
+        # set file permissions and move to output path
+        os.chmod(tmp_file, 0o644)
+        shutil.move(tmp_file, self._output_path)
+
+
 class GenericFileProcessor(BaseProcessor):
     CONVERT_JSON_TO_CSV = 'convert_json_to_csv'
     CONVERT_XML_TO_CSV = 'convert_xml_to_csv'

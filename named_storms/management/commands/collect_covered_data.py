@@ -13,7 +13,7 @@ from named_storms.models import NamedStorm, NamedStormCoveredDataLog, NamedStorm
 from named_storms.tasks import process_covered_data_dataset_task, archive_named_storm_covered_data_task
 from named_storms.utils import (
     named_storm_covered_data_incomplete_path, create_directory, processor_factory_class,
-    slack_channel, named_storm_covered_data_current_path_root)
+    slack_channel, named_storm_covered_data_current_path_root, named_storm_covered_data_tmp_path)
 
 logger = logging.getLogger('cwwed')
 
@@ -43,8 +43,10 @@ class Command(BaseCommand):
             # create output directories
             complete_path = named_storm_covered_data_current_path_root(storm)
             incomplete_path = named_storm_covered_data_incomplete_path(storm)
+            temp_path = named_storm_covered_data_tmp_path(storm)
             create_directory(complete_path)
             create_directory(incomplete_path, remove_if_exists=True)
+            create_directory(temp_path, remove_if_exists=True)
 
             for covered_data in storm.covered_data.filter(**covered_data_filter_args):
 
@@ -175,6 +177,9 @@ class Command(BaseCommand):
 
                 if not covered_data_success:
                     logger.error('Error collecting {} from ALL providers'.format(covered_data))
+
+            # remove any temporary files
+            shutil.rmtree(temp_path, ignore_errors=True)
 
         if not settings.DEBUG:
             slack_channel('Finished collecting covered data', '#events')

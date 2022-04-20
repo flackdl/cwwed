@@ -1,6 +1,10 @@
+import logging
 import os
 import re
+import tempfile
+
 import celery
+import pandas as pd
 import pytz
 import requests
 from ftplib import FTP
@@ -16,7 +20,8 @@ from named_storms.data.decorators import register_factory
 from named_storms import tasks
 from named_storms.data.processors import ProcessorData, GenericFileProcessor
 from named_storms import models as storm_models
-from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC
+from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_TEMPORARY
+from named_storms.utils import named_storm_covered_data_tmp_path
 
 
 class ProcessorBaseFactory:
@@ -86,14 +91,14 @@ class USGSProcessorFactory(ProcessorCoreFactory):
         processors_data = []
 
         # fetch deployment types
-        deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json', timeout=10)
+        deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json', timeout=30)
         deployment_types_req.raise_for_status()
         self.deployment_types = deployment_types_req.json()
 
         # fetch event sensors
         sensors_req = requests.get(
             'https://stn.wim.usgs.gov/STNServices/Events/{}/Instruments.json'.format(self._named_storm_covered_data.external_storm_id),
-            timeout=10,
+            timeout=30,
         )
         sensors_req.raise_for_status()
         self.sensors = sensors_req.json()
@@ -101,7 +106,7 @@ class USGSProcessorFactory(ProcessorCoreFactory):
         # fetch event data files
         files_req = requests.get(
             'https://stn.wim.usgs.gov/STNServices/Events/{}/Files.json'.format(self._named_storm_covered_data.external_storm_id),
-            timeout=10,
+            timeout=30,
         )
         files_req.raise_for_status()
         files_json = files_req.json()
@@ -259,7 +264,7 @@ class THREDDSCatalogBaseFactory(ProcessorCoreFactory):
         """
 
         # fetch and parse the main catalog
-        catalog_response = requests.get(catalog_url, verify=self._verify_ssl, timeout=10)
+        catalog_response = requests.get(catalog_url, verify=self._verify_ssl, timeout=30)
         catalog_response.raise_for_status()
         catalog = etree.parse(BytesIO(catalog_response.content))
 
@@ -593,20 +598,25 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
     ]
 
     def _processors_data(self) -> List[ProcessorData]:
-        # first save all stations' metadata
+
+        # fetch and parse the station listings
+        stations_response = requests.get(self.API_STATIONS_URL_JSON, timeout=30)
+        stations_response.raise_for_status()
+        stations_json = stations_response.json()
+        stations = stations_json['stations']
+
+        # first save all stations' metadata as csv
+        temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
+        pd.DataFrame.from_records(stations).to_csv(temp_path)
         processors_data = [
             ProcessorData(
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
-                url=self.API_STATIONS_URL_JSON,
-                label='stations.json',
+                # override the processor to use a pre-collected temporary file
+                override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
+                url=temp_path,  # file path
+                label='stations.csv',
             )]
-
-        # fetch and parse the station listings
-        stations_response = requests.get(self.API_STATIONS_URL_JSON, timeout=10)
-        stations_response.raise_for_status()
-        stations_json = stations_response.json()
-        stations = stations_json['stations']
 
         # build a list of stations to collect data
         for station in stations:
@@ -619,18 +629,40 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
             if not self._named_storm_covered_data.geo.contains(station_point):
                 continue
 
-            for key in ['sensors', 'datums', 'supersededdatums']:
-                # add station's [key] to be processed
+            for item_name, item_key in [('sensors', 'sensors'), ('datums', 'datums'), ('supersededdatums', 'datums')]:
+                if item_name not in station:
+                    logging.warning('item name {} not found in station {}'.format(item_key, station['id']))
+                    continue
+                item_response = requests.get(station[item_name]['self'], timeout=30)
+                if not item_response.ok:
+                    logging.warning('skipping bad response from {}'.format(station[item_key]))
+                    continue
+                station_item_data = item_response.json()
+                if not station_item_data.get(item_key):
+                    logging.warning('skipping absent items: name={name}, key={key}, station={station}'.format(
+                        name=item_name, key=item_key, station=station['id']))
+                    continue
+                station_items = station_item_data[item_key]
+
+                # save to temporary location as csv
+                temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
+                df = pd.DataFrame.from_records(station_items)
+                df['Units'] = station_item_data['units']  # include "units" column
+                df.to_csv(temp_path)
+
+                # add station's `key` to be processed
                 processors_data.append(ProcessorData(
                     named_storm_id=self._named_storm.id,
                     provider_id=self._provider.id,
-                    url=station[key]['self'],
-                    label='station-{}-{}.json'.format(station['id'], key),
-                    group=key.capitalize(),
+                    # override the processor to use a pre-collected temporary file
+                    override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
+                    url=temp_path,  # file path
+                    label='station-{}-{}.csv'.format(station['id'], item_name),
+                    group=item_name.capitalize(),
                 ))
 
             # get a list of products this station offers
-            products_request = requests.get(station['products']['self'], timeout=10)
+            products_request = requests.get(station['products']['self'], timeout=30)
             if products_request.ok:
                 station_products = [p['name'] for p in products_request.json()['products']]
             else:
@@ -650,7 +682,7 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
                     end_date=self._named_storm_covered_data.date_end.strftime(self.DATE_FORMAT_STR),
                     station=station['id'],
                     product=product[0],
-                    units='metric',
+                    units='english',
                     time_zone='gmt',
                     application='cwwed',
                     format=self.FILE_TYPE,
@@ -660,7 +692,7 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
                 if product[0] == self.PRODUCT_WATER_LEVEL[0]:
 
                     # get this product's datums
-                    datum_request = requests.get(station['datums']['self'], timeout=10)
+                    datum_request = requests.get(station['datums']['self'], timeout=30)
                     if not datum_request.ok:
                         continue
                     product_datums = [d['name'] for d in datum_request.json()['datums']]
@@ -697,11 +729,35 @@ class TidesAndCurrentsProcessorFactory(ProcessorCoreFactory):
                 for query in queries:
 
                     url = '{}?{}'.format(self.API_DATA_URL, parse.urlencode(query['args']))
+                    # convert to csv and save as temporary file
+                    try:
+                        df = pd.read_csv(url)
+                    except Exception as e:
+                        logging.exception(e)
+                        logging.warning('skipping bad data request for station {}'.format(station['id']))
+                        continue
+                    # generate temporary path
+                    temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
+
+                    # add units - we know it's one of the following because we specified "english" in the data query param "units"
+                    if product == self.PRODUCT_METEOROLOGICAL_WIND:
+                        df['Units'] = 'knots'
+                    elif product == self.PRODUCT_METEOROLOGICAL_AIR_TEMPERATURE:
+                        df['Units'] = 'fahrenheit'
+                    elif product == self.PRODUCT_METEOROLOGICAL_AIR_PRESSURE:
+                        df['Units'] = 'mb'
+                    elif product == self.PRODUCT_WATER_LEVEL:
+                        df['Units'] = 'feet'
+
+                    # save to temp path as csv
+                    df.to_csv(temp_path)
 
                     processors_data.append(ProcessorData(
                         named_storm_id=self._named_storm.id,
                         provider_id=self._provider.id,
-                        url=url,
+                        # override the processor to use a pre-collected temporary file
+                        override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
+                        url=temp_path,  # temporary file path
                         label=query['label'],
                         kwargs=self._processor_kwargs(),
                         group=product[1],
@@ -729,7 +785,7 @@ class NWMProcessorFactory(ProcessorCoreFactory):
 
     def _processors_data(self) -> List[ProcessorData]:
         processors_data = []
-        ftp = FTP(self._provider_url_parsed.hostname, timeout=20)
+        ftp = FTP(self._provider_url_parsed.hostname, timeout=30)
         ftp.login()
         base_path = self._provider_url_parsed.path
         directory_dates = ftp.nlst(base_path)
