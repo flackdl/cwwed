@@ -400,7 +400,7 @@ class OpenDapProcessor(BaseProcessor):
         # slice the dimensions
         #
 
-        # find the array indexes for our slices so we can take advantage of opendap's server side processing vs loading everything into memory
+        # find the array indexes for our slices, so we can take advantage of opendap's server side processing vs loading everything into memory
         time_start_idx, time_end_idx = self._constraint_indexes(self._dimension_time, self._time_start, self._time_end)
         lat_start_idx, lat_end_idx = self._constraint_indexes(self._dimension_latitude, self._lat_start, self._lat_end)
         lng_start_idx, lng_end_idx = self._constraint_indexes(self._dimension_longitude, self._lng_start, self._lng_end)
@@ -432,7 +432,7 @@ class OpenDapProcessor(BaseProcessor):
         """
 
         # convert numpy array to list for comparison
-        values = self._dataset[dimension].values.tolist()
+        values = list(self._dataset[dimension].values)
 
         # TODO - this poorly assumes the data variable is sorted
         # find the index range and fallback the start/end index to 0/None, respectively, if it's not in range

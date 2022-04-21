@@ -11,6 +11,7 @@ from ftplib import FTP
 from urllib.parse import urlencode
 from functools import cmp_to_key
 from datetime import datetime, timedelta
+from django.utils.dateparse import parse_date
 from django.contrib.gis.geos import Point
 from lxml import etree
 from typing import List
@@ -238,22 +239,17 @@ class THREDDSCatalogBaseFactory(ProcessorCoreFactory):
         title_key = '{{{}}}title'.format(self.namespaces['xlink'])
         return catalog_ref.get(title_key)
 
-    def _catalog_ref_href(self, catalog_ref: etree.Element, prefix_paths: List = None) -> str:
+    def _catalog_ref_href(self, catalog_ref: etree.Element) -> str:
         """
         :return: absolute value from "href" attribute for a particular catalogRef element
         """
         dir_path = os.path.dirname(self._provider.url)
         href_key = '{{{}}}href'.format(self.namespaces['xlink'])
         catalog_path = catalog_ref.get(href_key)
-        paths = [
+        return os.path.join(
             dir_path,
-        ]
-        if prefix_paths:
-            paths.append(os.path.join(*prefix_paths))
-        paths.append(
             parse.urlparse(catalog_path).path,
         )
-        return os.path.join(*paths)
 
     def _is_using_dataset(self, dataset: str) -> bool:
         return True
@@ -473,54 +469,92 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
 
     def _processors_data(self) -> List[ProcessorData]:
         dataset_paths = []
+
+        # TODO - should use historical data, maybe from https://www.ndbc.noaa.gov/data/historical/stdmet/pclf1h2020.txt.gz
+        df_station_heights = pd.read_fwf(
+            'https://www.ndbc.noaa.gov/data/stations/non_ndbc_heights.txt',
+            skiprows=6,
+            header=0,
+            names=['id', 'Site Height', 'ATMP Height', 'Anemometer Height', 'Tide Ref', 'Barameter Height', 'WTMP Height', 'Water Depth', 'Watch Circle']
+        ).set_index('id')
+        df_station_heights['Unit Heights'] = 'meters'
+
+        # collection station's metadata
+        request = requests.get('https://www.ndbc.noaa.gov/metadata/stationmetadata.xml', timeout=30)
+        root = etree.fromstring(request.content)
+        stations = []
+        for station in root.xpath('//station'):
+            for history in station.findall('history'):
+                station_point = Point(x=float(history.get('lng')), y=float(history.get('lat')))
+                date_start = parse_date(history.get('start') or '')
+                date_end = parse_date(history.get('end') or '')
+                valid_station = (
+                        self._named_storm.geo.contains(station_point) and  # valid geo
+                        date_start and self._named_storm.date_start.date() >= date_start and  # valid start date
+                        (date_end is None or self._named_storm.date_end.date() <= date_end)  # valid end date
+                )
+                if valid_station:
+                    stations.append({
+                        'id': station.get('id').lower(),
+                        'name': station.get('name'),
+                        'lat': history.get('lat'),
+                        'lng': history.get('lng'),
+                        'elevation': history.get('elev'),
+                        'date_start': date_start.isoformat(),
+                        'date_end': date_end.isoformat() if date_end else None,
+                    })
+                    break
+
+        # write valid stations as csv
+        temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
+        df_stations = pd.DataFrame.from_records(stations).set_index('id')
+        df_stations = df_stations.join(df_station_heights)
+        df_stations.to_csv(temp_path)
         processors_data = [
-            # collection station's metadata
             ProcessorData(
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
-                url=self.API_STATION_METADATA_URL,
-                label='station-metadata.xml',
-                # override the processor just for this one-off request of xml metadata
-                override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_GENERIC,
+                # override the processor to use a pre-collected temporary file
+                override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
+                url=temp_path,  # file path
+                label='stations.csv',
             )
         ]
 
-        # build station catalogRefs
-        for station_catalog_ref in self._catalog_ref_elements(self._provider.url):
+        # build catalogRefs and filter
+        catalog_refs = self._catalog_ref_elements(self._provider.url)
 
-            station_title = self._catalog_ref_title(station_catalog_ref)
-            station_url = self._catalog_ref_href(station_catalog_ref)
+        # build list of catalog urls
+        catalog_urls = [self._catalog_ref_href(ref) for ref in catalog_refs]
 
-            # build catalogRefs for this station
-            catalog_refs = self._catalog_ref_elements(station_url)
+        # build a list of relevant datasets for each station
+        catalogs = self._catalog_documents(catalog_urls)
+        for station in catalogs:
+            for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
+                station_name = dataset.get('name').lower()[:5]  # stations are in the format of SSSSShYYYY.nc so use the first 5 characters
+                if station_name not in df_stations.index:
+                    logging.warning('Skipping invalid dataset {}'.format(dataset.get('name')))
+                    continue
+                if self._is_using_dataset(dataset.get('name')):
+                    dataset_paths.append(dataset.get('urlPath'))
 
-            # build list of catalog urls
-            catalog_urls = [self._catalog_ref_href(ref, prefix_paths=[station_title]) for ref in catalog_refs]
-
-            # build a list of relevant datasets for each station
-            catalogs = self._catalog_documents(catalog_urls)
-            for station in catalogs:
-                for dataset in station.xpath('//catalog:dataset', namespaces=self.namespaces):
-                    if self._is_using_dataset(dataset.get('name')):
-                        dataset_paths.append(dataset.get('urlPath'))
-
-            # build a list of processors for all the relevant datasets
-            for dataset_path in dataset_paths:
-                label = os.path.basename(dataset_path)
-                url = '{}://{}/{}/{}'.format(
-                    self._provider_url_parsed.scheme,
-                    self._provider_url_parsed.hostname,
-                    'thredds/dodsC',
-                    dataset_path,
-                )
-                processors_data.append(ProcessorData(
-                    named_storm_id=self._named_storm.id,
-                    provider_id=self._provider.id,
-                    url=url,
-                    label=label,
-                    group=station_title,
-                    kwargs=self._processor_kwargs(),
-                ))
+        # build a list of processors for all the relevant datasets
+        for dataset_path in dataset_paths:
+            label = os.path.basename(dataset_path)
+            url = '{}://{}/{}/{}'.format(
+                self._provider_url_parsed.scheme,
+                self._provider_url_parsed.hostname,
+                'thredds/dodsC',
+                dataset_path,
+            )
+            processors_data.append(ProcessorData(
+                named_storm_id=self._named_storm.id,
+                provider_id=self._provider.id,
+                url=url,
+                label=label,
+                group='Data',
+                kwargs=self._processor_kwargs(),
+            ))
 
         return processors_data
 
