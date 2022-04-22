@@ -470,7 +470,7 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
     def _processors_data(self) -> List[ProcessorData]:
         dataset_paths = []
 
-        # TODO - should use historical data, maybe from https://www.ndbc.noaa.gov/data/historical/stdmet/pclf1h2020.txt.gz
+        # TODO - should use historical data, like https://www.ndbc.noaa.gov/view_text_file.php?filename=pclf1h2021.txt.gz&dir=data/historical/stdmet/
         df_station_heights = pd.read_fwf(
             'https://www.ndbc.noaa.gov/data/stations/non_ndbc_heights.txt',
             skiprows=6,
