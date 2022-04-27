@@ -2,6 +2,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework import exceptions
 from rest_framework.settings import api_settings
 from cwwed.storage_backends import S3ObjectStoragePrivate
 from named_storms.models import (
@@ -105,6 +106,9 @@ class NsemPsaSerializer(serializers.ModelSerializer):
             named_storm_id = self.context['request'].data.get('named_storm')
             qs = NamedStormCoveredDataSnapshot.objects.filter(named_storm__id=named_storm_id, date_completed__isnull=False)
             qs = qs.order_by('-date_completed')
+            # validate that a covered data snapshot was already created
+            if not qs.exists():
+                raise exceptions.ValidationError('A covered data snapshot must be generated before creating a PSA')
             attrs['covered_data_snapshot'] = qs.first()
         return super().validate(attrs)
 

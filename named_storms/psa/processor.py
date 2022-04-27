@@ -151,7 +151,7 @@ class PsaDatasetProcessor:
             self._process_contours_triangulation(nsem_psa_variable, tricontourf, dt)
 
     def _process_contours_gridded(self, nsem_psa_variable: NsemPsaVariable, contourf, dt):
-        # the polygons that come out of matplotlib's contourf are nicely ordered exteriors with interior rings so
+        # the polygons that come out of matplotlib's contourf are nicely ordered exteriors with interior rings, so
         # it's very straightforward to build the resulting polygons
 
         # process matplotlib contourf results
