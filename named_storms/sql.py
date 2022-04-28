@@ -4,7 +4,7 @@ from datetime import datetime
 from named_storms.models import NsemPsaVariable
 
 
-def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
+def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED):
 
     with connection.cursor() as cursor:
         sql = '''
@@ -40,7 +40,7 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10):
             'psa_id': psa_id,
             'date': date,
             'wind_direction': NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
-            'wind_speed': NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED,
+            'wind_speed': wind_speed_variable,
             'step': step,
             'center': center.wkt,
             # show more spatial distance of wind barbs when zoomed out

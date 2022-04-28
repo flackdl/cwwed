@@ -46,6 +46,8 @@ urlpatterns = [
 
 ]
 
-# serving media in dev only
 if settings.DEBUG:
+    # debug toolbar
+    urlpatterns += path('__debug__/', include('debug_toolbar.urls')),
+    # serving media in dev only
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -307,7 +307,14 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
             logger.warning('Invalid center {}'.format(request.query_params.get('center')))
             raise exceptions.ValidationError({'center': ['center point must be WKT']})
 
-        results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step)
+        # build wind barbs query depending on the presence of wind_speed or wind_gust
+        nsem_variables = self.nsem.nsempsavariable_set.values_list('name', flat=True)
+        if NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED in nsem_variables:
+            results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step)
+        elif NsemPsaVariable.VARIABLE_DATASET_WIND_GUST:
+            results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_GUST)
+        else:
+            raise exceptions.ValidationError('Cannot generate wind barbs without wind speed/gust data')
 
         # build geojson features
         features = []

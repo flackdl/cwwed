@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'crispy_forms',
     'invitations',  # django-invitations https://github.com/bee-keeper/django-invitations
+    "debug_toolbar",
 ]
 
 MIDDLEWARE = [
@@ -96,6 +97,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
+]
+
+# necessary for django debug toolbar
+INTERNAL_IPS = [
+    "127.0.0.1",
 ]
 
 ROOT_URLCONF = 'cwwed.urls'
