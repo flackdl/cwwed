@@ -62,6 +62,7 @@ class NamedStormViewSet(viewsets.ReadOnlyModelViewSet):
 class CoveredDataViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = CoveredData.objects.all()
     serializer_class = CoveredDataSerializer
+    filterset_fields = ('active',)
 
 
 class NamedStormCoveredDataSnapshotViewSet(mixins.CreateModelMixin, mixins.RetrieveModelMixin, mixins.ListModelMixin, GenericViewSet):

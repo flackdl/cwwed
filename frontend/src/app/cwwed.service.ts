@@ -63,7 +63,8 @@ export class CwwedService {
   }
 
   public fetchCoveredData() {
-    return this.http.get(API_COVERED_DATA).pipe(
+    const params = new HttpParams({fromObject: {active: 'true'}})
+    return this.http.get(API_COVERED_DATA, {params}).pipe(
       map((data: any) => {
         this.coveredDataList = data.results;
         return this.coveredDataList;

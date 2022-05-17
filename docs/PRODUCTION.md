@@ -102,7 +102,7 @@ See https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ a
 Define autoscaling rules for the following deployments:
 
 	kubectl autoscale deployment cwwed-alpha --min=2 --max=5
-	kubectl autoscale deployment celery-celery-alpha --min=2 --max=5
+	kubectl autoscale deployment celery-celery-worker-alpha --min=2 --max=5
 
 ### Secrets
 

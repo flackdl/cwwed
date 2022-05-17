@@ -43,3 +43,4 @@ xarray==2022.3.0
 rasterio==1.2.0
 django-invitations==1.9.3
 django-debug-toolbar==3.2.4
+stormevents==1.4.1

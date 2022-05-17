@@ -21,9 +21,13 @@ spec:
       containers:
       - name: cwwed-covered-data
         image: !Var image
+        resources:
+          requests:
+            memory: "1G"
+            cpu: "500m"
         command: ['python']
-        args: ['manage.py', 'collect_covered_data']
-        #args: ['manage.py', 'collect_covered_data', '--storm_id', '2']
+        # NOTE: change storm id
+        args: ['manage.py', 'collect_covered_data', '--storm_id', '3']
         volumeMounts:
         - mountPath: "/media/bucket/cwwed"
           name: cwwed-volume-storage
