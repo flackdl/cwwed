@@ -21,6 +21,7 @@ spec:
       containers:
       - name: cwwed-covered-data
         image: !Var image
+        imagePullPolicy: Always
         resources:
           requests:
             memory: "1G"
