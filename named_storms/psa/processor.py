@@ -43,7 +43,8 @@ class PsaDatasetProcessor:
 
     def __del__(self):
         # cleanup
-        self.dataset.close()
+        if self.dataset:
+            self.dataset.close()
 
     def ingest_variable(self, variable: str, date: datetime = None):
 
