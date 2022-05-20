@@ -3,6 +3,7 @@ import os
 import re
 import tempfile
 
+from stormevents.usgs.events import USGS_Event
 import celery
 import pandas as pd
 import pytz
@@ -91,6 +92,21 @@ class USGSProcessorFactory(ProcessorCoreFactory):
         assert self._named_storm_covered_data.external_storm_id, 'USGS Processor Factor requires the external_storm_id to match their "Event ID"'
         processors_data = []
 
+        # high water marks
+        temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
+        usgs_event = USGS_Event(int(self._named_storm_covered_data.external_storm_id))
+        # save to temporary csv file
+        usgs_event.high_water_marks().to_csv(temp_path)
+
+        processors_data.append(ProcessorData(
+            named_storm_id=self._named_storm.id,
+            provider_id=self._provider.id,
+            # override the processor to use a pre-collected temporary file
+            override_provider_processor_class=PROCESSOR_DATA_SOURCE_FILE_TEMPORARY,
+            url=temp_path,  # temporary file path
+            label='hwm.csv',
+        ))
+
         # fetch deployment types
         deployment_types_req = requests.get('https://stn.wim.usgs.gov/STNServices/DeploymentTypes.json', timeout=30)
         deployment_types_req.raise_for_status()
@@ -140,21 +156,6 @@ class USGSProcessorFactory(ProcessorCoreFactory):
                 group=self._sensor_deployment_type(file['instrument_id']),
                 kwargs=self._processor_kwargs(),
             ))
-            
-        # include "High Water Mark" (non-time series data without the use of sensors)
-        # e.g https://stn.wim.usgs.gov/STNServices/HWMs/FilteredHWMs.json?Event=312
-        hwm_url = 'https://stn.wim.usgs.gov/STNServices/HWMs/FilteredHWMs.json?{}'.format(
-            urlencode({'Event': self._named_storm_covered_data.external_storm_id})
-        )
-        processors_data.append(ProcessorData(
-            named_storm_id=self._named_storm.id,
-            provider_id=self._provider.id,
-            url=hwm_url,
-            label='hwm.csv',  # json data will be converted to csv in the processor
-            group='HWM',
-            # flag to convert json to csv
-            kwargs={GenericFileProcessor.CONVERT_JSON_TO_CSV: True},
-        ))
 
         return processors_data
 

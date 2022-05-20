@@ -266,17 +266,16 @@ Access OPENDaP behind CWWED's authenticated proxy
 
 Delete PSAs:
 
-    # excluding PSA 49, 50
-    delete from named_storms_nsempsamanifestdataset where nsem_id not in (49, 50);
-    delete from named_storms_nsempsavariable where nsem_id not in (49, 50);
-    delete from named_storms_nsempsauserexport where nsem_id not in (49, 50);
+    delete from named_storms_nsempsamanifestdataset where nsem_id = 59;
+    delete from named_storms_nsempsavariable where nsem_id = 59;
+    delete from named_storms_nsempsauserexport where nsem_id = 59;
     delete from named_storms_nsempsacontour where nsem_psa_variable_id in (
-        select id from named_storms_nsempsavariable where nsem_id not in (49, 50)
+        select id from named_storms_nsempsavariable where nsem_id = 59
     );
     delete from named_storms_nsempsadata where nsem_psa_variable_id in (
-        select id from named_storms_nsempsavariable where nsem_id not in (49, 50)
+        select id from named_storms_nsempsavariable where nsem_id = 59
     );
-    delete from named_storms_nsempsa where id not in (49, 50);
+    delete from named_storms_nsempsa where id = 59;
 
 ### Celery dashboard (Flower)
 
