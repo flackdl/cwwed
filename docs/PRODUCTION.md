@@ -358,3 +358,22 @@ Create AWS user *cwwed-archives* and assign the following polices:
 Assign lifecycle for *User Exports* objects to expire after a certain amount of time.
 
     aws s3api put-bucket-lifecycle-configuration --bucket cwwed-archives --lifecycle-configuration file://configs/aws/s3-lifecycle-cwwed-archives.json
+
+## Postgres table partitioning
+
+CWWED keeps storm's granular data in separate partitions. One table per storm.
+
+To create a new partition for a storm, see the [django-postgres-extra](https://django-postgres-extra.readthedocs.io/en/master/table_partitioning.html#adding-a-default-partition) docs.  
+
+Basically you'll just create an empty migration and paste in something like this (see `named_storms/migrations/0120_auto_20220522_1953.py` for reference)
+
+    ...
+    operations = [
+        PostgresAddListPartition(
+           model_name="NsemPsaDataPartition",
+           name="storm name",
+           values=["STORM NAME"],
+        ),
+    ]
+    ...
+    

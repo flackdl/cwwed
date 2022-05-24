@@ -85,6 +85,8 @@ INSTALLED_APPS = [
     'crispy_forms',
     'invitations',  # django-invitations https://github.com/bee-keeper/django-invitations
     "debug_toolbar",
+    "django.contrib.postgres",
+    "psqlextra",
 ]
 
 MIDDLEWARE = [
@@ -144,8 +146,16 @@ WSGI_APPLICATION = 'cwwed.wsgi.application'
 
 DATABASES = {
     # https://github.com/kennethreitz/dj-database-url
-    'default': dj_database_url.config(default='postgis://postgres:postgres@localhost:5432/postgres', conn_max_age=300),
+    'default': dj_database_url.config(
+        default='postgis://postgres:postgres@localhost:5432/postgres',
+        conn_max_age=300,
+        engine="psqlextra.backend",
+    ),
 }
+
+# django-postgres-extras
+# https://django-postgres-extra.readthedocs.io/en/master/settings.html?highlight=postgis#settings
+POSTGRES_EXTRA_DB_BACKEND_BASE = 'django.contrib.gis.db.backends.postgis'
 
 # https://docs.djangoproject.com/en/2.0/topics/cache/
 CACHES = {

@@ -1,4 +1,6 @@
 from datetime import datetime
+from psqlextra.types import PostgresPartitioningMethod
+from psqlextra.models import PostgresPartitionedModel
 from django.contrib.auth.models import User
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
@@ -387,6 +389,22 @@ class NsemPsaVariable(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class NsemPsaDataPartition(PostgresPartitionedModel):
+    # this implements postgres table partitioning
+    # https://www.postgresql.org/docs/current/ddl-partitioning.html
+    # with the help of the django-postgres-extra library
+    # https://django-postgres-extra.readthedocs.io/
+    nsem_psa_variable = models.ForeignKey(NsemPsaVariable, on_delete=models.CASCADE)
+    storm_name = models.CharField(max_length=50, db_index=True)  # necessary to use as partition key
+    point = models.PointField(geography=True)
+    date = models.DateTimeField(null=True, blank=True)  # note: variable data types of "max-values" will have empty date values
+    value = models.FloatField()
+    
+    class PartitioningMeta:
+        method = PostgresPartitioningMethod.LIST
+        key = ["storm_name"]  # use this field to decide how to partition
 
 
 class NsemPsaData(models.Model):

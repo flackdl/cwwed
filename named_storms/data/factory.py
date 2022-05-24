@@ -476,7 +476,7 @@ class NDBCProcessorFactory(THREDDSCatalogBaseFactory):
             'https://www.ndbc.noaa.gov/data/stations/non_ndbc_heights.txt',
             skiprows=6,
             header=0,
-            names=['id', 'Site Height', 'ATMP Height', 'Anemometer Height', 'Tide Ref', 'Barameter Height', 'WTMP Height', 'Water Depth', 'Watch Circle']
+            names=['id', 'Site Height', 'ATMP Height', 'Anemometer Height', 'Tide Ref', 'Barometer Height', 'WTMP Height', 'Water Depth', 'Watch Circle']
         ).set_index('id')
         df_station_heights['Unit Heights'] = 'meters'
 
