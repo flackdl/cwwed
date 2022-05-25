@@ -225,6 +225,10 @@ Create cache tables:
 Collect covered data via job:
 
     emrichen --define deploy_stage=alpha --define tag=latest configs/job-collect-covered-data.in.yml | kubectl apply -f -
+
+Manually run database migration:
+
+    emrichen --define deploy_stage=alpha --define tag=latest configs/job-cwwed-migrate.in.yml | kubectl apply -f -
     
 Patch to force a rolling update (to re-pull updated images):
 
