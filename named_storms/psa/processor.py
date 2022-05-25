@@ -33,6 +33,7 @@ NULL_REPRESENT = r'\N'
 class PsaDatasetProcessor:
     dataset: xr.Dataset
     psa_manifest_dataset: NsemPsaManifestDataset
+    storm_name: str
 
     def __init__(self, psa_manifest_dataset: NsemPsaManifestDataset):
         self.psa_manifest_dataset = psa_manifest_dataset
@@ -40,6 +41,7 @@ class PsaDatasetProcessor:
             named_storm_nsem_version_path(self.psa_manifest_dataset.nsem),
             self.psa_manifest_dataset.path)
         )
+        self.storm_name = self.psa_manifest_dataset.nsem.named_storm.name
 
     def __del__(self):
         # cleanup
@@ -64,7 +66,7 @@ class PsaDatasetProcessor:
 
         # delete any existing psa variable data in case we're reprocessing this psa
         psa_variable.nsempsacontour_set.filter(date=date).delete()
-        psa_variable.nsempsadata_set.filter(date=date).delete()
+        psa_variable.nsempsadata_set.filter(storm_name=self.storm_name, date=date).delete()
 
         # contours
         if psa_variable.geo_type == NsemPsaVariable.GEO_TYPE_POLYGON:
@@ -270,6 +272,7 @@ class PsaDatasetProcessor:
 
         # define database columns to copy to
         columns = [
+            NsemPsaData.storm_name.field.attname,
             NsemPsaData.nsem_psa_variable.field.attname,
             NsemPsaData.point.field.attname,
             NsemPsaData.value.field.attname,
@@ -286,8 +289,9 @@ class PsaDatasetProcessor:
         if date is None:
             df['time'] = None
 
-        # add psa variable column
+        # add psa variable and storm name column
         df['psa_variable_id'] = psa_variable.id
+        df[NsemPsaData.storm_name.field.attname] = self.storm_name
 
         # add point column in wkt format using the lat/lon coordinates and handle
         # cases where the lat/lon are either indexes or column values
@@ -307,7 +311,7 @@ class PsaDatasetProcessor:
         gdf = gdf[gdf.within(wkt.loads(self.psa_manifest_dataset.nsem.named_storm.geo.wkt))]
 
         # reorder gdf columns
-        gdf = gdf[['psa_variable_id', 'point', psa_variable.name, 'time']]
+        gdf = gdf[[NsemPsaData.storm_name.field.attname, 'psa_variable_id', 'point', psa_variable.name, 'time']]
 
         with tempfile.NamedTemporaryFile() as f:
 

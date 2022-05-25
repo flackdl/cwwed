@@ -9,7 +9,6 @@ import pandas as pd
 import pytz
 import requests
 from ftplib import FTP
-from urllib.parse import urlencode
 from functools import cmp_to_key
 from datetime import datetime, timedelta
 from django.utils.dateparse import parse_date
@@ -20,9 +19,9 @@ from io import BytesIO
 from urllib import parse
 from named_storms.data.decorators import register_factory
 from named_storms import tasks
-from named_storms.data.processors import ProcessorData, GenericFileProcessor
+from named_storms.data.processors import ProcessorData
 from named_storms import models as storm_models
-from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData, PROCESSOR_DATA_SOURCE_FILE_GENERIC, PROCESSOR_DATA_SOURCE_FILE_TEMPORARY
+from named_storms.models import CoveredDataProvider, NamedStorm, NamedStormCoveredData, PROCESSOR_DATA_SOURCE_FILE_TEMPORARY
 from named_storms.utils import named_storm_covered_data_tmp_path
 
 

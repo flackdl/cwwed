@@ -242,6 +242,7 @@ class NsemPsaTimeSeriesViewSet(NsemPsaBaseViewSet):
         ).filter(
             point__dwithin=(point, self.POINT_DISTANCE),
             nsem_psa_variable__nsem=self.nsem,
+            storm_name=self.storm.name,  # helps with table partitioning
         ).order_by(
             # sort by ascending distance to get the first result in each group (i.e the nearest to supplied point)
             *fields_order + ['distance']
@@ -311,9 +312,9 @@ class NsemPsaWindBarbsViewSet(NsemPsaBaseViewSet):
         # build wind barbs query depending on the presence of wind_speed or wind_gust
         nsem_variables = self.nsem.nsempsavariable_set.values_list('name', flat=True)
         if NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED in nsem_variables:
-            results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step)
+            results = wind_barbs_query(self.storm.name, self.nsem.id, date=date, center=center, step=step)
         elif NsemPsaVariable.VARIABLE_DATASET_WIND_GUST:
-            results = wind_barbs_query(self.nsem.id, date=date, center=center, step=step, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_GUST)
+            results = wind_barbs_query(self.storm.name, self.nsem.id, date=date, center=center, step=step, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_GUST)
         else:
             raise exceptions.ValidationError('Cannot generate wind barbs without wind speed/gust data')
 
@@ -419,7 +420,7 @@ class NsemPsaDataViewSet(NsemPsaBaseViewSet):
 
     def get_queryset(self):
         # filter by nested nsem
-        return NsemPsaData.objects.filter(nsem_psa_variable__nsem=self.nsem)
+        return NsemPsaData.objects.filter(storm_name=self.storm.name, nsem_psa_variable__nsem=self.nsem)
 
     def list(self, request, *args, **kwargs):
         # return an empty list if no variable filter is supplied because

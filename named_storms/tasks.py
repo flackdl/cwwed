@@ -510,6 +510,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
     nsem_psa_user_export = get_object_or_404(NsemPsaUserExport, id=nsem_psa_user_export_id)
     nsem_psa = nsem_psa_user_export.nsem
+    storm_name = nsem_psa.named_storm.name
 
     date_expires = pytz.utc.localize(datetime.utcnow()) + timedelta(days=settings.CWWED_PSA_USER_DATA_EXPORT_DAYS)
 
@@ -531,6 +532,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
 
         # csv exports to a specific date while netcdf includes all
         dates_to_export = [nsem_psa_user_export.date_filter] if nsem_psa_user_export.format == NsemPsaUserExport.FORMAT_CSV else nsem_psa.dates
+        # remove tz to use dates as indexes
+        dates_to_export = [d.replace(tzinfo=None) for d in dates_to_export]
 
         for psa_dataset in nsem_psa_user_export.nsem.nsempsamanifestdataset_set.all():
 
@@ -547,6 +550,7 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 nsem_psa_variable__name__in=psa_dataset.variables,
                 nsem_psa_variable__nsem=nsem_psa,
                 geom_point__within=nsem_psa_user_export.bbox,
+                storm_name=storm_name,  # helps with table partitioning
             ).distinct(
                 'geo_hash',
             ).order_by(
@@ -583,7 +587,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                         geo_hash=GeoHash('point'),
                     ).filter(
                         geo_hash__in=[d.geo_hash for d in all_data],
-                        date=date,
+                        date=pytz.utc.localize(date),  # add utc timezone
+                        storm_name=storm_name,  # helps with table partitioning
                     ).only(
                         'value',
                         'point',
@@ -636,8 +641,8 @@ def create_psa_user_export_task(nsem_psa_user_export_id: int):
                 # multi index of date/lon/lat
                 index = pd.MultiIndex.from_arrays([
                     np.full(len(ds_out.node), nsem_psa_user_export.date_filter),
-                    ds_out['lon'],
-                    ds_out['lat'],
+                    ds_out['lon'].values,
+                    ds_out['lat'].values,
                 ])
 
                 # insert a new column for each variable to df_out

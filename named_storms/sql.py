@@ -4,7 +4,7 @@ from datetime import datetime
 from named_storms.models import NsemPsaVariable
 
 
-def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED):
+def wind_barbs_query(storm_name: str, psa_id: int, date: datetime, center: geos.Point, step=10, wind_speed_variable=NsemPsaVariable.VARIABLE_DATASET_WIND_SPEED):
 
     with connection.cursor() as cursor:
         sql = '''
@@ -17,7 +17,8 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10, w
                     v1.nsem_id = %(psa_id)s AND
                     v1.name = %(wind_direction)s AND
                     d1.date = %(date)s AND
-                    d1.nsem_psa_variable_id = v1.id
+                    d1.nsem_psa_variable_id = v1.id AND
+                    d1.storm_name = %(storm_name)s
                 )
                 INNER JOIN named_storms_nsempsadata d2 ON (
                     d1.point = d2.point AND
@@ -27,7 +28,8 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10, w
                 INNER JOIN named_storms_nsempsavariable v2 ON (
                     v2.nsem_id = %(psa_id)s AND
                     d2.nsem_psa_variable_id = v2.id AND
-                    v2.name = %(wind_speed)s
+                    v2.name = %(wind_speed)s AND
+                    d2.storm_name = %(storm_name)s
                 )
                 INNER JOIN named_storms_nsempsa nsn ON nsn.id = v1.nsem_id
                 INNER JOIN named_storms_namedstorm n ON n.id = nsn.named_storm_id
@@ -37,6 +39,7 @@ def wind_barbs_query(psa_id: int, date: datetime, center: geos.Point, step=10, w
         '''
 
         params = {
+            'storm_name': storm_name,
             'psa_id': psa_id,
             'date': date,
             'wind_direction': NsemPsaVariable.VARIABLE_DATASET_WIND_DIRECTION,
