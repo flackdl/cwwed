@@ -1,39 +1,19 @@
 # ALPHA
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: ingress
-  annotations:
-    # use the shared ingress-nginx
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/proxy-next-upstream: error timeout http_502
 spec:
   rules:
   - host: alpha.cwwed-staging.com
     http:
       paths:
       - path: /
+        pathType: Prefix
         backend:
-          serviceName: cwwed-alpha
-          servicePort: 80
+          service:
+            name: cwwed-alpha
+            port:
+              number: 80
+  ingressClassName: nginx
 ---
-# DEV
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  name: ingress-dev
-  annotations:
-    # use the shared ingress-nginx
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/proxy-next-upstream: error timeout http_502
-    # TODO - temporarily redirecting to "alpha"
-    nginx.ingress.kubernetes.io/temporal-redirect: https://alpha.cwwed-staging.com
-spec:
-  rules:
-    - host: dev.cwwed-staging.com
-      http:
-        paths:
-          - path: /
-            backend:
-              serviceName: cwwed-dev
-              servicePort: 80

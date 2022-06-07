@@ -44,7 +44,7 @@ See https://kubernetes.github.io/ingress-nginx/.
 
 Deploy:
 
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.35.0/deploy/static/provider/aws/deploy.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.2.0/deploy/static/provider/aws/deploy.yaml
 
 Configure:
 
@@ -52,7 +52,7 @@ Configure:
 
 ##### Load Balancing
 
-The nginx ingress will automatically create an AWS Load Balancer.
+The *nginx ingress* will automatically create an AWS Load Balancer.
 Once the nginx ingress service is created,
 monitor the new external Load Balancer and get it's external IP address.
 
@@ -187,9 +187,6 @@ Deploy *dev* using *v1.0* image tag:
 
 CWWED is using the stock OPeNDAP docker image, but we need to specify some custom configurations.
 Copy the [olfs.xml](../configs/opendap/olfs.xml) to the EFS mount at (`OPENDAP-olfs` => `/usr/share/olfs/`) by ssh'ing into an EC2 instance, mounting the EFS drive, and copy it over.
-
-##### Ingress
-    kubectl apply -f configs/ingress.yml
 
 ##### Cluster Autoscaler
 
