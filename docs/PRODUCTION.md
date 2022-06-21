@@ -54,7 +54,7 @@ Configure:
 
 The *nginx ingress* will automatically create an AWS Load Balancer.
 Once the nginx ingress service is created,
-monitor the new external Load Balancer and get it's external IP address.
+monitor the new external Load Balancer and get its external IP address.
 
     kubectl get service --namespace ingress-nginx ingress-nginx-controller
 

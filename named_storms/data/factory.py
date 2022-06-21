@@ -829,7 +829,7 @@ class NWMProcessorFactory(ProcessorCoreFactory):
                 if os.path.basename(directory_product) in self.PRODUCT_DIRECTORIES:
                     files = ftp.nlst(directory_product)
                     for file in files:
-                        # we only want tm02 files ("time minus 2 hour files, valid two hours before cycle time)
+                        # we only want tm02 files (time minus 2 hour files, valid two hours before cycle time)
                         if os.path.basename(directory_product) != self.PRODUCT_TIME_SLICE and not os.path.basename(file).startswith('nwm.t02z.'):
                             continue
                         processors_data.append(ProcessorData(

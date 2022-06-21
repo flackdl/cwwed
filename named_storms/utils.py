@@ -52,7 +52,7 @@ def processor_class(processor_source: str):
 
 def processor_factory_class(provider: CoveredDataProvider):
     """
-    Each factory is decorated/registered to map it's name to itself which helps us map the two later on during processing
+    Each factory is decorated/registered to map its name to itself which helps us map the two later on during processing
     :return: ProcessorCoreFactory class/sub-class for a particular provider
     """
     # import locally to prevent circular dependencies

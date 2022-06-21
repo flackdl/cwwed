@@ -262,7 +262,7 @@ class PsaDatasetProcessor:
 
     def _save_psa_data(self, psa_variable: NsemPsaVariable, da: xr.DataArray, date=None):
         """
-        perform a low level data copy into postgres via it's COPY mechanism which is much more
+        perform a low level data copy into postgres via its COPY mechanism which is much more
         efficient than using django's orm (even bulk_create) since it has to serialize every object
         https://www.postgresql.org/docs/9.4/sql-copy.html
         https://www.psycopg.org/docs/cursor.html#cursor.copy_from

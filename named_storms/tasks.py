@@ -275,7 +275,7 @@ def extract_nsem_psa_task(nsem_id):
     storage = S3ObjectStoragePrivate()  # deploy-specific prefix (dev, alpha, etc)
     root_storage = S3ObjectStoragePrivate(force_root_location=True)
 
-    # verify this instance needs it's model output to be extracted (don't raise an exception to avoid this task retrying)
+    # verify this instance needs its model output to be extracted (don't raise an exception to avoid this task retrying)
     if nsem.extracted:
         return None
     elif not uploaded_file_path:
