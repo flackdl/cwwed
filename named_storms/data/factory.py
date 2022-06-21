@@ -91,12 +91,15 @@ class USGSProcessorFactory(ProcessorCoreFactory):
         assert self._named_storm_covered_data.external_storm_id, 'USGS Processor Factor requires the external_storm_id to match their "Event ID"'
         processors_data = []
 
+        #
         # high water marks
+        #
+
         temp_path = tempfile.mktemp(dir=named_storm_covered_data_tmp_path(self._named_storm))
         usgs_event = USGS_Event(int(self._named_storm_covered_data.external_storm_id))
         # save to temporary csv file
         usgs_event.high_water_marks().to_csv(temp_path)
-
+        # append task
         processors_data.append(ProcessorData(
             named_storm_id=self._named_storm.id,
             provider_id=self._provider.id,
@@ -151,7 +154,7 @@ class USGSProcessorFactory(ProcessorCoreFactory):
                 named_storm_id=self._named_storm.id,
                 provider_id=self._provider.id,
                 url=file_url,
-                label=file['name'],
+                label='Site {} - {}'.format(file['site_id'], file['name']),
                 group=self._sensor_deployment_type(file['instrument_id']),
                 kwargs=self._processor_kwargs(),
             ))
