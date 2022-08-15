@@ -25,7 +25,7 @@ spec:
          claimName: !Var volume_claim_name
       containers:
       - name: opendap
-        image: opendap/hyrax:1.16.4-16
+        image: opendap/hyrax:1.16.8-8
         imagePullPolicy: Always
         ports:
         - containerPort: 8080
