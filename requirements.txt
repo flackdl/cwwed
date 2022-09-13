@@ -16,7 +16,7 @@ git+https://github.com/TracyWebTech/django-revproxy.git@4cefe4ae4bf4834a2e1229b9
 django-storages==1.8
 djangorestframework==3.12.2
 emrichen==0.2.2
-flower==0.9.5
+flower==1.2.0
 geojson==2.5.0
 geopandas==0.6.2
 gunicorn==20.0.4
