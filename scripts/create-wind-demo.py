@@ -28,10 +28,40 @@ VARIABLES_MAP = {
 
 ds_out = xr.Dataset()
 
-for dataset_file in sorted(os.listdir(src_path)):
+'''
+import geopandas
+import pandas as pd
+import xarray as xr
+from shapely.geometry import mapping
+from shapely import geometry
+ds1 = xr.open_dataset('/media/bucket/cwwed/OPENDAP/psa-uploads/ida/anil/wrfout_d01_2021-08-30_06_00_00.nc')
+ds3 = xr.open_dataset('/media/bucket/cwwed/OPENDAP/psa-uploads/ida/anil/wrfout_d03_2021-08-30_06_00_00.nc')
+wind1 = ds1.windgust_10m[0]
+wind3 = ds3.windgust_10m[0]
+df1 = wind1.to_dataframe()
+df3 = wind3.to_dataframe()
+df1['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df1['lat'], df1['lon']))))
+df3['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df3['lat'], df3['lon']))))
+gdf1 = geopandas.GeoDataFrame(df1)
+gdf1 = gdf1.set_geometry('point')
+gdf3 = geopandas.GeoDataFrame(df3)
+gdf3 = gdf3.set_geometry('point')
+p1 = Polygon.from_bounds(*gdf1.total_bounds)
+p3 = Polygon.from_bounds(*gdf3.total_bounds)
+p1.contains(p3)
+'''
+
+
+# there's 3 domains, where domain 3 is the smallest & highest quality, and domain 1 is the largest and lowest quality
+# we're going to import them in the highest quality first, and then only import the outsdies of the rest of the domains where
+# there's no duplicates
+
+for dataset_file in sorted(os.listdir(src_path), reverse=True):
+
+    # TODO - domain 1 is the largest geographic area but lowest resolution
 
     # must be like "wrfoutd01_*.00.nc", i.e using "domain 1" and on the hour "00"
-    if re.match(r'wrfout_?d01_.*.00.nc', dataset_file):
+    if re.match(r'wrfout_?d0\d_.*.00.nc', dataset_file):
 
         ## TODO - florence
         ## skip first since it doesn't have the gust available
