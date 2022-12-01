@@ -1,6 +1,10 @@
-import os
-import xarray as xr
 import re
+import os
+import geopandas
+import pandas as pd
+import xarray as xr
+from typing import Union
+from shapely.geometry import Polygon, Point
 
 
 # sandy
@@ -26,39 +30,24 @@ VARIABLES_MAP = {
     'windgust_10m': 'wind_gust',
 }
 
-ds_out = xr.Dataset()
 
-'''
-import geopandas
-import pandas as pd
-import xarray as xr
-from shapely.geometry import mapping
-from shapely import geometry
-ds1 = xr.open_dataset('/media/bucket/cwwed/OPENDAP/psa-uploads/ida/anil/wrfout_d01_2021-08-30_06_00_00.nc')
-ds3 = xr.open_dataset('/media/bucket/cwwed/OPENDAP/psa-uploads/ida/anil/wrfout_d03_2021-08-30_06_00_00.nc')
-wind1 = ds1.windgust_10m[0]
-wind3 = ds3.windgust_10m[0]
-df1 = wind1.to_dataframe()
-df3 = wind3.to_dataframe()
-df1['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df1['lat'], df1['lon']))))
-df3['point'] = list(map(lambda p: geometry.Point(p[1], p[0]), list(zip(df3['lat'], df3['lon']))))
-gdf1 = geopandas.GeoDataFrame(df1)
-gdf1 = gdf1.set_geometry('point')
-gdf3 = geopandas.GeoDataFrame(df3)
-gdf3 = gdf3.set_geometry('point')
-p1 = Polygon.from_bounds(*gdf1.total_bounds)
-p3 = Polygon.from_bounds(*gdf3.total_bounds)
-p1.contains(p3)
-'''
+def get_bounding_geo(df: pd.DataFrame) -> Polygon:
+    # takes a dataframe with lat & lon columns and returns a bounding polygon
+    df['point'] = list(map(lambda p: Point(p[1], p[0]), list(zip(df['lat'], df['lon']))))
+    gdf1 = geopandas.GeoDataFrame(df)
+    gdf1 = gdf1.set_geometry('point')
+    return Polygon.from_bounds(*gdf1.total_bounds)
 
 
 # there's 3 domains, where domain 3 is the smallest & highest quality, and domain 1 is the largest and lowest quality
-# we're going to import them in the highest quality first, and then only import the outsdies of the rest of the domains where
-# there's no duplicates
+# we're going to import them in the highest quality first, and then only import the outsides of the rest of the domains so
+# there's no duplicate areas
 
+ds_out: Union[xr.Dataset, None] = None
+out_geo: Union[Polygon, None] = None
+
+# import largest domain files first (domain "3")
 for dataset_file in sorted(os.listdir(src_path), reverse=True):
-
-    # TODO - domain 1 is the largest geographic area but lowest resolution
 
     # must be like "wrfoutd01_*.00.nc", i.e using "domain 1" and on the hour "00"
     if re.match(r'wrfout_?d0\d_.*.00.nc', dataset_file):
@@ -79,8 +68,22 @@ for dataset_file in sorted(os.listdir(src_path), reverse=True):
         # rename variables
         ds_current = ds_current.rename_vars(VARIABLES_MAP)
 
-        # combine datasets
-        ds_out = ds_out.combine_first(ds_current)
+        # get the current dataset's bounding box
+        current_geo = get_bounding_geo(ds_current.to_dataframe()[['lat', 'lon']])
+
+        # combine datasets if the current bounds don't exist
+        if ds_out and out_geo:
+            # build the result dataset's bounding box
+            if not out_geo.contains(current_geo):
+                try:
+                    ds_out = ds_out.combine_first(ds_current)
+                except Exception as e:
+                    print(f'Exception for {dataset_file}')
+                    raise e
+                out_geo = get_bounding_geo(ds_out.to_dataframe())
+        else:
+            ds_out = ds_current
+            out_geo = current_geo
 
         # populate dataset and variable attributes
         if not ds_out.attrs:

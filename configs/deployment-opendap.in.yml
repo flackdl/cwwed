@@ -39,4 +39,4 @@ spec:
           subPath: OPENDAP-olfs
         resources:
           requests:
-            memory: "350M"
+            memory: "200M"
