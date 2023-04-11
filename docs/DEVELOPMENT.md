@@ -24,6 +24,15 @@ CWWED is built with the following:
 | GIS backend | GEOS | https://docs.djangoproject.com/en/3.1/ref/contrib/gis/geos/
 | GIS frontend | OpenLayers | https://openlayers.org
 
+### System Dependencies
+
+- docker (or optionally installing PostgreSQL, Redis, and OPeNDAP individually)
+- python 3.8
+- node.js (w/ npm)
+- gdal (e.g. libgdal-dev, gdal-bin)
+- python3-tk
+- libudunits2-dev
+- psql (PostgreSQL client)
 
 ### Python Environment (>=3.6)
 
@@ -95,12 +104,11 @@ Start Celery task queue and Flower (celery web management):
 All data:
 
     python manage.py collect_covered_data
-
 Specific storm:
 
     python manage.py collect_covered_data --storm_id 2
 
-## Helpers
+### Helpers
 
 Purge Celery:
 
