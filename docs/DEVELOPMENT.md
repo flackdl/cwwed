@@ -51,7 +51,7 @@ Migrate/create db tables:
 
     python manage.py migrate
 
-Create super user:
+Create superuser:
 
     python manage.py createsuperuser
 
@@ -61,8 +61,10 @@ Load dev data:
 
 Initialize:
 
-    python manage.py cwwed-init
-    
+*NOTE* you'll need the env variable `CWWED_NSEM_PASSWORD` defined before running, something like:
+
+    CWWED_NSEM_PASSWORD=abc123 python manage.py cwwed-init
+
 ### Run front-end app
 
 Build front-end app and watch for changes:
@@ -75,7 +77,7 @@ Start django server and watch for changes:
 
     python manage.py runserver
 
-The server will now be running on http://localhost:8080.
+The server will now be running on http://localhost:8000.
     
 Start Celery task queue and Flower (celery web management):
 
