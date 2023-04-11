@@ -82,7 +82,7 @@ Start django server and watch for changes:
 
     python manage.py runserver
 
-The server will now be running on http://localhost:8000.
+The server will now be running on http://localhost:8000 and the admin dashboard is at http://localhost:8000/admin.
     
 Start Celery task queue and Flower (celery web management):
 
