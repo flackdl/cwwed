@@ -65,6 +65,11 @@ Initialize:
 
     CWWED_NSEM_PASSWORD=abc123 python manage.py cwwed-init
 
+Create data folder `/media/bucket/cwwed/`:
+
+    sudo mkdir -p /media/bucket/cwwed/
+    sudo chown -R $USER:$USER /media/bucket/cwwed/
+
 ### Run front-end app
 
 Build front-end app and watch for changes:
