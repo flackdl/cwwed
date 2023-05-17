@@ -78,7 +78,7 @@ CWWED requires PostGIS, OPeNDAP, and Redis which can be run via Docker:
 
 CWWED expects a few environment variables to be defined before running anything.  We can set dummy variables in `~/.bashrc`:
 
-    cat > ~/.bashrc <<- EOF
+    cat >> ~/.bashrc <<- EOF
     export CWWED_ARCHIVES_ACCESS_KEY_ID=dummy
     export CWWED_ARCHIVES_SECRET_ACCESS_KEY=dummy
     export SLACK_BOT_TOKEN=dummy
