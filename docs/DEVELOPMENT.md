@@ -26,23 +26,43 @@ CWWED is built with the following:
 
 ### System Dependencies
 
-- docker (or optionally installing PostgreSQL, Redis, and OPeNDAP individually)
-- python 3.8
-- node.js (w/ npm)
-- gdal (e.g. libgdal-dev, gdal-bin)
-- python3-tk
-- libudunits2-dev
-- psql (PostgreSQL client)
+Python 3.8
 
-### Python Environment (>=3.6)
+    sudo add-apt-repository ppa:deadsnakes/ppa
+    sudo apt install python3.8
+
+Docker (or optionally install PostgreSQL, Redis, and OPeNDAP individually):
+
+    sudo apt install docker.io
+
+Node.js:
+
+    curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+
+GDAL:
+
+    sudo apt install libgdal-dev gdal-bin
+
+UDUNITS:
+
+    sudo apt install libudunits2-dev
+
+psql (PostgreSQL client):
+
+    sudo apt install postgresql-client
+
+### Python Environment (>=3.8)
 
 Create the python environment:
 
-    python3 -mvenv ~/.envs/cwwed-env
+**NOTE: make sure `python3` points to the 3.8 version.  May need to use `python3.8` command.**
 
-Activate the environment:
+    python3 -mvenv ~/.envs/cwwed
 
-    . ~/.envs/cwwed-env
+Activate the new python environment:
+
+    source ~/.envs/cwwed/bin/activate
     
 Install requirements:
 
@@ -55,6 +75,14 @@ CWWED requires PostGIS, OPeNDAP, and Redis which can be run via Docker:
     docker-compose up -d
 
 ### Initial Setup
+
+CWWED expects a few environment variables to be defined before running anything.  We can set dummy variables in `~/.bashrc`:
+
+    cat > ~/.bashrc <<- EOF
+    export CWWED_ARCHIVES_ACCESS_KEY_ID=dummy
+    export CWWED_ARCHIVES_SECRET_ACCESS_KEY=dummy
+    export SLACK_BOT_TOKEN=dummy
+    EOF
 
 Migrate/create db tables:
 
