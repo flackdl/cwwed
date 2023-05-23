@@ -8,7 +8,7 @@ You'll need the aws credentials defined  in `~/.aws/credentials` for kops to be 
 
 ### Install kubectl
 
-We're currently kubectl `1.25.10`.  Install:
+We're currently using kubectl `1.25.10`.
 
     curl -LO https://dl.k8s.io/release/v1.25.10/bin/linux/amd64/kubectl
     sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
