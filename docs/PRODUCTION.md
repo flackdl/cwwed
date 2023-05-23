@@ -2,7 +2,7 @@
 
 ### Create Kubernetes cluster
 
-**NOTE: currently using kops `1.25`, kubernetes `1.23`, kubectl `1.25`**.
+**NOTE: currently using kops `1.25`, kubernetes `1.23`, [kubectl 1.25.10](https://dl.k8s.io/release/v1.25.10/bin/linux/amd64/kubectl)**.
 
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
