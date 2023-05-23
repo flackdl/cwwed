@@ -2,7 +2,7 @@
 
 ### Install kops
 
-We're currently using [kops 1.25](https://github.com/kubernetes/kops).  Download and install.
+We're currently using [kops 1.25.3](https://github.com/kubernetes/kops).  Download and install.
 
 You'll need the aws credentials defined  in `~/.aws/credentials` for kops to be able to manage the cloud resources.
 
