@@ -1,8 +1,21 @@
 # Production
 
-### Create Kubernetes cluster
+### Install kops
 
-**NOTE: currently using kops `1.25`, kubernetes `1.23`, [kubectl 1.25.10](https://dl.k8s.io/release/v1.25.10/bin/linux/amd64/kubectl)**.
+We're currently using [kops 1.25](https://github.com/kubernetes/kops).  Download and install.
+
+You'll need the aws credentials defined  in `~/.aws/credentials` for kops to be able to manage the cloud resources.
+
+### Install kubectl
+
+We're currently kubectl `1.25.10`.  Install:
+
+    curl -LO https://dl.k8s.io/release/v1.25.10/bin/linux/amd64/kubectl
+    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+You'll also need the kubernetes credentials defined in `~/.kube/config` to be able to control the cluster.
+
+### Create Kubernetes cluster
 
 Create Kubernetes cluster via [kops](https://github.com/kubernetes/kops).
 
