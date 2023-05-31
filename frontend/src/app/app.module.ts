@@ -43,6 +43,7 @@ export class SentryErrorHandler implements ErrorHandler {
 
 const appRoutes: Routes = [
   { path: '',   redirectTo: '/coastal-act', pathMatch: 'full' },
+  { path: 'home',   redirectTo: '/coastal-act', pathMatch: 'full' }, // preserve old route
   { path: 'cwwed', component: MainComponent },
   { path: 'coastal-act', component: CoastalActComponent },
   {
