@@ -7,7 +7,7 @@ celery_type: !Format "worker"
 volume_claim_name: !Format "efs-{deploy_stage}"
 redis_service: !Format "redis-{deploy_stage}"
 request_cpu: "100m"
-request_memory: "2G"
+request_memory: "1G"
 queues: "celery"
 concurrency: "1"
 ---
