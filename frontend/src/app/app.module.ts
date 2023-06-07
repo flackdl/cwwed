@@ -26,7 +26,6 @@ import { CoastalActProjectsComponent } from './coastal-act-projects/coastal-act-
 import { CoastalActProjectsDetailComponent } from './coastal-act-projects-detail/coastal-act-projects-detail.component';
 import { PsaExportComponent } from './psa/psa-export.component';
 import { PsaListComponent } from './psa/psa-list.component';
-import { TutorialsComponent } from './tutorials/tutorials.component';
 
 Sentry.init({
   dsn: "https://80b326e2a7fa4e6abf9d3a9d19481c40@sentry.io/1281345",
@@ -72,7 +71,6 @@ const appRoutes: Routes = [
       { path: ':name/:id/export', component: PsaExportComponent },
     ],
   },
-  { path: 'tutorials', component: TutorialsComponent },
   { path: 'page-not-found', component: PageNotFoundComponent },
   { path: '**', component: PageNotFoundComponent }
 ];
@@ -91,7 +89,6 @@ const appRoutes: Routes = [
     CoastalActProjectsDetailComponent,
     PsaExportComponent,
     PsaListComponent,
-    TutorialsComponent,
   ],
   imports: [
     RouterModule.forRoot(
