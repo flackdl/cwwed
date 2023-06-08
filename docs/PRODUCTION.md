@@ -170,11 +170,11 @@ Deploy *alpha* using *latest* image tag:
 
     # celery beat (scheduled tasks)
     # TODO - use kustomize for better yaml templating
-    # manually edit `configs/deployment-celery.in.yml` and swap the celery command argument, and change replicas to *1*
-    emrichen --define deploy_stage=alpha --define tag=latest --define celery_type=beat configs/deployment-celery.in.yml | kubectl apply -f -
+    # manually edit `configs/deployment-celery.in.yml` and swap the celery command argument, and change replicas to *1*, and reduce memory to .25G
+    emrichen --define deploy_stage=alpha --define tag=latest --define celery_type=beat --define request_memory=.25G configs/deployment-celery.in.yml | kubectl apply -f -
 
     # celery process-psa queue: single process, higher resource usage
-    emrichen --define deploy_stage=alpha --define tag=latest --define queues=process-psa --define request_cpu=200m --define request_memory=1200M  --define concurrency=1 configs/deployment-celery.in.yml | kubectl apply -f -
+    emrichen --define deploy_stage=alpha --define tag=latest --define queues=process-psa --define request_cpu=100m --define request_memory=1G --define concurrency=1 configs/deployment-celery.in.yml | kubectl apply -f -
 
     emrichen --define deploy_stage=alpha configs/deployment-opendap.in.yml | kubectl apply -f -
     emrichen --define deploy_stage=alpha configs/service-opendap.in.yml | kubectl apply -f -
