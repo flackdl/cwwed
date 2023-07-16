@@ -34,7 +34,7 @@ PyYAML==5.3
 redis==3.3.11
 requests==2.22.0
 scipy==1.4.1
-sentry-sdk==0.19.5
+sentry-sdk==1.14.0
 Shapely==1.8.1.post1
 slacker==0.13.0
 uritemplate==3.0.1
