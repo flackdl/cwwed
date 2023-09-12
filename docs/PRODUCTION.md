@@ -232,6 +232,18 @@ Create cache tables:
 
     kubectl exec -it $CWWED_POD python manage.py createcachetable
 
+### Deployment
+
+Once you've updated a container's image, you just need to instruct kubernetes to re-deploy the relevant containers.
+
+To deploy new changes to the *cwwed* code/container:
+
+    kubectl rollout restart deployment/cwwed-alpha
+
+To see the rollout status:
+
+    kubectl rollout status deployment/cwwed-alpha
+
 ### Helpers
 
 Collect covered data via job:
@@ -241,10 +253,6 @@ Collect covered data via job:
 Manually run database migration:
 
     emrichen --define deploy_stage=alpha --define tag=latest configs/job-cwwed-migrate.in.yml | kubectl apply -f -
-    
-Patch to force a rolling update (to re-pull updated images):
-
-    kubectl patch deployment cwwed-alpha -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"date\":\"`date +'%s'`\"}}}}}"
     
 Get pod name:
 
